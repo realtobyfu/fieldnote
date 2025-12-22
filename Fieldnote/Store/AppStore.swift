@@ -51,7 +51,7 @@ class AppStore {
         return Array(Set(locations)).sorted()
     }
 
-    /// Group plants by their encounter locations
+    /// Group plants by their encounter locations (discovered only)
     var plantsByLocation: [(location: String, plants: [Plant])] {
         var locationMap: [String: Set<UUID>] = [:]
 
@@ -68,6 +68,65 @@ class AppStore {
             return (location: location, plants: plantsAtLocation)
         }
         .sorted { $0.plants.count > $1.plants.count }
+    }
+
+    /// Get undiscovered catalog plants that match a habitat keyword
+    func undiscoveredPlants(forHabitat habitat: String) -> [CatalogPlant] {
+        let lowercasedHabitat = habitat.lowercased()
+        return undiscoveredPlants.filter { plant in
+            // Match habitat directly or infer from location name
+            plant.habitat.lowercased().contains(lowercasedHabitat) ||
+            habitatKeywords(for: lowercasedHabitat).contains { keyword in
+                plant.habitat.lowercased().contains(keyword)
+            }
+        }
+    }
+
+    /// Map location names to likely habitat keywords
+    private func habitatKeywords(for location: String) -> [String] {
+        let location = location.lowercased()
+
+        // Park-related locations
+        if location.contains("park") || location.contains("garden") || location.contains("botanical") {
+            return ["urban", "gardens", "meadows", "forests"]
+        }
+
+        // Forest/woodland locations
+        if location.contains("forest") || location.contains("wood") || location.contains("trail") {
+            return ["forests", "woodlands"]
+        }
+
+        // Wetland locations
+        if location.contains("lake") || location.contains("pond") || location.contains("creek") ||
+           location.contains("river") || location.contains("marsh") || location.contains("wetland") {
+            return ["wetlands", "streams"]
+        }
+
+        // Meadow/field locations
+        if location.contains("meadow") || location.contains("field") || location.contains("prairie") {
+            return ["meadows", "grasslands"]
+        }
+
+        // Urban locations
+        if location.contains("street") || location.contains("yard") || location.contains("campus") ||
+           location.contains("neighborhood") || location.contains("downtown") {
+            return ["urban", "gardens", "disturbed"]
+        }
+
+        // Default: return common habitats
+        return ["meadows", "forests", "urban"]
+    }
+
+    /// Get mixed location data with both discovered and undiscovered plants
+    var mixedPlantsByLocation: [(location: String, discovered: [Plant], undiscovered: [CatalogPlant])] {
+        plantsByLocation.map { locationGroup in
+            let undiscovered = undiscoveredPlants(forHabitat: locationGroup.location)
+            return (
+                location: locationGroup.location,
+                discovered: locationGroup.plants,
+                undiscovered: Array(undiscovered.prefix(10))
+            )
+        }
     }
 
     // MARK: - Plant Operations

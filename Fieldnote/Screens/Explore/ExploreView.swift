@@ -19,11 +19,12 @@ struct ExploreView: View {
                     plants: store.recentlyEncountered
                 )
 
-                // Location-based sections
-                ForEach(store.plantsByLocation.prefix(5), id: \.location) { locationGroup in
-                    ExploreSection(
+                // Location-based sections (discovered + undiscovered)
+                ForEach(store.mixedPlantsByLocation.prefix(5), id: \.location) { locationGroup in
+                    LocationSection(
                         title: "Common in \(locationGroup.location)",
-                        plants: locationGroup.plants
+                        discoveredPlants: locationGroup.discovered,
+                        undiscoveredPlants: locationGroup.undiscovered
                     )
                 }
 
