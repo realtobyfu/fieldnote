@@ -2,7 +2,7 @@
 //  PlantCard.swift
 //  Fieldnote
 //
-//  Card component for displaying a plant in grid or list layouts
+//  Card component for displaying a plant with botanical illustration
 //
 
 import SwiftUI
@@ -22,7 +22,7 @@ struct PlantCard: View {
     }
 
     var body: some View {
-        FieldCard {
+        VintageCard {
             switch layout {
             case .grid:
                 gridContent
@@ -36,17 +36,21 @@ struct PlantCard: View {
 
     private var gridContent: some View {
         VStack(alignment: .leading, spacing: FieldSpace.sm) {
-            // Colored placeholder with symbol
-            placeholderImage
-                .frame(height: 120)
-                .frame(maxWidth: .infinity)
-                .clipped()
+            // Botanical illustration
+            BotanicalIllustrationView(
+                plant.commonName,
+                family: plant.family,
+                size: .card
+            )
+            .frame(height: 120)
+            .frame(maxWidth: .infinity)
+            .clipped()
 
             VStack(alignment: .leading, spacing: FieldSpace.xs) {
                 // Common name
                 Text(plant.commonName)
                     .font(FieldType.bodyEmphasized)
-                    .foregroundColor(FieldColor.ink)
+                    .foregroundColor(FieldColor.vintageInk)
                     .lineLimit(2)
 
                 // Scientific name
@@ -60,12 +64,12 @@ struct PlantCard: View {
                     Spacer()
 
                     HStack(spacing: FieldSpace.xs) {
-                        Image(systemName: "camera.fill")
+                        Image(systemName: "eye.fill")
                             .font(.caption2)
                         Text("\(plant.encounterCount)")
                             .font(FieldType.caption)
                     }
-                    .foregroundColor(FieldColor.mutedInk)
+                    .foregroundColor(FieldColor.fadedInk)
                 }
             }
         }
@@ -75,16 +79,18 @@ struct PlantCard: View {
 
     private var listContent: some View {
         HStack(spacing: FieldSpace.sm) {
-            // Smaller placeholder
-            placeholderImage
-                .frame(width: 80, height: 80)
-                .cornerRadius(FieldRadius.sm)
+            // Smaller botanical illustration
+            BotanicalIllustrationView(
+                plant.commonName,
+                family: plant.family,
+                size: .thumbnail
+            )
 
             VStack(alignment: .leading, spacing: FieldSpace.xs) {
                 // Common name
                 Text(plant.commonName)
                     .font(FieldType.bodyEmphasized)
-                    .foregroundColor(FieldColor.ink)
+                    .foregroundColor(FieldColor.vintageInk)
 
                 // Scientific name
                 ScientificNameText(plant.scientificName, size: .footnote)
@@ -95,43 +101,17 @@ struct PlantCard: View {
                     Spacer()
 
                     HStack(spacing: FieldSpace.xs) {
-                        Image(systemName: "camera.fill")
+                        Image(systemName: "eye.fill")
                             .font(.caption2)
                         Text("\(plant.encounterCount)")
                             .font(FieldType.caption)
                     }
-                    .foregroundColor(FieldColor.mutedInk)
+                    .foregroundColor(FieldColor.fadedInk)
                 }
             }
 
             Spacer()
         }
-    }
-
-    // MARK: - Placeholder Image
-
-    private var placeholderImage: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                .fill(placeholderColor)
-
-            Image(systemName: plant.displayPlaceholder)
-                .font(.system(size: 40))
-                .foregroundColor(.white.opacity(0.8))
-        }
-    }
-
-    private var placeholderColor: Color {
-        let colors: [Color] = [
-            FieldColor.accent,
-            FieldColor.botanicalBrown,
-            Color.green.opacity(0.6),
-            Color.blue.opacity(0.4),
-            Color.orange.opacity(0.5),
-            Color.purple.opacity(0.5)
-        ]
-        let hash = abs(plant.id.hashValue)
-        return colors[hash % colors.count]
     }
 }
 
@@ -148,7 +128,7 @@ struct PlantCard: View {
         }
         .padding(FieldSpace.md)
     }
-    .background(FieldColor.paper)
+    .background(FieldColor.agedPaper)
 }
 
 #Preview("List Layout") {
@@ -162,5 +142,5 @@ struct PlantCard: View {
         }
         .padding(FieldSpace.md)
     }
-    .background(FieldColor.paper)
+    .background(FieldColor.agedPaper)
 }

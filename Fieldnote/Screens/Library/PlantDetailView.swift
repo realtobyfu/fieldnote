@@ -2,7 +2,7 @@
 //  PlantDetailView.swift
 //  Fieldnote
 //
-//  Detail view for an individual plant
+//  Detail view for an individual plant with vintage book styling
 //
 
 import SwiftUI
@@ -13,31 +13,32 @@ struct PlantDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.lg) {
-                // Hero image placeholder
-                heroPlaceholder
+                // Hero botanical illustration
+                heroIllustration
 
                 // Plant info card
-                FieldCard {
+                VintageCard {
                     VStack(alignment: .leading, spacing: FieldSpace.md) {
                         // Names
                         VStack(alignment: .leading, spacing: FieldSpace.xs) {
                             Text(plant.commonName)
-                                .font(FieldType.title2)
-                                .foregroundColor(FieldColor.ink)
+                                .font(FieldType.displaySubtitle)
+                                .foregroundColor(FieldColor.vintageInk)
 
                             ScientificNameText(plant.scientificName, size: .callout)
                         }
 
-                        Divider()
+                        RuledLine()
 
                         // Family and confidence
                         HStack {
                             VStack(alignment: .leading, spacing: FieldSpace.xs) {
                                 Text("Family")
                                     .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.mutedInk)
+                                    .foregroundColor(FieldColor.fadedInk)
                                 Text(plant.family)
                                     .font(FieldType.bodyEmphasized)
+                                    .foregroundColor(FieldColor.vintageInk)
                             }
 
                             Spacer()
@@ -45,19 +46,19 @@ struct PlantDetailView: View {
                             VStack(alignment: .trailing, spacing: FieldSpace.xs) {
                                 Text("Confidence")
                                     .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.mutedInk)
+                                    .foregroundColor(FieldColor.fadedInk)
                                 ConfidencePill(confidence: plant.averageConfidence)
                             }
                         }
 
                         // Traits
                         if !plant.traits.isEmpty {
-                            Divider()
+                            RuledLine()
 
                             VStack(alignment: .leading, spacing: FieldSpace.sm) {
                                 Text("Traits")
                                     .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.mutedInk)
+                                    .foregroundColor(FieldColor.fadedInk)
 
                                 FlowLayout(spacing: FieldSpace.xs) {
                                     ForEach(plant.traits, id: \.self) { trait in
@@ -72,7 +73,7 @@ struct PlantDetailView: View {
                 // Encounters section
                 if !plant.encounters.isEmpty {
                     VStack(alignment: .leading, spacing: FieldSpace.md) {
-                        SectionHeader(title: "Encounters (\(plant.encounterCount))")
+                        SectionHeader(title: "Observations (\(plant.encounterCount))", showRuledLine: true)
 
                         ForEach(plant.encounters.sorted(by: { $0.date > $1.date })) { encounter in
                             EncounterCard(encounter: encounter)
@@ -82,37 +83,30 @@ struct PlantDetailView: View {
             }
             .padding(FieldSpace.md)
         }
-        .background(FieldColor.paper)
+        .background(FieldColor.agedPaper)
         .navigationTitle(plant.commonName)
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Hero Placeholder
+    // MARK: - Hero Illustration
 
-    private var heroPlaceholder: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: FieldRadius.lg)
-                .fill(placeholderColor)
+    private var heroIllustration: some View {
+        VStack(spacing: 0) {
+            // Main illustration
+            BotanicalIllustrationView(
+                plant.commonName,
+                family: plant.family,
+                size: .hero
+            )
+            .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
+            .background(FieldColor.surface)
+            .cornerRadius(FieldRadius.lg)
 
-            Image(systemName: plant.displayPlaceholder)
-                .font(.system(size: 80))
-                .foregroundColor(.white.opacity(0.8))
+            // Scientific name plate
+            ScientificNamePlate(name: plant.scientificName)
+                .padding(.top, FieldSpace.sm)
+                .padding(.horizontal, FieldSpace.lg)
         }
-        .frame(height: 240)
-        .frame(maxWidth: .infinity)
-    }
-
-    private var placeholderColor: Color {
-        let colors: [Color] = [
-            FieldColor.accent,
-            FieldColor.botanicalBrown,
-            Color.green.opacity(0.6),
-            Color.blue.opacity(0.4),
-            Color.orange.opacity(0.5),
-            Color.purple.opacity(0.5)
-        ]
-        let hash = abs(plant.id.hashValue)
-        return colors[hash % colors.count]
     }
 }
 
@@ -122,13 +116,19 @@ private struct EncounterCard: View {
     let encounter: Encounter
 
     var body: some View {
-        FieldCard {
+        VintageCard {
             VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                // User photo (if available)
+                if encounter.hasPhoto {
+                    EncounterPhotoView(encounter: encounter, height: 180)
+                        .cornerRadius(FieldRadius.sm)
+                }
+
                 // Date and confidence
                 HStack {
                     Text(encounter.date, style: .date)
                         .font(FieldType.bodyEmphasized)
-                        .foregroundColor(FieldColor.ink)
+                        .foregroundColor(FieldColor.vintageInk)
 
                     Spacer()
 
@@ -138,13 +138,13 @@ private struct EncounterCard: View {
                 // Location
                 if let location = encounter.locationName {
                     HStack(spacing: FieldSpace.xs) {
-                        Image(systemName: "location.fill")
+                        Image(systemName: "mappin")
                             .font(.caption)
-                            .foregroundColor(FieldColor.mutedInk)
+                            .foregroundColor(FieldColor.fadedInk)
 
                         Text(location)
                             .font(FieldType.callout)
-                            .foregroundColor(FieldColor.mutedInk)
+                            .foregroundColor(FieldColor.fadedInk)
                     }
                 }
 
@@ -159,11 +159,12 @@ private struct EncounterCard: View {
 
                 // Notes
                 if let notes = encounter.notes {
-                    Divider()
+                    RuledLine()
 
                     Text(notes)
                         .font(FieldType.callout)
-                        .foregroundColor(FieldColor.ink)
+                        .foregroundColor(FieldColor.vintageInk)
+                        .italic()
                 }
             }
         }

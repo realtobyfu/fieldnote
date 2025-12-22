@@ -21,6 +21,7 @@ struct CaptureReviewSheet: View {
     @State private var locationName = ""
     @State private var notes = ""
     @State private var selectedConditions: Set<String> = []
+    @State private var isSaving = false
 
     let availableConditions = ["sun", "shade", "wet", "dry", "snow", "windy", "hot", "cold"]
     let placeholderSymbols = ["leaf.fill", "camera.fill", "sun.max.fill", "cloud.fill", "tree.fill", "allergens.fill"]
@@ -29,43 +30,25 @@ struct CaptureReviewSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: FieldSpace.lg) {
-                    // Preview image
-                    Group {
-                        if let image = capturedImage {
-                            Image(uiImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 200)
-                                .clipped()
-                                .cornerRadius(FieldRadius.lg)
-                        } else {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: FieldRadius.lg)
-                                    .fill(FieldColor.accent.opacity(0.3))
-
-                                Image(systemName: placeholderSymbols.randomElement() ?? "leaf.fill")
-                                    .font(.system(size: 60))
-                                    .foregroundColor(FieldColor.accent)
-                            }
-                            .frame(height: 200)
-                        }
-                    }
-                    .padding(.horizontal, FieldSpace.md)
+                    // Preview image with vintage frame
+                    photoPreview
+                        .padding(.horizontal, FieldSpace.md)
 
                     // Form sections
                     VStack(spacing: FieldSpace.md) {
                         // Plant identification
-                        FieldCard {
+                        VintageCard {
                             VStack(alignment: .leading, spacing: FieldSpace.sm) {
                                 Text("Plant Identification")
                                     .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.ink)
+                                    .foregroundColor(FieldColor.vintageInk)
 
                                 TextField("Common name", text: $commonName)
                                     .textFieldStyle(.roundedBorder)
 
                                 TextField("Scientific name (optional)", text: $scientificName)
                                     .textFieldStyle(.roundedBorder)
+                                    .italic()
 
                                 TextField("Family", text: $family)
                                     .textFieldStyle(.roundedBorder)
@@ -73,12 +56,12 @@ struct CaptureReviewSheet: View {
                         }
 
                         // Confidence
-                        FieldCard {
+                        VintageCard {
                             VStack(alignment: .leading, spacing: FieldSpace.sm) {
                                 HStack {
                                     Text("Confidence")
                                         .font(FieldType.bodyEmphasized)
-                                        .foregroundColor(FieldColor.ink)
+                                        .foregroundColor(FieldColor.vintageInk)
 
                                     Spacer()
 
@@ -91,11 +74,11 @@ struct CaptureReviewSheet: View {
                         }
 
                         // Location
-                        FieldCard {
+                        VintageCard {
                             VStack(alignment: .leading, spacing: FieldSpace.sm) {
                                 Text("Location")
                                     .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.ink)
+                                    .foregroundColor(FieldColor.vintageInk)
 
                                 TextField("Location name (optional)", text: $locationName)
                                     .textFieldStyle(.roundedBorder)
@@ -103,11 +86,11 @@ struct CaptureReviewSheet: View {
                         }
 
                         // Conditions
-                        FieldCard {
+                        VintageCard {
                             VStack(alignment: .leading, spacing: FieldSpace.sm) {
                                 Text("Conditions")
                                     .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.ink)
+                                    .foregroundColor(FieldColor.vintageInk)
 
                                 FlowLayout(spacing: FieldSpace.xs) {
                                     ForEach(availableConditions, id: \.self) { condition in
@@ -127,30 +110,40 @@ struct CaptureReviewSheet: View {
                         }
 
                         // Notes
-                        FieldCard {
+                        VintageCard {
                             VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                Text("Notes")
+                                Text("Field Notes")
                                     .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.ink)
+                                    .foregroundColor(FieldColor.vintageInk)
 
                                 TextEditor(text: $notes)
+                                    .font(FieldType.body)
                                     .frame(height: 100)
                                     .padding(FieldSpace.xs)
-                                    .background(FieldColor.paper)
+                                    .background(FieldColor.illustrationBg)
                                     .cornerRadius(FieldRadius.sm)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                            .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                                    )
                             }
                         }
 
                         // Save button
-                        PrimaryButton("Save Encounter", isEnabled: !commonName.isEmpty) {
-                            saveEncounter()
+                        PrimaryButton(
+                            isSaving ? "Saving..." : "Save Observation",
+                            isEnabled: !commonName.isEmpty && !isSaving
+                        ) {
+                            Task {
+                                await saveEncounter()
+                            }
                         }
                     }
                     .padding(.horizontal, FieldSpace.md)
                 }
                 .padding(.vertical, FieldSpace.md)
             }
-            .background(FieldColor.paper)
+            .background(FieldColor.agedPaper)
             .navigationTitle("Review Capture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -164,22 +157,86 @@ struct CaptureReviewSheet: View {
         }
     }
 
+    // MARK: - Photo Preview
+
+    private var photoPreview: some View {
+        Group {
+            if let image = capturedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 220)
+                    .clipped()
+                    .overlay(
+                        // Subtle sepia tint
+                        Rectangle()
+                            .fill(FieldColor.sepia.opacity(0.05))
+                    )
+                    .cornerRadius(FieldRadius.lg)
+                    .overlay(
+                        // Vintage frame
+                        RoundedRectangle(cornerRadius: FieldRadius.lg)
+                            .stroke(FieldColor.bookBorder, lineWidth: 1)
+                            .padding(1)
+                    )
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: FieldRadius.lg)
+                        .fill(FieldColor.illustrationBg)
+
+                    VStack(spacing: FieldSpace.sm) {
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(FieldColor.botanicalBrown.opacity(0.4))
+
+                        Text("No photo captured")
+                            .font(FieldType.callout)
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+                }
+                .frame(height: 220)
+                .overlay(
+                    RoundedRectangle(cornerRadius: FieldRadius.lg)
+                        .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                )
+            }
+        }
+    }
+
     // MARK: - Save Encounter
 
-    private func saveEncounter() {
-        // Create new encounter
+    private func saveEncounter() async {
+        isSaving = true
+
+        // Generate encounter ID for photo filename
+        let encounterId = UUID()
+
+        // Save photo if available
+        var photoFileName: String? = nil
+        if let image = capturedImage {
+            do {
+                photoFileName = try await PhotoStorageService.shared.savePhoto(image, for: encounterId)
+            } catch {
+                print("Failed to save photo: \(error)")
+                // Continue without photo
+            }
+        }
+
+        // Create new encounter with photo reference
         let encounter = Encounter(
+            id: encounterId,
             date: Date(),
             locationName: locationName.isEmpty ? nil : locationName,
             coordinates: nil,
             photoPlaceholder: placeholderSymbols.randomElement() ?? "leaf.fill",
             confidence: confidence,
             notes: notes.isEmpty ? nil : notes,
-            conditions: Array(selectedConditions)
+            conditions: Array(selectedConditions),
+            photoFileName: photoFileName
         )
 
         // Check if plant exists
-        if let existingPlant = store.plants.first(where: { $0.commonName == commonName }) {
+        if let existingPlant = store.plants.first(where: { $0.commonName.lowercased() == commonName.lowercased() }) {
             // Add encounter to existing plant
             store.addEncounter(encounter, to: existingPlant.id)
         } else {
@@ -193,6 +250,8 @@ struct CaptureReviewSheet: View {
             )
             store.addPlant(newPlant)
         }
+
+        isSaving = false
 
         // Dismiss and reset
         dismiss()

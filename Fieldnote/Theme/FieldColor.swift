@@ -58,6 +58,26 @@ struct FieldColor {
     /// Low confidence (<0.60)
     static let confidenceLow = Color(red: 0.93, green: 0.52, blue: 0.38) // #ED8560
 
+    // MARK: - Vintage/Aged Tones
+
+    /// Sepia tint for aged effect
+    static let sepia = Color(red: 0.44, green: 0.36, blue: 0.26) // #70593F
+
+    /// Aged paper - slightly warmer than standard paper
+    static let agedPaper = Color(red: 0.96, green: 0.94, blue: 0.89) // #F5EFE3
+
+    /// Ink for vintage text - warmer black
+    static let vintageInk = Color(red: 0.18, green: 0.15, blue: 0.10) // #2D2519
+
+    /// Faded ink for secondary text
+    static let fadedInk = Color(red: 0.42, green: 0.38, blue: 0.32) // #6B6152
+
+    /// Border color for book-like frames
+    static let bookBorder = Color(red: 0.78, green: 0.72, blue: 0.62) // #C7B89E
+
+    /// Illustration background - cream tint
+    static let illustrationBg = Color(red: 0.98, green: 0.96, blue: 0.92) // #FAF5EB
+
     // MARK: - Dividers & Borders
 
     /// Very subtle separator line

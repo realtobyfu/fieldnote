@@ -18,6 +18,9 @@ struct Encounter: Identifiable, Codable {
     let notes: String?
     let conditions: [String]  // e.g., ["sun", "wet", "windy"]
 
+    // User photo storage
+    var photoFileName: String?  // Reference to saved image file in Documents/EncounterPhotos/
+
     init(
         id: UUID = UUID(),
         date: Date = Date(),
@@ -26,7 +29,8 @@ struct Encounter: Identifiable, Codable {
         photoPlaceholder: String = "leaf.fill",
         confidence: Double,
         notes: String? = nil,
-        conditions: [String] = []
+        conditions: [String] = [],
+        photoFileName: String? = nil
     ) {
         self.id = id
         self.date = date
@@ -36,6 +40,12 @@ struct Encounter: Identifiable, Codable {
         self.confidence = confidence
         self.notes = notes
         self.conditions = conditions
+        self.photoFileName = photoFileName
+    }
+
+    /// Check if this encounter has a user photo
+    var hasPhoto: Bool {
+        photoFileName != nil
     }
 }
 
