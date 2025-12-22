@@ -94,6 +94,60 @@ struct CatalogSection: View {
     }
 }
 
+// MARK: - Mixed Location Section (Discovered + Undiscovered)
+
+struct LocationSection: View {
+    let title: String
+    let discoveredPlants: [Plant]
+    let undiscoveredPlants: [CatalogPlant]
+
+    private var totalCount: Int {
+        discoveredPlants.count + undiscoveredPlants.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FieldSpace.sm) {
+            HStack {
+                SectionHeader(title: title)
+                Spacer()
+                if totalCount > 0 {
+                    Text("\(discoveredPlants.count)/\(totalCount)")
+                        .font(FieldType.caption)
+                        .foregroundColor(FieldColor.mutedInk)
+                }
+            }
+            .padding(.horizontal, FieldSpace.md)
+
+            if totalCount == 0 {
+                Text("No plants in this area yet")
+                    .font(FieldType.callout)
+                    .foregroundColor(FieldColor.mutedInk)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, FieldSpace.xl)
+                    .padding(.horizontal, FieldSpace.md)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: FieldSpace.sm) {
+                        // Discovered plants first
+                        ForEach(discoveredPlants) { plant in
+                            NavigationLink(value: plant) {
+                                CompactPlantCard(plant: plant)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        // Undiscovered plants after
+                        ForEach(undiscoveredPlants) { catalogPlant in
+                            UndiscoveredPlantCard(catalogPlant: catalogPlant)
+                        }
+                    }
+                    .padding(.horizontal, FieldSpace.md)
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Compact Plant Card (Discovered)
 
 struct CompactPlantCard: View {
