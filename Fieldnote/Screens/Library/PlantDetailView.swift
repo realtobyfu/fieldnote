@@ -16,6 +16,9 @@ struct PlantDetailView: View {
                 // Hero botanical illustration
                 heroIllustration
 
+                // Curated photo gallery (exact-match only)
+                PlantPhotoGalleryView(plantName: plant.commonName)
+
                 // Plant info card
                 VintageCard {
                     VStack(alignment: .leading, spacing: FieldSpace.md) {
@@ -26,9 +29,10 @@ struct PlantDetailView: View {
                                 .foregroundColor(FieldColor.vintageInk)
 
                             ScientificNameText(plant.scientificName, size: .callout)
+                            
                         }
-
                         RuledLine()
+
 
                         // Family and confidence
                         HStack {
@@ -44,10 +48,12 @@ struct PlantDetailView: View {
                             Spacer()
 
                             VStack(alignment: .trailing, spacing: FieldSpace.xs) {
-                                Text("Confidence")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                ConfidencePill(confidence: plant.averageConfidence)
+                                if !plant.encounters.isEmpty {
+                                    Text("Confidence")  
+                                        .font(FieldType.caption)
+                                        .foregroundColor(FieldColor.fadedInk)
+                                    ConfidencePill(confidence: plant.averageConfidence)
+                                }
                             }
                         }
 
@@ -67,6 +73,16 @@ struct PlantDetailView: View {
                                 }
                             }
                         }
+                        RuledLine()
+
+                        if !plant.summary.isEmpty {
+                            Text(plant.summary)
+                                .font(FieldType.callout)
+                                .foregroundColor(FieldColor.ink)
+                        }
+
+
+
                     }
                 }
 
@@ -145,17 +161,21 @@ private struct EncounterCard: View {
                         Text(location)
                             .font(FieldType.callout)
                             .foregroundColor(FieldColor.fadedInk)
-                    }
-                }
+                        
+                        
+                        Spacer()
 
-                // Conditions
-                if !encounter.conditions.isEmpty {
-                    FlowLayout(spacing: FieldSpace.xs) {
-                        ForEach(encounter.conditions, id: \.self) { condition in
-                            TraitChip(condition)
+                        // Conditions
+                        if !encounter.conditions.isEmpty {
+                            FlowLayout(spacing: FieldSpace.xs) {
+                                ForEach(encounter.conditions, id: \.self) { condition in
+                                    TraitChip(condition)
+                                }
+                            }
                         }
                     }
                 }
+
 
                 // Notes
                 if let notes = encounter.notes {

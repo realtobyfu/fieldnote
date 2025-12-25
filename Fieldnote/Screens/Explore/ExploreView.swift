@@ -20,7 +20,7 @@ struct ExploreView: View {
                 )
 
                 // Location-based sections (discovered + undiscovered)
-                ForEach(store.mixedPlantsByLocation.prefix(5), id: \.location) { locationGroup in
+                ForEach(store.mixedPlantsByLocation.prefix(2), id: \.location) { locationGroup in
                     LocationSection(
                         title: "Common in \(locationGroup.location)",
                         discoveredPlants: locationGroup.discovered,
@@ -40,6 +40,9 @@ struct ExploreView: View {
         .navigationTitle("Explore")
         .navigationDestination(for: Plant.self) { plant in
             PlantDetailView(plant: plant)
+        }
+        .navigationDestination(for: CatalogPlant.self) { catalogPlant in
+            PlantDetailView(plant: catalogPlant.asPlant)
         }
     }
 }

@@ -42,7 +42,7 @@ struct BotanicalIllustrationView: View {
 
     var body: some View {
         Group {
-            if let assetName = BotanicalIllustrationService.illustrationName(
+            if let assetName = IllustrationService.illustrationName(
                 for: plantName, family: family
             ) {
                 illustrationImage(assetName)

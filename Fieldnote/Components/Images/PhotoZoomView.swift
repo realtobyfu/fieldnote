@@ -8,10 +8,26 @@
 import SwiftUI
 
 struct PhotoZoomView: View {
-    let image: UIImage?
+    private let assetName: String?
+    private let providedImage: UIImage?
+
     @Environment(\.dismiss) private var dismiss
 
+    @State private var image: UIImage?
     @State private var scale: CGFloat = 1.0
+
+    /// Initialize with an asset catalog name (loads on appear)
+    init(assetName: String) {
+        self.assetName = assetName
+        self.providedImage = nil
+    }
+
+    /// Initialize with a pre-loaded UIImage
+    init(image: UIImage?) {
+        self.assetName = nil
+        self.providedImage = image
+    }
+
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
@@ -26,7 +42,7 @@ struct PhotoZoomView: View {
                 .ignoresSafeArea()
 
             // Photo
-            if let image = image {
+            if let image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
@@ -54,6 +70,13 @@ struct PhotoZoomView: View {
             closeButton
         }
         .statusBarHidden()
+        .onAppear {
+            if let providedImage {
+                image = providedImage
+            } else if let assetName {
+                image = UIImage(named: assetName)
+            }
+        }
     }
 
     // MARK: - Close Button
@@ -157,5 +180,5 @@ struct PhotoZoomView: View {
 // MARK: - Preview
 
 #Preview {
-    PhotoZoomView(image: nil)
+    PhotoZoomView(assetName: "dandelion_photo_01")
 }

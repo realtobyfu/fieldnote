@@ -86,7 +86,10 @@ struct CatalogSection: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: FieldSpace.sm) {
                         ForEach(catalogPlants) { catalogPlant in
-                            UndiscoveredPlantCard(catalogPlant: catalogPlant)
+                            NavigationLink(value: catalogPlant) {
+                                UndiscoveredPlantCard(catalogPlant: catalogPlant)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, FieldSpace.md)
@@ -141,7 +144,10 @@ struct LocationSection: View {
 
                         // Undiscovered plants after
                         ForEach(undiscoveredPlants) { catalogPlant in
-                            UndiscoveredPlantCard(catalogPlant: catalogPlant)
+                            NavigationLink(value: catalogPlant) {
+                                UndiscoveredPlantCard(catalogPlant: catalogPlant)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, FieldSpace.md)
@@ -173,19 +179,19 @@ struct CompactPlantCard: View {
                     .lineLimit(2)
                     .frame(height: 40, alignment: .top)
 
-                HStack {
-                    ConfidencePill(confidence: plant.averageConfidence)
-
-                    Spacer()
-
-                    HStack(spacing: 2) {
-                        Image(systemName: "eye.fill")
-                            .font(.system(size: 9))
-                        Text("\(plant.encounterCount)")
-                            .font(FieldType.caption2)
-                    }
-                    .foregroundColor(FieldColor.fadedInk)
-                }
+//                HStack {
+//                    ConfidencePill(confidence: plant.averageConfidence)
+//
+//                    Spacer()
+//
+//                    HStack(spacing: 2) {
+//                        Image(systemName: "eye.fill")
+//                            .font(.system(size: 9))
+//                        Text("\(plant.encounterCount)")
+//                            .font(FieldType.caption2)
+//                    }
+//                    .foregroundColor(FieldColor.fadedInk)
+//                }
             }
         }
         .frame(width: 140)
@@ -213,11 +219,6 @@ struct UndiscoveredPlantCard: View {
                     .foregroundColor(FieldColor.fadedInk)
                     .lineLimit(2)
                     .frame(height: 40, alignment: .top)
-
-                Text("Not discovered")
-                    .font(FieldType.caption2)
-                    .foregroundColor(FieldColor.fadedInk.opacity(0.6))
-                    .italic()
             }
         }
         .frame(width: 140)
@@ -243,6 +244,9 @@ struct UndiscoveredPlantCard: View {
         .background(FieldColor.agedPaper)
         .navigationDestination(for: Plant.self) { plant in
             PlantDetailView(plant: plant)
+        }
+        .navigationDestination(for: CatalogPlant.self) { catalogPlant in
+            PlantDetailView(plant: catalogPlant.asPlant)
         }
     }
     .environment(\.appStore, store)

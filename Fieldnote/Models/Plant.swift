@@ -12,6 +12,7 @@ struct Plant: Identifiable, Codable, Hashable {
     let commonName: String
     let scientificName: String
     let family: String
+    let summary: String
     let traits: [String]
     var encounters: [Encounter]
 
@@ -20,6 +21,7 @@ struct Plant: Identifiable, Codable, Hashable {
         commonName: String,
         scientificName: String,
         family: String,
+        summary: String = "",
         traits: [String] = [],
         encounters: [Encounter] = []
     ) {
@@ -27,6 +29,7 @@ struct Plant: Identifiable, Codable, Hashable {
         self.commonName = commonName
         self.scientificName = scientificName
         self.family = family
+        self.summary = summary
         self.traits = traits
         self.encounters = encounters
     }
@@ -58,6 +61,19 @@ struct Plant: Identifiable, Codable, Hashable {
     /// Date of most recent encounter
     var lastSeenDate: Date? {
         mostRecentEncounter?.date
+    }
+
+    /// Short description for display
+    var shortDescription: String {
+        if !summary.isEmpty {
+            return summary
+        }
+
+        if !traits.isEmpty {
+            return traits.prefix(2).joined(separator: " · ")
+        }
+
+        return "Notes pending"
     }
 }
 

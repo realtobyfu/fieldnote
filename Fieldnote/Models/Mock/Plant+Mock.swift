@@ -14,6 +14,7 @@ extension Plant {
         commonName: "Common Dandelion",
         scientificName: "Taraxacum officinale",
         family: "Asteraceae",
+        summary: "Bright yellow flowers mature into white puffball seed heads.",
         traits: ["Yellow flowers", "Deep taproot", "Rosette leaves", "Milky sap"],
         encounters: [
             Encounter.mockDandelion1,
@@ -25,6 +26,7 @@ extension Plant {
         commonName: "White Clover",
         scientificName: "Trifolium repens",
         family: "Fabaceae",
+        summary: "Low groundcover with white flower heads.",
         traits: ["Trifoliate leaves", "White flowers", "Creeping stems", "Nitrogen-fixing"],
         encounters: [
             Encounter.mockClover1,
@@ -36,6 +38,7 @@ extension Plant {
         commonName: "Eastern Red Cedar",
         scientificName: "Juniperus virginiana",
         family: "Cupressaceae",
+        summary: "Evergreen tree with aromatic foliage and blue cones.",
         traits: ["Evergreen", "Scale-like leaves", "Blue berry-like cones", "Aromatic wood"],
         encounters: [
             Encounter.mockCedar1,
@@ -48,6 +51,7 @@ extension Plant {
         commonName: "Common Blue Violet",
         scientificName: "Viola sororia",
         family: "Violaceae",
+        summary: "Spring wildflower with heart-shaped leaves.",
         traits: ["Purple flowers", "Heart-shaped leaves", "Low-growing", "Self-seeding"],
         encounters: [
             Encounter.mockViolet1,
@@ -59,6 +63,7 @@ extension Plant {
         commonName: "Poison Ivy",
         scientificName: "Toxicodendron radicans",
         family: "Anacardiaceae",
+        summary: "Woody vine with oil that causes rash.",
         traits: ["Leaves of three", "Climbing vine", "White berries", "Causes severe rash"],
         encounters: [
             Encounter.mockPoisonIvy1,
@@ -70,6 +75,7 @@ extension Plant {
         commonName: "Queen Anne's Lace",
         scientificName: "Daucus carota",
         family: "Apiaceae",
+        summary: "Lacy white umbels with carrot-scented root.",
         traits: ["White umbel flowers", "Carrot-scented root", "Hairy stems", "Dark center floret"],
         encounters: [
             Encounter.mockQueenAnne1,
@@ -81,6 +87,7 @@ extension Plant {
         commonName: "Red Maple",
         scientificName: "Acer rubrum",
         family: "Sapindaceae",
+        summary: "Common tree with red twigs and fall color.",
         traits: ["Opposite leaves", "Red twigs", "V-shaped leaf sinuses", "Brilliant fall color"],
         encounters: [
             Encounter.mockMaple1,
@@ -93,6 +100,7 @@ extension Plant {
         commonName: "Common Milkweed",
         scientificName: "Asclepias syriaca",
         family: "Apocynaceae",
+        summary: "Monarch host plant with pink flower clusters.",
         traits: ["Pink flowers", "Milky sap", "Large pods", "Monarch butterfly host"],
         encounters: [
             Encounter.mockMilkweed1,

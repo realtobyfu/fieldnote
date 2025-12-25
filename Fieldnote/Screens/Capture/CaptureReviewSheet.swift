@@ -245,6 +245,7 @@ struct CaptureReviewSheet: View {
                 commonName: commonName,
                 scientificName: scientificName.isEmpty ? "Species unknown" : scientificName,
                 family: family.isEmpty ? "Unknown" : family,
+                summary: "",
                 traits: [],
                 encounters: [encounter]
             )
