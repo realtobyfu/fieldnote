@@ -75,8 +75,7 @@ struct PlantPhotoService {
         ],
         "black-eyed_susan": [
             "black-eyed_susan_photo_01",
-            "black-eyed_susan_photo_02",
-            "black-eyed_susan_photo_03"
+            "black-eyed_susan_photo_02"
         ],
         "common_milkweed": [
             "common_milkweed_photo_01",
@@ -84,8 +83,7 @@ struct PlantPhotoService {
         ],
         "dandelion": [
             "dandelion_photo_01",
-            "dandelion_photo_02",
-            "dandelion_photo_03"
+            "dandelion_photo_02"
         ],
         "eastern_hemlock": ["eastern_hemlock_photo_01"],
         "eastern_redbud": [
@@ -110,16 +108,13 @@ struct PlantPhotoService {
             "purple_coneflower_photo_02"
         ],
         "queen_annes_lace": [
-            "queen_annes_lace_photo_01",
-            "quee_annes_lace_photo_2"
+            "queen_annes_lace_photo_2"
         ],
         "red_maple": [
-            "red_maple_photo_01",
             "red_maple_photo_02",
             "red_maple_photo_03"
         ],
         "sugar_maple": [
-            "sugar_maple_photo_01",
             "sugar_maple_photo_02",
             "sugar_maple_photo_03"
         ],
@@ -140,10 +135,8 @@ struct PlantPhotoService {
             "wild_violet_photo_2"
         ],
         "maple": [
-            "red_maple_photo_01",
             "red_maple_photo_02",
             "red_maple_photo_03",
-            "sugar_maple_photo_01",
             "sugar_maple_photo_02",
             "sugar_maple_photo_03"
         ]

@@ -5,16 +5,23 @@
 //  Core plant model with encounters
 //
 
+import SwiftData
 import Foundation
 
-struct Plant: Identifiable, Codable, Hashable {
-    let id: UUID
-    let commonName: String
-    let scientificName: String
-    let family: String
-    let summary: String
-    let traits: [String]
-    var encounters: [Encounter]
+@Model
+final class Plant: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
+    var commonName: String
+    var scientificName: String
+    var family: String
+    var summary: String
+    var traits: [String]
+
+    @Relationship(deleteRule: .cascade, inverse: \Encounter.plant)
+    var encounters: [Encounter] = []
+
+    var createdAt: Date
+    var updatedAt: Date
 
     init(
         id: UUID = UUID(),
@@ -23,7 +30,9 @@ struct Plant: Identifiable, Codable, Hashable {
         family: String,
         summary: String = "",
         traits: [String] = [],
-        encounters: [Encounter] = []
+        encounters: [Encounter] = [],
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
     ) {
         self.id = id
         self.commonName = commonName
@@ -32,6 +41,11 @@ struct Plant: Identifiable, Codable, Hashable {
         self.summary = summary
         self.traits = traits
         self.encounters = encounters
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        for encounter in encounters {
+            encounter.plant = self
+        }
     }
 
     // MARK: - Computed Properties
@@ -73,7 +87,7 @@ struct Plant: Identifiable, Codable, Hashable {
             return traits.prefix(2).joined(separator: " · ")
         }
 
-        return "Notes pending"
+        return "Family: \(family)"
     }
 }
 
@@ -85,18 +99,6 @@ extension Plant {
     }
 
     static func == (lhs: Plant, rhs: Plant) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-// MARK: - Encounter Hashable Conformance
-
-extension Encounter: Hashable {
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-
-    static func == (lhs: Encounter, rhs: Encounter) -> Bool {
         lhs.id == rhs.id
     }
 }

@@ -152,7 +152,7 @@ private struct EncounterCard: View {
                 }
 
                 // Location
-                if let location = encounter.locationName {
+                if let location = encounter.displayLocationName {
                     HStack(spacing: FieldSpace.xs) {
                         Image(systemName: "mappin")
                             .font(.caption)
@@ -191,20 +191,7 @@ private struct EncounterCard: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        PlantDetailView(plant: Plant.mockDandelion)
-    }
-}
-
-#Preview("Low Confidence") {
-    NavigationStack {
-        PlantDetailView(plant: Plant.mockCedar)
-    }
-}
-
-#Preview("Many Encounters") {
-    NavigationStack {
-        PlantDetailView(plant: Plant.mockMaple)
-    }
-}
+// Previews disabled - require SwiftData ModelContainer setup
+//#Preview {
+//    PlantDetailView(plant: Plant(...))
+//}

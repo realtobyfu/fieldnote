@@ -8,10 +8,17 @@
 import SwiftUI
 
 struct LibraryView: View {
-    @Environment(\.appStore) var store
+    @Environment(\.appStore) private var store
     @State private var searchText = ""
     @State private var selectedFamily = "All"
     @State private var sortOrder: SortOrder = .recent
+
+    private var appStore: AppStore {
+        guard let store = store else {
+            fatalError("AppStore not found in environment")
+        }
+        return store
+    }
 
     enum SortOrder {
         case recent
@@ -111,7 +118,7 @@ struct LibraryView: View {
                     selectedFamily = "All"
                 }
 
-                ForEach(store.uniqueFamilies, id: \.self) { family in
+                ForEach(appStore.uniqueFamilies, id: \.self) { family in
                     FilterChip(family, isSelected: selectedFamily == family) {
                         selectedFamily = family
                     }
@@ -123,7 +130,7 @@ struct LibraryView: View {
     // MARK: - Filtered and Sorted Plants
 
     private var filteredAndSortedPlants: [Plant] {
-        var plants = store.plants
+        var plants = appStore.plants
 
         // Apply search filter
         if !searchText.isEmpty {

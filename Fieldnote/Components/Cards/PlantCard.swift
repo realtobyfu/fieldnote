@@ -115,32 +115,7 @@ struct PlantCard: View {
     }
 }
 
-#Preview("Grid Layout") {
-    ScrollView {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: FieldSpace.md) {
-            PlantCard(plant: Plant.mockDandelion, layout: .grid)
-            PlantCard(plant: Plant.mockClover, layout: .grid)
-            PlantCard(plant: Plant.mockCedar, layout: .grid)
-            PlantCard(plant: Plant.mockViolet, layout: .grid)
-        }
-        .padding(FieldSpace.md)
-    }
-    .background(FieldColor.agedPaper)
-}
-
-#Preview("List Layout") {
-    ScrollView {
-        VStack(spacing: FieldSpace.sm) {
-            PlantCard(plant: Plant.mockDandelion, layout: .list)
-            PlantCard(plant: Plant.mockClover, layout: .list)
-            PlantCard(plant: Plant.mockCedar, layout: .list)
-            PlantCard(plant: Plant.mockViolet, layout: .list)
-            PlantCard(plant: Plant.mockPoisonIvy, layout: .list)
-        }
-        .padding(FieldSpace.md)
-    }
-    .background(FieldColor.agedPaper)
-}
+// Previews disabled - require SwiftData ModelContainer setup
+//#Preview("Grid Layout") {
+//    PlantCard(plant: Plant(...), layout: .grid)
+//}

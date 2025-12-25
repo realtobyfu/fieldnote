@@ -29,8 +29,13 @@ struct EncounterPhotoView: View {
         .task {
             await loadPhoto()
         }
-        .fullScreenCover(isPresented: $showFullscreen) {
-            PhotoZoomView(image: loadedImage)
+        .fullScreenCover(isPresented: Binding(
+            get: { showFullscreen && loadedImage != nil },
+            set: { showFullscreen = $0 }
+        )) {
+            if let image = loadedImage {
+                PhotoZoomView(image: image)
+            }
         }
     }
 
@@ -138,29 +143,7 @@ struct EncounterPhotoThumbnail: View {
     }
 }
 
-// MARK: - Preview
-
-#Preview {
-    VStack(spacing: FieldSpace.lg) {
-        Text("Encounter Photo View")
-            .font(FieldType.title3)
-
-        // Note: This won't show actual photos in preview
-        // since there's no stored photo data
-        EncounterPhotoView(
-            encounter: Encounter(
-                confidence: 0.85,
-                photoFileName: "test.jpg"
-            )
-        )
-
-        EncounterPhotoThumbnail(
-            encounter: Encounter(
-                confidence: 0.85,
-                photoFileName: "test.jpg"
-            )
-        )
-    }
-    .padding()
-    .background(FieldColor.agedPaper)
-}
+// Previews disabled - require SwiftData ModelContainer setup
+//#Preview {
+//    EncounterPhotoView(encounter: Encounter(...))
+//}

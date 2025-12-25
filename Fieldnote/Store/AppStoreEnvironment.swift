@@ -6,14 +6,16 @@
 //
 
 import SwiftUI
+import SwiftData
 
 // Environment key for AppStore
+// Note: AppStore is injected at app level with actual ModelContext
 private struct AppStoreKey: EnvironmentKey {
-    static let defaultValue = AppStore()
+    @MainActor static let defaultValue: AppStore? = nil
 }
 
 extension EnvironmentValues {
-    var appStore: AppStore {
+    var appStore: AppStore? {
         get { self[AppStoreKey.self] }
         set { self[AppStoreKey.self] = newValue }
     }

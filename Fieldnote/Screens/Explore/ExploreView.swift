@@ -8,7 +8,14 @@
 import SwiftUI
 
 struct ExploreView: View {
-    @Environment(\.appStore) var store
+    @Environment(\.appStore) private var store
+
+    private var appStore: AppStore {
+        guard let store = store else {
+            fatalError("AppStore not found in environment")
+        }
+        return store
+    }
 
     var body: some View {
         ScrollView {
@@ -16,11 +23,11 @@ struct ExploreView: View {
                 // Recently Encountered section
                 ExploreSection(
                     title: "Recently Encountered",
-                    plants: store.recentlyEncountered
+                    plants: appStore.recentlyEncountered
                 )
 
                 // Location-based sections (discovered + undiscovered)
-                ForEach(store.mixedPlantsByLocation.prefix(2), id: \.location) { locationGroup in
+                ForEach(appStore.mixedPlantsByLocation.prefix(2), id: \.location) { locationGroup in
                     LocationSection(
                         title: "Common in \(locationGroup.location)",
                         discoveredPlants: locationGroup.discovered,
@@ -31,7 +38,7 @@ struct ExploreView: View {
                 // Undiscovered plants from catalog
                 CatalogSection(
                     title: "Discover More",
-                    catalogPlants: Array(store.undiscoveredPlants.prefix(15))
+                    catalogPlants: Array(appStore.undiscoveredPlants.prefix(15))
                 )
             }
             .padding(.vertical, FieldSpace.md)
@@ -42,24 +49,12 @@ struct ExploreView: View {
             PlantDetailView(plant: plant)
         }
         .navigationDestination(for: CatalogPlant.self) { catalogPlant in
-            PlantDetailView(plant: catalogPlant.asPlant)
+            CatalogPlantDetailView(catalogPlant: catalogPlant)
         }
     }
 }
 
-#Preview {
-    let store = AppStore()
-    return NavigationStack {
-        ExploreView()
-    }
-    .environment(\.appStore, store)
-}
-
-#Preview("Empty State") {
-    let store = AppStore()
-    store.plants = []
-    return NavigationStack {
-        ExploreView()
-    }
-    .environment(\.appStore, store)
-}
+// Previews disabled - require SwiftData ModelContainer setup
+//#Preview {
+//    ExploreView()
+//}

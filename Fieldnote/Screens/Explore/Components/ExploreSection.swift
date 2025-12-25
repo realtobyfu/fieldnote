@@ -225,29 +225,7 @@ struct UndiscoveredPlantCard: View {
     }
 }
 
-#Preview {
-    let store = AppStore()
-    return NavigationStack {
-        ScrollView {
-            VStack(spacing: FieldSpace.xl) {
-                ExploreSection(title: "Recently Encountered", plants: [
-                    Plant.mockDandelion,
-                    Plant.mockClover,
-                    Plant.mockViolet
-                ])
-
-                CatalogSection(title: "Discover More", catalogPlants: Array(CatalogPlant.catalog.prefix(5)))
-
-                ExploreSection(title: "Empty Section", plants: [])
-            }
-        }
-        .background(FieldColor.agedPaper)
-        .navigationDestination(for: Plant.self) { plant in
-            PlantDetailView(plant: plant)
-        }
-        .navigationDestination(for: CatalogPlant.self) { catalogPlant in
-            PlantDetailView(plant: catalogPlant.asPlant)
-        }
-    }
-    .environment(\.appStore, store)
-}
+// Previews disabled - require SwiftData ModelContainer setup
+//#Preview {
+//    ExploreSection(title: "Test", plants: [])
+//}

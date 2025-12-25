@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct MainTabView: View {
-    @State private var store = AppStore()
-
     var body: some View {
         TabView {
             // Library Tab
@@ -44,11 +42,6 @@ struct MainTabView: View {
                 Label("Settings", systemImage: "gearshape.fill")
             }
         }
-        .environment(\.appStore, store)
         .tint(FieldColor.accent)
     }
-}
-
-#Preview {
-    MainTabView()
 }

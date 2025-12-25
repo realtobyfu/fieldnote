@@ -85,7 +85,9 @@ struct IllustrationService {
         "purple_coneflower",
         "queen_annes_lace",
         "white_clover",
-        "wild_violet"
+        "wild_violet",
+        "elderberry",
+        "goldenrod"  
     ]
 
     private static let availableIllustrationSet = Set(availableIllustrations)
