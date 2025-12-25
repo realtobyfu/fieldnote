@@ -19,6 +19,8 @@ struct CaptureReviewSheet: View {
     @State private var scientificName: String
     @State private var family: String
     @State private var confidence: Double
+    @State private var selectedCatalogPlant: CatalogPlant?
+    @State private var showCatalogPicker = false
     @State private var locationLabel = ""
     @State private var resolvedLocationName: String?
     @State private var locationCoordinates: CLLocationCoordinate2D?
@@ -42,15 +44,18 @@ struct CaptureReviewSheet: View {
         self.captureMode = captureMode
 
         if let result = captureMode.identificationResult {
-            _commonName = State(initialValue: result.commonName)
-            _scientificName = State(initialValue: result.scientificName)
-            _family = State(initialValue: result.family)
+            let matchedPlant = CatalogPlant.match(for: result, in: store.catalogPlants)
+            _selectedCatalogPlant = State(initialValue: matchedPlant)
+            _commonName = State(initialValue: matchedPlant?.commonName ?? result.commonName)
+            _scientificName = State(initialValue: matchedPlant?.scientificName ?? result.scientificName)
+            _family = State(initialValue: matchedPlant?.family ?? result.family)
             _confidence = State(initialValue: result.confidence)
         } else {
             _commonName = State(initialValue: "")
             _scientificName = State(initialValue: "")
             _family = State(initialValue: "")
             _confidence = State(initialValue: 0.75)
+            _selectedCatalogPlant = State(initialValue: nil)
         }
     }
 
@@ -81,13 +86,44 @@ struct CaptureReviewSheet: View {
 
                                 TextField("Common name", text: $commonName)
                                     .vintageTextField()
+                                    .onChange(of: commonName) { _, _ in
+                                        clearCatalogSelectionIfNeeded()
+                                    }
 
                                 TextField("Scientific name (optional)", text: $scientificName)
                                     .vintageTextField()
                                     .italic()
+                                    .onChange(of: scientificName) { _, _ in
+                                        clearCatalogSelectionIfNeeded()
+                                    }
 
                                 TextField("Family", text: $family)
                                     .vintageTextField()
+                                    .onChange(of: family) { _, _ in
+                                        clearCatalogSelectionIfNeeded()
+                                    }
+
+                                HStack(spacing: FieldSpace.xs) {
+                                    if let selectedCatalogPlant {
+                                        Text("Catalog: \(selectedCatalogPlant.commonName)")
+                                            .font(FieldType.caption)
+                                            .foregroundColor(FieldColor.mutedInk)
+                                    } else {
+                                        Text("Catalog: Unmatched")
+                                            .font(FieldType.caption)
+                                            .foregroundColor(FieldColor.fadedInk)
+                                    }
+
+                                    Spacer()
+
+                                    Button {
+                                        showCatalogPicker = true
+                                    } label: {
+                                        Label("Choose", systemImage: "leaf")
+                                            .font(FieldType.caption)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
                         }
 
@@ -221,7 +257,7 @@ struct CaptureReviewSheet: View {
                         // Save button
                         PrimaryButton(
                             isSaving ? "Saving..." : "Save Observation",
-                            isEnabled: !commonName.isEmpty && !isSaving
+                            isEnabled: !commonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
                         ) {
                             Task {
                                 await saveEncounter()
@@ -242,6 +278,15 @@ struct CaptureReviewSheet: View {
                         viewModel.reset()
                     }
                 }
+            }
+        }
+        .sheet(isPresented: $showCatalogPicker) {
+            CatalogPlantPicker(
+                plants: store.catalogPlants,
+                selectedPlant: $selectedCatalogPlant,
+                isPresented: $showCatalogPicker
+            ) { plant in
+                applyCatalogPlant(plant)
             }
         }
     }
@@ -328,6 +373,9 @@ struct CaptureReviewSheet: View {
 
         // Create new encounter with photo reference
         let trimmedLabel = locationLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCommonName = commonName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedScientificName = scientificName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFamily = family.trimmingCharacters(in: .whitespacesAndNewlines)
         let encounter = Encounter(
             id: encounterId,
             date: Date(),
@@ -342,17 +390,19 @@ struct CaptureReviewSheet: View {
         )
 
         // Check if plant exists
-        if let existingPlant = store.plant(withCommonName: commonName) {
+        if let existingPlant = store.plant(withCommonName: trimmedCommonName) {
             // Add encounter to existing plant
             store.addEncounter(encounter, to: existingPlant)
         } else {
             // Create new plant with this encounter
+            let catalogTraits = selectedCatalogPlant?.traits ?? []
+            let catalogSummary = selectedCatalogPlant?.summary ?? ""
             let newPlant = Plant(
-                commonName: commonName,
-                scientificName: scientificName.isEmpty ? "Species unknown" : scientificName,
-                family: family.isEmpty ? "Unknown" : family,
-                summary: "",
-                traits: []
+                commonName: trimmedCommonName,
+                scientificName: trimmedScientificName.isEmpty ? "Species unknown" : trimmedScientificName,
+                family: trimmedFamily.isEmpty ? "Unknown" : trimmedFamily,
+                summary: catalogSummary,
+                traits: catalogTraits
             )
             store.addPlant(newPlant)
             store.addEncounter(encounter, to: newPlant)
@@ -403,6 +453,22 @@ struct CaptureReviewSheet: View {
         isResolvingLocation = false
     }
 
+    private func applyCatalogPlant(_ plant: CatalogPlant) {
+        selectedCatalogPlant = plant
+        commonName = plant.commonName
+        scientificName = plant.scientificName
+        family = plant.family
+    }
+
+    private func clearCatalogSelectionIfNeeded() {
+        guard let selectedCatalogPlant else { return }
+        if commonName != selectedCatalogPlant.commonName ||
+            scientificName != selectedCatalogPlant.scientificName ||
+            family != selectedCatalogPlant.family {
+            self.selectedCatalogPlant = nil
+        }
+    }
+
     private func locationActionButton(
         title: String,
         systemImage: String,
@@ -426,6 +492,70 @@ struct CaptureReviewSheet: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
+    }
+}
+
+private struct CatalogPlantPicker: View {
+    let plants: [CatalogPlant]
+    @Binding var selectedPlant: CatalogPlant?
+    @Binding var isPresented: Bool
+    let onSelect: (CatalogPlant) -> Void
+
+    @State private var searchText = ""
+
+    var body: some View {
+        NavigationStack {
+            List(filteredPlants) { plant in
+                Button {
+                    selectedPlant = plant
+                    onSelect(plant)
+                    isPresented = false
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(plant.commonName)
+                            .font(FieldType.bodyEmphasized)
+                            .foregroundColor(FieldColor.ink)
+                        Text(plant.scientificName)
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+            .searchable(text: $searchText, prompt: "Search catalog")
+            .navigationTitle("Choose Plant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        isPresented = false
+                    }
+                }
+                if selectedPlant != nil {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Clear") {
+                            selectedPlant = nil
+                            isPresented = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var filteredPlants: [CatalogPlant] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return plants.sorted { $0.commonName < $1.commonName }
+        }
+        let query = trimmed.lowercased()
+        return plants.filter { plant in
+            plant.commonName.lowercased().contains(query) ||
+            plant.scientificName.lowercased().contains(query) ||
+            plant.family.lowercased().contains(query)
+        }
+        .sorted { $0.commonName < $1.commonName }
     }
 }
 
