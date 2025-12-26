@@ -37,11 +37,7 @@ struct PlantCard: View {
     private var gridContent: some View {
         VStack(alignment: .leading, spacing: FieldSpace.sm) {
             // Botanical illustration
-            BotanicalIllustrationView(
-                plant.commonName,
-                family: plant.family,
-                size: .card
-            )
+            PlantIllustrationView(plant: plant, size: .card)
             .frame(height: 120)
             .frame(maxWidth: .infinity)
             .clipped()
@@ -80,11 +76,7 @@ struct PlantCard: View {
     private var listContent: some View {
         HStack(spacing: FieldSpace.sm) {
             // Smaller botanical illustration
-            BotanicalIllustrationView(
-                plant.commonName,
-                family: plant.family,
-                size: .thumbnail
-            )
+            PlantIllustrationView(plant: plant, size: .thumbnail)
 
             VStack(alignment: .leading, spacing: FieldSpace.xs) {
                 // Common name

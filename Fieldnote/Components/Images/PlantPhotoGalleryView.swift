@@ -10,7 +10,7 @@ import SwiftUI
 struct PlantPhotoGalleryView: View {
     let plantName: String
 
-    @State private var selectedAssetName: String?
+    @State private var selectedIndex: Int?
 
     private let itemSize = CGSize(width: 200, height: 140)
 
@@ -23,9 +23,9 @@ struct PlantPhotoGalleryView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: FieldSpace.sm) {
-                        ForEach(photoAssets, id: \.self) { assetName in
+                        ForEach(Array(photoAssets.enumerated()), id: \.element) { index, assetName in
                             Button {
-                                selectedAssetName = assetName
+                                selectedIndex = index
                             } label: {
                                 galleryItem(assetName)
                             }
@@ -36,11 +36,14 @@ struct PlantPhotoGalleryView: View {
                 }
             }
             .fullScreenCover(isPresented: Binding(
-                get: { selectedAssetName != nil },
-                set: { if !$0 { selectedAssetName = nil } }
+                get: { selectedIndex != nil },
+                set: { if !$0 { selectedIndex = nil } }
             )) {
-                if let assetName = selectedAssetName {
-                    PhotoZoomView(assetName: assetName)
+                if let selectedIndex {
+                    PhotoGalleryPagerView(
+                        assetNames: photoAssets,
+                        initialIndex: selectedIndex
+                    )
                 }
             }
         }
@@ -61,6 +64,59 @@ struct PlantPhotoGalleryView: View {
                 Rectangle()
                     .fill(FieldColor.sepia.opacity(0.03))
             )
+    }
+}
+
+private struct PhotoGalleryPagerView: View {
+    let assetNames: [String]
+    let initialIndex: Int
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selection: Int
+
+    init(assetNames: [String], initialIndex: Int) {
+        self.assetNames = assetNames
+        self.initialIndex = initialIndex
+        _selection = State(initialValue: initialIndex)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            TabView(selection: $selection) {
+                ForEach(assetNames.indices, id: \.self) { index in
+                    PhotoZoomView(assetName: assetNames[index], showsCloseButton: false)
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .always))
+
+            closeButton
+        }
+        .statusBarHidden()
+    }
+
+    private var closeButton: some View {
+        VStack {
+            HStack {
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(.white.opacity(0.8))
+                        .shadow(color: .black.opacity(0.3), radius: 4)
+                }
+                .padding(.trailing, FieldSpace.md)
+                .padding(.top, FieldSpace.md)
+            }
+
+            Spacer()
+        }
     }
 }
 

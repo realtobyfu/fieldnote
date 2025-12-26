@@ -67,27 +67,44 @@ struct IllustrationService {
         "black_cherry",
         "eastern_hemlock",
         "eastern_red_cedar",
+        "paper_birch",
         "red_maple",
         "red_oak",
         "sugar_maple",
         "weeping_willow",
         "white_pine",
-        "paper_birch",
 
-        // Wildflowers and shrubs
+        // Wildflowers
         "black-eyed_susan",
+        "bloodroot",
+        "cardinal_flower",
         "common_milkweed",
         "dandelion",
-        "eastern_redbud",
-        "flowering_dogwood",
-        "mountain_laurel",
-        "poison_ivy",
+        "goldenrod",
         "purple_coneflower",
         "queen_annes_lace",
+        "virginia_bluebells",
+        "wild_bergamot",
+        "wild_geranium",
         "white_clover",
         "wild_violet",
+
+        // Shrubs
         "elderberry",
-        "goldenrod"  
+        "mountain_laurel",
+        "winterberry",
+        "witch_hazel",
+
+        // Vines
+        "american_wisteria",
+        "poison_ivy",
+        "trumpet_vine",
+        "virginia_creeper",
+        "wild_grape",
+
+        // Ornamentals
+        "eastern_redbud",
+        "flowering_dogwood"
     ]
 
     private static let availableIllustrationSet = Set(availableIllustrations)

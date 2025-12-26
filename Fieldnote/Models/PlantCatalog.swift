@@ -79,3 +79,28 @@ extension CatalogPlant {
         return "Habitat: \(habitat)"
     }
 }
+
+// MARK: - Identification Matching
+
+extension CatalogPlant {
+    static func match(for result: PlantIdentificationResult, in catalog: [CatalogPlant]) -> CatalogPlant? {
+        let common = normalize(result.commonName)
+        let scientific = normalize(result.scientificName)
+
+        if !common.isEmpty,
+           let match = catalog.first(where: { normalize($0.commonName) == common }) {
+            return match
+        }
+
+        if !scientific.isEmpty,
+           let match = catalog.first(where: { normalize($0.scientificName) == scientific }) {
+            return match
+        }
+
+        return nil
+    }
+
+    private static func normalize(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}

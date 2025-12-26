@@ -10,6 +10,7 @@ import SwiftUI
 struct PhotoZoomView: View {
     private let assetName: String?
     private let providedImage: UIImage?
+    private let showsCloseButton: Bool
 
     @Environment(\.dismiss) private var dismiss
 
@@ -17,15 +18,17 @@ struct PhotoZoomView: View {
     @State private var scale: CGFloat = 1.0
 
     /// Initialize with an asset catalog name (loads on appear)
-    init(assetName: String) {
+    init(assetName: String, showsCloseButton: Bool = true) {
         self.assetName = assetName
         self.providedImage = nil
+        self.showsCloseButton = showsCloseButton
     }
 
     /// Initialize with a pre-loaded UIImage
-    init(image: UIImage?) {
+    init(image: UIImage?, showsCloseButton: Bool = true) {
         self.assetName = nil
         self.providedImage = image
+        self.showsCloseButton = showsCloseButton
     }
 
     @State private var lastScale: CGFloat = 1.0
@@ -49,7 +52,7 @@ struct PhotoZoomView: View {
                     .scaleEffect(scale)
                     .offset(offset)
                     .gesture(magnificationGesture)
-                    .gesture(dragGesture)
+                    .highPriorityGesture(dragGesture, including: scale > 1.0 ? .all : .none)
                     .onTapGesture(count: 2) {
                         doubleTapZoom()
                     }
@@ -67,7 +70,9 @@ struct PhotoZoomView: View {
             }
 
             // Close button overlay
-            closeButton
+            if showsCloseButton {
+                closeButton
+            }
         }
         .statusBarHidden()
         .onAppear {

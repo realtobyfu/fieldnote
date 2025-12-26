@@ -16,6 +16,7 @@ final class Plant: Identifiable, Hashable {
     var family: String
     var summary: String
     var traits: [String]
+    var customIllustrationFileName: String?
 
     @Relationship(deleteRule: .cascade, inverse: \Encounter.plant)
     var encounters: [Encounter] = []
@@ -31,6 +32,7 @@ final class Plant: Identifiable, Hashable {
         summary: String = "",
         traits: [String] = [],
         encounters: [Encounter] = [],
+        customIllustrationFileName: String? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -41,6 +43,7 @@ final class Plant: Identifiable, Hashable {
         self.summary = summary
         self.traits = traits
         self.encounters = encounters
+        self.customIllustrationFileName = customIllustrationFileName
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         for encounter in encounters {

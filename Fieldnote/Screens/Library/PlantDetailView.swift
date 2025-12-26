@@ -6,9 +6,16 @@
 //
 
 import SwiftUI
+import PhotosUI
+import SwiftData
 
 struct PlantDetailView: View {
     let plant: Plant
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var selectedIllustrationItem: PhotosPickerItem?
+    @State private var isSavingIllustration = false
+    @State private var illustrationError: String?
 
     var body: some View {
         ScrollView {
@@ -102,6 +109,12 @@ struct PlantDetailView: View {
         .background(FieldColor.agedPaper)
         .navigationTitle(plant.commonName)
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: selectedIllustrationItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                await saveCustomIllustration(from: newItem)
+            }
+        }
     }
 
     // MARK: - Hero Illustration
@@ -109,20 +122,86 @@ struct PlantDetailView: View {
     private var heroIllustration: some View {
         VStack(spacing: 0) {
             // Main illustration
-            BotanicalIllustrationView(
-                plant.commonName,
-                family: plant.family,
-                size: .hero
-            )
-            .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
-            .background(FieldColor.surface)
-            .cornerRadius(FieldRadius.lg)
+            ZStack {
+                PlantIllustrationView(plant: plant, size: .hero)
+                    .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
+                    .background(FieldColor.surface)
+                    .cornerRadius(FieldRadius.lg)
+
+                if shouldOfferCustomIllustration {
+                    PhotosPicker(selection: $selectedIllustrationItem, matching: .images) {
+                        VStack(spacing: FieldSpace.xs) {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 28, weight: .medium))
+                            Text(isSavingIllustration ? "Saving..." : "Add Illustration")
+                                .font(FieldType.caption)
+                        }
+                        .foregroundColor(FieldColor.accent)
+                        .padding(.vertical, FieldSpace.xs)
+                        .padding(.horizontal, FieldSpace.sm)
+                        .background(
+                            RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                .fill(FieldColor.surface.opacity(0.9))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                        )
+                    }
+                    .disabled(isSavingIllustration)
+                }
+            }
 
             // Scientific name plate
             ScientificNamePlate(name: plant.scientificName)
                 .padding(.top, FieldSpace.sm)
                 .padding(.horizontal, FieldSpace.lg)
+
+            if let illustrationError {
+                Text(illustrationError)
+                    .font(FieldType.caption)
+                    .foregroundColor(FieldColor.fadedInk)
+                    .padding(.top, FieldSpace.xs)
+            }
         }
+    }
+}
+
+extension PlantDetailView {
+    private var shouldOfferCustomIllustration: Bool {
+        let hasCustom = (plant.customIllustrationFileName?.isEmpty == false)
+        let hasBuiltIn = IllustrationService.hasIllustration(for: plant.commonName, family: plant.family)
+        return !hasCustom && !hasBuiltIn
+    }
+
+    private func saveCustomIllustration(from item: PhotosPickerItem) async {
+        isSavingIllustration = true
+        illustrationError = nil
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                illustrationError = "Unable to load the selected image."
+                isSavingIllustration = false
+                return
+            }
+
+            let filename = try await PlantIllustrationStorageService.shared.saveIllustration(
+                image,
+                for: plant.id
+            )
+            plant.customIllustrationFileName = filename
+
+            do {
+                try modelContext.save()
+            } catch {
+                illustrationError = "Failed to save illustration."
+            }
+        } catch {
+            illustrationError = "Failed to import illustration."
+        }
+
+        isSavingIllustration = false
     }
 }
 

@@ -165,11 +165,7 @@ struct CompactPlantCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FieldSpace.xs) {
             // Botanical illustration
-            BotanicalIllustrationView(
-                plant.commonName,
-                family: plant.family,
-                size: .card
-            )
+            PlantIllustrationView(plant: plant, size: .card)
             .frame(width: 140, height: 100)
 
             VStack(alignment: .leading, spacing: 2) {

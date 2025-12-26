@@ -48,6 +48,21 @@ struct PlantPhotoService {
         "mountain laurel": "mountain_laurel",
         "black cherry": "black_cherry",
 
+        "american wisteria": "american_wisteria",
+        "wisteria": "american_wisteria",
+
+        "bloodroot": "bloodroot",
+        "cardinal flower": "cardinal_flower",
+        "goldenrod": "goldenrod",
+        "wild bergamot": "wild_bergamot",
+        "wild geranium": "wild_geranium",
+        "virginia bluebells": "virginia_bluebells",
+        "trumpet vine": "trumpet_vine",
+        "wild grape": "wild_grape",
+
+        "elderberry": "elderberry",
+        "witch hazel": "witch_hazel",
+
         "paper birch": "paper_birch",
         "birch": "paper_birch",
 
@@ -69,6 +84,10 @@ struct PlantPhotoService {
             "american_elm_photo_02",
             "american_elm_photo_03"
         ],
+        "american_wisteria": [
+            "american_wisteria_photo_01",
+            "american_wisteria_photo_02"
+        ],
         "black_cherry": [
             "black_cherry_photo_01",
             "black_cherry_photo_02"
@@ -76,6 +95,15 @@ struct PlantPhotoService {
         "black-eyed_susan": [
             "black-eyed_susan_photo_01",
             "black-eyed_susan_photo_02"
+        ],
+        "bloodroot": [
+            "bloodroot_photo_01",
+            "bloodroot_photo_02"
+        ],
+        "cardinal_flower": [
+            "cardinal_flower_photo_01",
+            "cardinal_flower_photo_02",
+            "cardinal_flower_photo_03"
         ],
         "common_milkweed": [
             "common_milkweed_photo_01",
@@ -90,9 +118,17 @@ struct PlantPhotoService {
             "eastern_redbud_photo_01",
             "eastern_redbud_photo_02"
         ],
+        "elderberry": [
+            "elderberry_photo_01",
+            "elderberry_photo_02"
+        ],
         "flowering_dogwood": [
             "flowering_dogwood_photo_01",
             "flowering_dogwood_photo_02"
+        ],
+        "goldenrod": [
+            "goldenrod_photo_01",
+            "goldenrod_photo_02"
         ],
         "mountain_laurel": [
             "mountain_laurel_photo_01",
@@ -108,6 +144,7 @@ struct PlantPhotoService {
             "purple_coneflower_photo_02"
         ],
         "queen_annes_lace": [
+            "queen_annes_lace_photo_01",
             "queen_annes_lace_photo_2"
         ],
         "red_maple": [
@@ -117,6 +154,14 @@ struct PlantPhotoService {
         "sugar_maple": [
             "sugar_maple_photo_02",
             "sugar_maple_photo_03"
+        ],
+        "trumpet_vine": [
+            "trumpet_vine_photo_01",
+            "trumpet_vine_photo_02"
+        ],
+        "virginia_bluebells": [
+            "virginia_bluebells_photo_01",
+            "virginia_bluebells_photo_02"
         ],
         "weeping_willow": [
             "weeping_willow_photo_01",
@@ -130,9 +175,25 @@ struct PlantPhotoService {
             "white_pine_photo_01",
             "white_pine_photo_02"
         ],
+        "wild_bergamot": [
+            "wild_bergamot_photo_01",
+            "wild_bergamot_photo_02"
+        ],
+        "wild_geranium": [
+            "wild_geranium_photo_01",
+            "wild_geranium_photo_02"
+        ],
+        "wild_grape": [
+            "wild_grape_photo_01",
+            "wild_grape_photo_02"
+        ],
         "wild_violet": [
             "wild_violet_photo_1",
             "wild_violet_photo_2"
+        ],
+        "witch_hazel": [
+            "witch_hazel_photo_01",
+            "witch_hazel_photo_02"
         ],
         "maple": [
             "red_maple_photo_02",
