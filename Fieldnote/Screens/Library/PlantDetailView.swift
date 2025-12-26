@@ -99,7 +99,12 @@ struct PlantDetailView: View {
                         SectionHeader(title: "Observations (\(plant.encounterCount))", showRuledLine: true)
 
                         ForEach(plant.encounters.sorted(by: { $0.date > $1.date })) { encounter in
-                            EncounterCard(encounter: encounter)
+                            NavigationLink {
+                                EncounterDetailView(encounter: encounter, plant: plant)
+                            } label: {
+                                EncounterCard(encounter: encounter)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -266,6 +271,149 @@ private struct EncounterCard: View {
                         .italic()
                 }
             }
+        }
+    }
+}
+
+private struct EncounterDetailView: View {
+    let encounter: Encounter
+    let plant: Plant
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var notes: String
+    @State private var showDeleteConfirmation = false
+    @State private var isSaving = false
+
+    init(encounter: Encounter, plant: Plant) {
+        self.encounter = encounter
+        self.plant = plant
+        _notes = State(initialValue: encounter.notes ?? "")
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: FieldSpace.lg) {
+                if encounter.hasPhoto {
+                    EncounterPhotoView(encounter: encounter, height: 220)
+                }
+
+                VintageCard {
+                    VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                        Text(encounter.date, style: .date)
+                            .font(FieldType.bodyEmphasized)
+                            .foregroundColor(FieldColor.vintageInk)
+
+                        if let location = encounter.displayLocationName {
+                            HStack(spacing: FieldSpace.xs) {
+                                Image(systemName: "mappin")
+                                    .font(.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                                Text(location)
+                                    .font(FieldType.callout)
+                                    .foregroundColor(FieldColor.fadedInk)
+                            }
+                        }
+
+                        HStack {
+                            Text("Confidence")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.fadedInk)
+
+                            Spacer()
+
+                            ConfidencePill(confidence: encounter.confidence)
+                        }
+
+                        if !encounter.conditions.isEmpty {
+                            FlowLayout(spacing: FieldSpace.xs) {
+                                ForEach(encounter.conditions, id: \.self) { condition in
+                                    TraitChip(condition)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                VintageCard {
+                    VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                        Text("Field Notes")
+                            .font(FieldType.bodyEmphasized)
+                            .foregroundColor(FieldColor.vintageInk)
+
+                        TextEditor(text: $notes)
+                            .font(FieldType.body)
+                            .foregroundColor(FieldColor.ink)
+                            .scrollContentBackground(.hidden)
+                            .frame(height: 140)
+                            .padding(FieldSpace.xs)
+                            .background(FieldColor.surface)
+                            .cornerRadius(FieldRadius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                            )
+                    }
+                }
+
+                PrimaryButton(isSaving ? "Saving..." : "Save Changes", isEnabled: !isSaving) {
+                    saveChanges()
+                }
+            }
+            .padding(FieldSpace.md)
+        }
+        .background(FieldColor.agedPaper)
+        .navigationTitle("Edit Observation")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
+            ToolbarItem(placement: .destructiveAction) {
+                Button("Delete") {
+                    showDeleteConfirmation = true
+                }
+            }
+        }
+        .confirmationDialog(
+            "Delete Observation?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Observation", role: .destructive) {
+                deleteEncounter()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the observation permanently.")
+        }
+    }
+
+    private func saveChanges() {
+        isSaving = true
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        encounter.notes = trimmedNotes.isEmpty ? nil : trimmedNotes
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            isSaving = false
+        }
+    }
+
+    private func deleteEncounter() {
+        if let index = plant.encounters.firstIndex(where: { $0.id == encounter.id }) {
+            plant.encounters.remove(at: index)
+        }
+        modelContext.delete(encounter)
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            dismiss()
         }
     }
 }
