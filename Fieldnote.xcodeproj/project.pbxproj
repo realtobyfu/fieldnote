@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3EC076852F00DB5700316BD9 /* plant-identifier-40-classes.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 3EC076842F00DB5700316BD9 /* plant-identifier-40-classes.mlmodel */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		3E6546A02EF93C4C003C38AC /* Fieldnote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Fieldnote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3EC076842F00DB5700316BD9 /* plant-identifier-40-classes.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = "plant-identifier-40-classes.mlmodel"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +39,7 @@
 			children = (
 				3E6546A22EF93C4C003C38AC /* Fieldnote */,
 				3E6546A12EF93C4C003C38AC /* Products */,
+				3EC076842F00DB5700316BD9 /* plant-identifier-40-classes.mlmodel */,
 			);
 			sourceTree = "<group>";
 		};
@@ -119,6 +125,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3EC076852F00DB5700316BD9 /* plant-identifier-40-classes.mlmodel in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
