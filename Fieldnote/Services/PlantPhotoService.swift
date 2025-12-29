@@ -113,7 +113,10 @@ struct PlantPhotoService {
             "dandelion_photo_01",
             "dandelion_photo_02"
         ],
-        "eastern_hemlock": ["eastern_hemlock_photo_01"],
+        "eastern_hemlock": [
+            "eastern_hemlock_photo_01",
+            "eastern_hemlock_photo_02"
+        ],
         "eastern_redbud": [
             "eastern_redbud_photo_01",
             "eastern_redbud_photo_02"

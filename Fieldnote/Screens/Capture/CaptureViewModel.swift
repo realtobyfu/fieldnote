@@ -46,7 +46,7 @@ class CaptureViewModel {
         identificationError = nil
 
         do {
-            let result = try await MockPlantIdentificationService.shared.identify(image: image)
+            let result = try await CoreMLPlantIdentificationService.shared.identify(image: image)
             captureMode = .mlIdentification(result: result, image: image)
             isIdentifying = false
             showReviewSheet = true
