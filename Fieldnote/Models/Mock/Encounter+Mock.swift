@@ -13,7 +13,7 @@ extension Encounter {
 
     static let mockDandelion1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 5), // 5 days ago
-        locationName: "Central Park, New York",
+        locationLabel: "Central Park, New York",
         coordinates: CLLocationCoordinate2D(latitude: 40.785091, longitude: -73.968285),
         photoPlaceholder: "sun.max.fill",
         confidence: 0.92,
@@ -23,7 +23,7 @@ extension Encounter {
 
     static let mockDandelion2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 45), // 45 days ago
-        locationName: "Backyard Garden",
+        locationLabel: "Backyard Garden",
         photoPlaceholder: "cloud.fill",
         confidence: 0.88,
         notes: "Found growing through cracks in patio. Classic rosette formation.",
@@ -32,7 +32,7 @@ extension Encounter {
 
     static let mockClover1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 2), // 2 days ago
-        locationName: "Riverside Trail",
+        locationLabel: "Riverside Trail",
         coordinates: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060),
         photoPlaceholder: "leaf.fill",
         confidence: 0.95,
@@ -42,7 +42,7 @@ extension Encounter {
 
     static let mockClover2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 20), // 20 days ago
-        locationName: "Front Lawn",
+        locationLabel: "Front Lawn",
         photoPlaceholder: "leaf.fill",
         confidence: 0.90,
         conditions: ["sun", "dry"]
@@ -50,7 +50,7 @@ extension Encounter {
 
     static let mockCedar1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 10), // 10 days ago
-        locationName: "Forest Edge Trail",
+        locationLabel: "Forest Edge Trail",
         photoPlaceholder: "tree.fill",
         confidence: 0.75,
         notes: "Young tree, approximately 15 feet tall. Scale-like leaves confirm juniper family.",
@@ -59,7 +59,7 @@ extension Encounter {
 
     static let mockCedar2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 60), // 60 days ago
-        locationName: "Old Field",
+        locationLabel: "Old Field",
         photoPlaceholder: "tree.fill",
         confidence: 0.68,
         notes: "Blue berry-like cones present but no flowers. Bark is reddish-brown and fibrous.",
@@ -68,7 +68,7 @@ extension Encounter {
 
     static let mockCedar3 = Encounter(
         date: Date().addingTimeInterval(-86400 * 120), // 120 days ago
-        locationName: "Abandoned Farm",
+        locationLabel: "Abandoned Farm",
         photoPlaceholder: "tree.fill",
         confidence: 0.70,
         conditions: ["sun", "windy", "dry"]
@@ -76,7 +76,7 @@ extension Encounter {
 
     static let mockViolet1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 7), // 7 days ago
-        locationName: "Woodland Path",
+        locationLabel: "Woodland Path",
         photoPlaceholder: "camera.fill",
         confidence: 0.93,
         notes: "Growing in shaded area under oak trees. Purple five-petaled flowers, heart-shaped leaves.",
@@ -85,7 +85,7 @@ extension Encounter {
 
     static let mockViolet2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 35), // 35 days ago
-        locationName: "Side Yard",
+        locationLabel: "Side Yard",
         photoPlaceholder: "camera.fill",
         confidence: 0.87,
         conditions: ["shade"]
@@ -93,7 +93,7 @@ extension Encounter {
 
     static let mockPoisonIvy1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 3), // 3 days ago
-        locationName: "Forest Trail",
+        locationLabel: "Forest Trail",
         coordinates: CLLocationCoordinate2D(latitude: 40.7589, longitude: -73.9851),
         photoPlaceholder: "exclamationmark.triangle.fill",
         confidence: 0.98,
@@ -103,7 +103,7 @@ extension Encounter {
 
     static let mockPoisonIvy2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 50), // 50 days ago
-        locationName: "Woodland Edge",
+        locationLabel: "Woodland Edge",
         photoPlaceholder: "exclamationmark.triangle.fill",
         confidence: 0.95,
         notes: "Climbing on tree trunk with aerial rootlets. White berries present.",
@@ -112,7 +112,7 @@ extension Encounter {
 
     static let mockQueenAnne1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 12), // 12 days ago
-        locationName: "Roadside Meadow",
+        locationLabel: "Roadside Meadow",
         photoPlaceholder: "circle.grid.cross.fill",
         confidence: 0.78,
         notes: "White umbel flowers with distinctive dark purple center floret. Carrot-scented root.",
@@ -121,7 +121,7 @@ extension Encounter {
 
     static let mockQueenAnne2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 55), // 55 days ago
-        locationName: "Highway Shoulder",
+        locationLabel: "Highway Shoulder",
         photoPlaceholder: "circle.grid.cross.fill",
         confidence: 0.65,
         notes: "Flowers past peak bloom. Hairy stems noted.",
@@ -130,7 +130,7 @@ extension Encounter {
 
     static let mockMaple1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 8), // 8 days ago
-        locationName: "City Park",
+        locationLabel: "City Park",
         photoPlaceholder: "leaf.fill",
         confidence: 0.90,
         notes: "Large mature tree. Opposite leaf arrangement, V-shaped sinuses between lobes.",
@@ -139,7 +139,7 @@ extension Encounter {
 
     static let mockMaple2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 25), // 25 days ago
-        locationName: "Wetland Trail",
+        locationLabel: "Wetland Trail",
         photoPlaceholder: "leaf.fill",
         confidence: 0.85,
         notes: "Red twigs visible. Growing in wet soil near stream.",
@@ -148,7 +148,7 @@ extension Encounter {
 
     static let mockMaple3 = Encounter(
         date: Date().addingTimeInterval(-86400 * 90), // 90 days ago (winter)
-        locationName: "Neighborhood Street",
+        locationLabel: "Neighborhood Street",
         photoPlaceholder: "snowflake",
         confidence: 0.75,
         notes: "Winter identification - red buds and opposite branching pattern visible.",
@@ -157,7 +157,7 @@ extension Encounter {
 
     static let mockMilkweed1 = Encounter(
         date: Date().addingTimeInterval(-86400 * 15), // 15 days ago
-        locationName: "Prairie Restoration",
+        locationLabel: "Prairie Restoration",
         photoPlaceholder: "allergens.fill",
         confidence: 0.82,
         notes: "Pink flower clusters fragrant. Milky sap confirmed when stem broken. Important for monarchs!",
@@ -166,7 +166,7 @@ extension Encounter {
 
     static let mockMilkweed2 = Encounter(
         date: Date().addingTimeInterval(-86400 * 40), // 40 days ago
-        locationName: "Field Edge",
+        locationLabel: "Field Edge",
         photoPlaceholder: "allergens.fill",
         confidence: 0.73,
         notes: "Large opposite leaves. Seed pods forming.",

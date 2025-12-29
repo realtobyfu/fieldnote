@@ -9,17 +9,28 @@ import SwiftUI
 import PhotosUI
 
 struct CaptureView: View {
-    @Environment(\.appStore) var store
+    @Environment(\.appStore) private var store
     @State private var viewModel = CaptureViewModel()
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var shutterExpanding = false
+
+    private var appStore: AppStore {
+        guard let store = store else {
+            fatalError("AppStore not found in environment")
+        }
+        return store
+    }
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 mainContent(geometry: geometry)
                 shutterOverlay(geometry: geometry)
+
+                if viewModel.isIdentifying {
+                    identifyingOverlay
+                }
             }
             .background(FieldColor.paper)
         }
@@ -30,21 +41,30 @@ struct CaptureView: View {
             }
         }
         .onChange(of: capturedImage) { _, newImage in
-            if newImage != nil {
-                viewModel.showReviewSheet = true
+            if let image = newImage {
+                Task {
+                    await viewModel.handleCapturedImage(image)
+                }
             }
         }
         .fullScreenCover(isPresented: $showCamera) {
+            showCamera = false
+            shutterExpanding = false
+        } content: {
             CameraView(capturedImage: $capturedImage)
+                .environment(\.appStore, store)
+                .ignoresSafeArea()
         }
         .sheet(isPresented: $viewModel.showReviewSheet) {
             shutterExpanding = false
+            capturedImage = nil
         } content: {
             CaptureReviewSheet(
                 viewModel: viewModel,
-                store: store,
-                capturedImage: capturedImage
+                store: appStore,
+                captureMode: viewModel.captureMode ?? .manualEntry
             )
+            .environment(\.appStore, store)
         }
     }
 
@@ -71,8 +91,8 @@ struct CaptureView: View {
             }
             .padding(.bottom, 5)
 
-            VStack(spacing: FieldSpace.md) {
-                // Secondary: Choose from Library
+            VStack(spacing: FieldSpace.sm) {
+                // Choose from Library
                 PhotosPicker(
                     selection: $viewModel.selectedItem,
                     matching: .images,
@@ -86,11 +106,26 @@ struct CaptureView: View {
                         .background(FieldColor.accent)
                         .cornerRadius(FieldRadius.button)
                 }
+
+                // Manual Entry (secondary)
+                Button {
+                    viewModel.startManualEntry()
+                } label: {
+                    Label("Manual Entry", systemImage: "pencil.line")
+                        .font(FieldType.buttonLabel)
+                        .foregroundColor(FieldColor.accent)
+                        .frame(maxWidth: 280)
+                        .padding(.vertical, FieldSpace.sm + FieldSpace.xs)
+                        .background(
+                            RoundedRectangle(cornerRadius: FieldRadius.button)
+                                .stroke(FieldColor.accent, lineWidth: 1.5)
+                        )
+                }
             }
             // Recent captures hint
-            if !store.allEncounters.isEmpty {
+            if !appStore.allEncounters.isEmpty {
                 VStack(spacing: FieldSpace.xs) {
-                    Text("\(store.allEncounters.count) total observations")
+                    Text("\(appStore.allEncounters.count) total observations")
                         .font(FieldType.footnote)
                         .foregroundColor(FieldColor.mutedInk)
                 }
@@ -163,12 +198,36 @@ struct CaptureView: View {
 
     @ViewBuilder
     private var recentCapturesSection: some View {
-        if !store.allEncounters.isEmpty {
-            Text("\(store.allEncounters.count) observations")
+        if !appStore.allEncounters.isEmpty {
+            Text("\(appStore.allEncounters.count) observations")
                 .font(FieldType.caption2)
                 .foregroundColor(FieldColor.mutedInk)
                 .opacity(shutterExpanding ? 0 : 1)
                 .padding(.bottom, FieldSpace.md)
+        }
+    }
+
+    // MARK: - Identifying Overlay
+
+    private var identifyingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+
+            VStack(spacing: FieldSpace.md) {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(1.5)
+
+                Text("Identifying plant...")
+                    .font(FieldType.body)
+                    .foregroundColor(.white)
+            }
+            .padding(FieldSpace.xl)
+            .background(
+                RoundedRectangle(cornerRadius: FieldRadius.lg)
+                    .fill(FieldColor.ink.opacity(0.9))
+            )
         }
     }
 
@@ -204,10 +263,7 @@ struct CaptureView: View {
     }
 }
 
-#Preview {
-    let store = AppStore()
-    return NavigationStack {
-        CaptureView()
-            .environment(\.appStore, store)
-    }
-}
+// Previews disabled - require SwiftData ModelContainer setup
+//#Preview {
+//    CaptureView()
+//}

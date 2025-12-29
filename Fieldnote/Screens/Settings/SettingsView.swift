@@ -8,7 +8,14 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Environment(\.appStore) var store
+    @Environment(\.appStore) private var store
+
+    private var appStore: AppStore {
+        guard let store = store else {
+            fatalError("AppStore not found in environment")
+        }
+        return store
+    }
 
     var body: some View {
         List {
@@ -36,14 +43,14 @@ struct SettingsView: View {
                 HStack {
                     Label("Total Plants", systemImage: "leaf.fill")
                     Spacer()
-                    Text("\(store.plants.count)")
+                    Text("\(appStore.plants.count)")
                         .foregroundColor(FieldColor.mutedInk)
                 }
 
                 HStack {
                     Label("Total Encounters", systemImage: "camera.fill")
                     Spacer()
-                    Text("\(store.allEncounters.count)")
+                    Text("\(appStore.allEncounters.count)")
                         .foregroundColor(FieldColor.mutedInk)
                 }
 
