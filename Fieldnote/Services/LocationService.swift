@@ -12,7 +12,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     static let shared = LocationService()
 
     private let manager: CLLocationManager
-    private var continuation: CheckedContinuation<CLLocationCoordinate2D?, Never>?
+    private var pendingContinuations: [CheckedContinuation<CLLocationCoordinate2D?, Never>] = []
 
     override init() {
         manager = CLLocationManager()
@@ -32,31 +32,37 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         }
         if status == .notDetermined {
             manager.requestWhenInUseAuthorization()
+            return nil
         }
 
         return await withCheckedContinuation { continuation in
-            self.continuation?.resume(returning: nil)
-            self.continuation = continuation
-            manager.requestLocation()
+            pendingContinuations.append(continuation)
+            // Only request location if this is the first pending request
+            if pendingContinuations.count == 1 {
+                manager.requestLocation()
+            }
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         let coordinate = locations.first?.coordinate
-        continuation?.resume(returning: coordinate)
-        continuation = nil
+        let continuations = pendingContinuations
+        pendingContinuations.removeAll()
+        continuations.forEach { $0.resume(returning: coordinate) }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        continuation?.resume(returning: nil)
-        continuation = nil
+        let continuations = pendingContinuations
+        pendingContinuations.removeAll()
+        continuations.forEach { $0.resume(returning: nil) }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         if status == .denied || status == .restricted {
-            continuation?.resume(returning: nil)
-            continuation = nil
+            let continuations = pendingContinuations
+            pendingContinuations.removeAll()
+            continuations.forEach { $0.resume(returning: nil) }
         }
     }
 }

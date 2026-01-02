@@ -31,17 +31,26 @@ enum PlantIdentificationError: LocalizedError {
     case modelLoadFailed
     case predictionFailed
     case noResult
+    case networkError
+    case invalidAPIKey
+    case rateLimited
 
     var errorDescription: String? {
         switch self {
         case .imageProcessingFailed:
-            return "Failed to process image for identification"
+            return "Failed to process image"
         case .modelLoadFailed:
-            return "Failed to load plant identification model"
+            return "Failed to load identification model"
         case .predictionFailed:
-            return "Failed to run plant identification"
+            return "Identification failed"
         case .noResult:
             return "Could not identify plant"
+        case .networkError:
+            return "Network error - using offline identification"
+        case .invalidAPIKey:
+            return "API configuration error"
+        case .rateLimited:
+            return "Too many requests - try again later"
         }
     }
 }

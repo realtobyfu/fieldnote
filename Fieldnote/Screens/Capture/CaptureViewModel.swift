@@ -46,14 +46,21 @@ class CaptureViewModel {
         identificationError = nil
 
         do {
-            let result = try await CoreMLPlantIdentificationService.shared.identify(image: image)
+            // Fetch location for better API accuracy (non-blocking)
+            let location = await LocationService.shared.requestCurrentLocation()
+
+            // Use hybrid service (API-first, CoreML fallback)
+            let result = try await HybridPlantIdentificationService.shared.identify(
+                image: image,
+                location: location
+            )
             captureMode = .mlIdentification(result: result, image: image)
             isIdentifying = false
             showReviewSheet = true
         } catch {
             identificationError = error
             isIdentifying = false
-            // Still show review sheet but with empty fields
+            // Still show review sheet but with empty fields for manual entry
             captureMode = .mlIdentification(
                 result: PlantIdentificationResult(
                     commonName: "",

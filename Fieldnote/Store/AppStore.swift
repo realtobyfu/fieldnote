@@ -18,6 +18,9 @@ class AppStore {
     // @Observable only tracks direct property assignments, not computed property changes
     private(set) var refreshTrigger: Int = 0
 
+    // Last save error for UI feedback
+    var lastError: Error?
+
     // Static catalog (not persisted, bundled with app)
     let catalogPlants: [CatalogPlant] = CatalogPlant.catalog
 
@@ -165,7 +168,9 @@ class AppStore {
     private func save() {
         do {
             try modelContext.save()
+            lastError = nil
         } catch {
+            lastError = error
             print("Failed to save: \(error)")
         }
     }
