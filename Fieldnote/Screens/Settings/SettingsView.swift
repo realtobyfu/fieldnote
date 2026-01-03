@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.appStore) private var store
+    @State private var plantToRemoveIllustration: Plant?
 
     private var appStore: AppStore {
         guard let store = store else {
@@ -69,6 +70,17 @@ struct SettingsView: View {
                 .foregroundColor(FieldColor.mutedInk)
             }
 
+            // Custom Illustrations section (only show if any exist)
+            if !appStore.plantsWithCustomIllustrations.isEmpty {
+                Section("Custom Illustrations") {
+                    ForEach(appStore.plantsWithCustomIllustrations) { plant in
+                        CustomIllustrationRow(plant: plant) {
+                            plantToRemoveIllustration = plant
+                        }
+                    }
+                }
+            }
+
             // About section
             Section("About") {
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
@@ -109,5 +121,85 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .confirmationDialog(
+            "Remove Illustration?",
+            isPresented: Binding(
+                get: { plantToRemoveIllustration != nil },
+                set: { if !$0 { plantToRemoveIllustration = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) {
+                if let plant = plantToRemoveIllustration {
+                    Task {
+                        await appStore.removeCustomIllustration(from: plant)
+                    }
+                }
+                plantToRemoveIllustration = nil
+            }
+            Button("Cancel", role: .cancel) {
+                plantToRemoveIllustration = nil
+            }
+        } message: {
+            if let plant = plantToRemoveIllustration {
+                Text("Remove the custom illustration for \(plant.commonName)? The plant will use the default illustration.")
+            }
+        }
+    }
+}
+
+// MARK: - Custom Illustration Row
+
+private struct CustomIllustrationRow: View {
+    let plant: Plant
+    let onDelete: () -> Void
+
+    @State private var thumbnailImage: UIImage?
+
+    var body: some View {
+        HStack(spacing: FieldSpace.sm) {
+            // Thumbnail
+            Group {
+                if let image = thumbnailImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Rectangle()
+                        .fill(FieldColor.illustrationBg)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .cornerRadius(FieldRadius.sm)
+            .overlay(
+                RoundedRectangle(cornerRadius: FieldRadius.sm)
+                    .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 0.5)
+            )
+
+            // Plant name
+            Text(plant.commonName)
+                .font(FieldType.body)
+                .foregroundColor(FieldColor.ink)
+
+            Spacer()
+
+            // Delete button
+            Button {
+                onDelete()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.body)
+                    .foregroundColor(FieldColor.fadedInk)
+            }
+            .buttonStyle(.plain)
+        }
+        .task {
+            await loadThumbnail()
+        }
+    }
+
+    private func loadThumbnail() async {
+        guard let filename = plant.customIllustrationFileName else { return }
+        thumbnailImage = await PlantIllustrationStorageService.shared.loadIllustration(filename: filename)
     }
 }

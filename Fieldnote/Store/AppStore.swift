@@ -9,6 +9,13 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+enum Tab: Int {
+    case library
+    case capture
+    case explore
+    case settings
+}
+
 @MainActor
 @Observable
 class AppStore {
@@ -17,6 +24,9 @@ class AppStore {
     // Trigger to force SwiftUI to re-evaluate computed properties
     // @Observable only tracks direct property assignments, not computed property changes
     private(set) var refreshTrigger: Int = 0
+
+    // Navigation state
+    var selectedTab: Tab = .library
 
     // Last save error for UI feedback
     var lastError: Error?
@@ -224,5 +234,51 @@ class AppStore {
 
     var uniqueFamilies: [String] {
         Array(Set(plants.map { $0.family })).sorted()
+    }
+
+    // MARK: - Custom Illustrations
+
+    var plantsWithCustomIllustrations: [Plant] {
+        plants.filter { $0.customIllustrationFileName?.isEmpty == false }
+    }
+
+    func removeCustomIllustration(from plant: Plant) async {
+        guard let filename = plant.customIllustrationFileName else { return }
+        await PlantIllustrationStorageService.shared.deleteIllustration(filename: filename)
+        plant.customIllustrationFileName = nil
+        save()
+        refreshTrigger += 1
+    }
+
+    // MARK: - Recent Locations
+
+    /// Get unique recent locations from encounters, sorted by most recent use
+    var recentLocations: [SelectedLocation] {
+        var seenNames = Set<String>()
+        var locations: [SelectedLocation] = []
+
+        // Get all encounters sorted by date (most recent first)
+        let sortedEncounters = allEncounters.sorted { $0.date > $1.date }
+
+        for encounter in sortedEncounters {
+            guard let location = SelectedLocation.from(encounter: encounter) else { continue }
+
+            // Deduplicate by name (case-insensitive)
+            let normalizedName = location.name.lowercased()
+            if !seenNames.contains(normalizedName) {
+                seenNames.insert(normalizedName)
+                locations.append(location)
+            }
+
+            // Limit to 10 recent locations
+            if locations.count >= 10 { break }
+        }
+
+        return locations
+    }
+
+    /// Check if any encounters have location data (for showing map button)
+    var hasLocationsWithCoordinates: Bool {
+        allEncounters.contains { $0.coordinates != nil }
     }
 }

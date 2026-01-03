@@ -126,35 +126,34 @@ struct PlantDetailView: View {
 
     private var heroIllustration: some View {
         VStack(spacing: 0) {
-            // Main illustration
-            ZStack {
+            // Main illustration - tappable when no illustration exists
+            if shouldOfferCustomIllustration {
+                PhotosPicker(selection: $selectedIllustrationItem, matching: .images) {
+                    PlantIllustrationView(plant: plant, size: .hero)
+                        .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
+                        .background(FieldColor.surface)
+                        .cornerRadius(FieldRadius.lg)
+                        .overlay(
+                            // Subtle hint that it's tappable
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(FieldColor.accent)
+                                        .background(Circle().fill(FieldColor.surface))
+                                        .padding(FieldSpace.sm)
+                                }
+                            }
+                        )
+                }
+                .disabled(isSavingIllustration)
+            } else {
                 PlantIllustrationView(plant: plant, size: .hero)
                     .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
                     .background(FieldColor.surface)
                     .cornerRadius(FieldRadius.lg)
-
-                if shouldOfferCustomIllustration {
-                    PhotosPicker(selection: $selectedIllustrationItem, matching: .images) {
-                        VStack(spacing: FieldSpace.xs) {
-                            Image(systemName: "photo.on.rectangle")
-                                .font(.system(size: 28, weight: .medium))
-                            Text(isSavingIllustration ? "Saving..." : "Add Illustration")
-                                .font(FieldType.caption)
-                        }
-                        .foregroundColor(FieldColor.accent)
-                        .padding(.vertical, FieldSpace.xs)
-                        .padding(.horizontal, FieldSpace.sm)
-                        .background(
-                            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                .fill(FieldColor.surface.opacity(0.9))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-                        )
-                    }
-                    .disabled(isSavingIllustration)
-                }
             }
 
             // Scientific name plate
@@ -285,11 +284,25 @@ private struct EncounterDetailView: View {
     @State private var notes: String
     @State private var showDeleteConfirmation = false
     @State private var isSaving = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var isSavingPhoto = false
+    @State private var showLocationPicker = false
+    @State private var selectedLocation: SelectedLocation?
+    @State private var locationLabel: String
 
     init(encounter: Encounter, plant: Plant) {
         self.encounter = encounter
         self.plant = plant
         _notes = State(initialValue: encounter.notes ?? "")
+        _locationLabel = State(initialValue: encounter.locationLabel ?? "")
+        // Initialize selected location from encounter
+        if let name = encounter.displayLocationName {
+            _selectedLocation = State(initialValue: SelectedLocation(
+                name: name,
+                subtitle: encounter.locationName,
+                coordinate: encounter.coordinates
+            ))
+        }
     }
 
     var body: some View {
@@ -297,6 +310,30 @@ private struct EncounterDetailView: View {
             VStack(alignment: .leading, spacing: FieldSpace.lg) {
                 if encounter.hasPhoto {
                     EncounterPhotoView(encounter: encounter, height: 220)
+                } else {
+                    // Tappable placeholder to add photo
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                .fill(FieldColor.illustrationBg)
+
+                            VStack(spacing: FieldSpace.xs) {
+                                Image(systemName: isSavingPhoto ? "arrow.triangle.2.circlepath" : "camera.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(FieldColor.accent.opacity(0.6))
+
+                                Text(isSavingPhoto ? "Saving..." : "Tap to add photo")
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                            }
+                        }
+                        .frame(height: 160)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                .stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                        )
+                    }
+                    .disabled(isSavingPhoto)
                 }
 
                 VintageCard {
@@ -305,16 +342,42 @@ private struct EncounterDetailView: View {
                             .font(FieldType.bodyEmphasized)
                             .foregroundColor(FieldColor.vintageInk)
 
-                        if let location = encounter.displayLocationName {
+                        // Tappable location row
+                        Button {
+                            showLocationPicker = true
+                        } label: {
                             HStack(spacing: FieldSpace.xs) {
-                                Image(systemName: "mappin")
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.body)
+                                    .foregroundColor(selectedLocation != nil ? FieldColor.accent : FieldColor.fadedInk)
+
+                                if let location = selectedLocation {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(location.name)
+                                            .font(FieldType.callout)
+                                            .foregroundColor(FieldColor.ink)
+                                            .lineLimit(1)
+                                        if let subtitle = location.subtitle, subtitle != location.name {
+                                            Text(subtitle)
+                                                .font(FieldType.caption)
+                                                .foregroundColor(FieldColor.fadedInk)
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                } else {
+                                    Text("Add Location")
+                                        .font(FieldType.callout)
+                                        .foregroundColor(FieldColor.fadedInk)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
                                     .font(.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                Text(location)
-                                    .font(FieldType.callout)
                                     .foregroundColor(FieldColor.fadedInk)
                             }
                         }
+                        .buttonStyle(.plain)
 
                         HStack {
                             Text("Confidence")
@@ -390,12 +453,57 @@ private struct EncounterDetailView: View {
         } message: {
             Text("This removes the observation permanently.")
         }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                await saveEncounterPhoto(from: newItem)
+            }
+        }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerSheet(
+                selectedLocation: $selectedLocation,
+                customLabel: $locationLabel
+            )
+        }
+    }
+
+    private func saveEncounterPhoto(from item: PhotosPickerItem) async {
+        isSavingPhoto = true
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                isSavingPhoto = false
+                return
+            }
+
+            let filename = try await PhotoStorageService.shared.savePhoto(image, for: encounter.id)
+            encounter.photoFileName = filename
+            try modelContext.save()
+        } catch {
+            print("Failed to save encounter photo: \(error)")
+        }
+        isSavingPhoto = false
     }
 
     private func saveChanges() {
         isSaving = true
+
+        // Save notes
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         encounter.notes = trimmedNotes.isEmpty ? nil : trimmedNotes
+
+        // Save location changes
+        encounter.locationName = selectedLocation?.name
+        let trimmedLabel = locationLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        encounter.locationLabel = trimmedLabel.isEmpty ? nil : trimmedLabel
+        if let coordinate = selectedLocation?.coordinate {
+            encounter.latitude = coordinate.latitude
+            encounter.longitude = coordinate.longitude
+        } else {
+            encounter.latitude = nil
+            encounter.longitude = nil
+        }
+
         do {
             try modelContext.save()
             dismiss()

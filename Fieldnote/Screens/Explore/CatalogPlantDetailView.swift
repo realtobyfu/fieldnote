@@ -129,8 +129,8 @@ struct CatalogPlantDetailView: View {
 
     private var heroIllustration: some View {
         VStack(spacing: 0) {
-            // Faded illustration for undiscovered
-            UndiscoveredIllustrationView(
+            // Full color illustration in detail view
+            BotanicalIllustrationView(
                 catalogPlant.commonName,
                 family: catalogPlant.family,
                 size: .hero

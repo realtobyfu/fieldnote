@@ -44,7 +44,7 @@ struct LibraryView: View {
                         message: "Start your field journal by capturing your first plant encounter.",
                         actionLabel: "Capture Plant",
                         action: {
-                            // TODO: Switch to capture tab
+                            appStore.selectedTab = .capture
                         }
                     )
                 } else {
