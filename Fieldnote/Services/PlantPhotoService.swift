@@ -63,6 +63,24 @@ struct PlantPhotoService {
         "elderberry": "elderberry",
         "witch hazel": "witch_hazel",
 
+        "buttonbush": "button_bush",
+        "button bush": "button_bush",
+
+        "dutchman's breeches": "dutchmans_breeches",
+        "dutchmans breeches": "dutchmans_breeches",
+
+        "joe pye weed": "joe_pye_weed",
+        "joe-pye weed": "joe_pye_weed",
+
+        "spicebush": "northern_spicebush",
+        "northern spicebush": "northern_spicebush",
+
+        "rhododendron": "rhododendron",
+
+        "trillium": "trillium",
+
+        "viburnum": "viburnum",
+
         "paper birch": "paper_birch",
         "birch": "paper_birch",
 
@@ -197,6 +215,35 @@ struct PlantPhotoService {
         "witch_hazel": [
             "witch_hazel_photo_01",
             "witch_hazel_photo_02"
+        ],
+        "button_bush": [
+            "button_bush_photo_01",
+            "button_bush_photo_02"
+        ],
+        "dutchmans_breeches": [
+            "dutchman's_breeches_photo_01",
+            "dutchman's_breeches_photo_02"
+        ],
+        "joe_pye_weed": [
+            "joe-pye_weed_photo_01",
+            "joe-pye_weed_photo_02"
+        ],
+        "northern_spicebush": [
+            "northern_spicebush_photo_01",
+            "northern_spicebush_photo_02"
+        ],
+        "rhododendron": [
+            "rhododendron_photo_01",
+            "rhododendron_photo_02",
+            "rhododendron_photo_03"
+        ],
+        "trillium": [
+            "trillium_photo_01",
+            "trillium_photo_02"
+        ],
+        "viburnum": [
+            "viburnum_photo_01",
+            "viburnum_photo_02"
         ],
         "maple": [
             "red_maple_photo_02",

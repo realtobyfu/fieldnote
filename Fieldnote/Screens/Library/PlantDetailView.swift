@@ -41,27 +41,14 @@ struct PlantDetailView: View {
                         RuledLine()
 
 
-                        // Family and confidence
-                        HStack {
-                            VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                                Text("Family")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                Text(plant.family)
-                                    .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.vintageInk)
-                            }
-
-                            Spacer()
-
-                            VStack(alignment: .trailing, spacing: FieldSpace.xs) {
-                                if !plant.encounters.isEmpty {
-                                    Text("Confidence")  
-                                        .font(FieldType.caption)
-                                        .foregroundColor(FieldColor.fadedInk)
-                                    ConfidencePill(confidence: plant.averageConfidence)
-                                }
-                            }
+                        // Family
+                        VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                            Text("Family")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.fadedInk)
+                            Text(plant.family)
+                                .font(FieldType.bodyEmphasized)
+                                .foregroundColor(FieldColor.vintageInk)
                         }
 
                         // Traits

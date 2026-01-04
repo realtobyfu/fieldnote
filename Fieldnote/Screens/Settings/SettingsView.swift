@@ -59,19 +59,19 @@ struct SettingsView: View {
                     }
                 }
 
-                Button {
-                    // Export functionality - placeholder
-                } label: {
-                    HStack {
-                        Label("Export Data", systemImage: "square.and.arrow.up")
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(FieldColor.mutedInk)
-                    }
-                }
-                .disabled(true)
-                .foregroundColor(FieldColor.mutedInk)
+//                Button {
+//                    // Export functionality - placeholder
+//                } label: {
+//                    HStack {
+//                        Label("Export Data", systemImage: "square.and.arrow.up")
+//                        Spacer()
+//                        Image(systemName: "chevron.right")
+//                            .font(.caption)
+//                            .foregroundColor(FieldColor.mutedInk)
+//                    }
+//                }
+//                .disabled(true)
+//                .foregroundColor(FieldColor.mutedInk)
             }
 
             // Custom Illustrations section (only show if any exist)

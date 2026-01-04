@@ -45,13 +45,20 @@ struct CatalogGridCard: View {
                 }
             }
 
-            // Plant name
-            Text(catalogPlant.commonName)
-                .font(FieldType.callout)
-                .foregroundColor(isDiscovered ? FieldColor.vintageInk : FieldColor.fadedInk)
-                .lineLimit(2)
-                .frame(height: 40, alignment: .top)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // Plant name and habitat
+            VStack(alignment: .leading, spacing: 2) {
+                Text(catalogPlant.commonName)
+                    .font(FieldType.callout)
+                    .foregroundColor(isDiscovered ? FieldColor.vintageInk : FieldColor.fadedInk)
+                    .lineLimit(2)
+
+                Text(catalogPlant.habitat.capitalized)
+                    .font(FieldType.caption)
+                    .foregroundColor(FieldColor.fadedInk)
+                    .lineLimit(1)
+            }
+            .frame(height: 50, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
