@@ -124,6 +124,42 @@ class AppStore {
         return ["meadows", "forests", "urban"]
     }
 
+    // MARK: - Nearby Habitat Detection
+
+    /// Infer habitat type from nearby place names
+    func inferHabitatType(from places: [SelectedLocation]) -> String? {
+        let placeNames = places.map { $0.name.lowercased() }
+        let combinedText = placeNames.joined(separator: " ")
+
+        // Priority order: specific habitat types
+        if combinedText.contains("wetland") || combinedText.contains("marsh") ||
+           combinedText.contains("lake") || combinedText.contains("creek") ||
+           combinedText.contains("pond") || combinedText.contains("river") {
+            return "wetlands"
+        }
+        if combinedText.contains("forest") || combinedText.contains("woods") ||
+           combinedText.contains("trail") || combinedText.contains("nature reserve") {
+            return "forests"
+        }
+        if combinedText.contains("meadow") || combinedText.contains("prairie") ||
+           combinedText.contains("field") || combinedText.contains("grassland") {
+            return "meadows"
+        }
+        if combinedText.contains("park") || combinedText.contains("garden") ||
+           combinedText.contains("botanical") {
+            return "urban"
+        }
+
+        return "urban"  // Default for unrecognized areas
+    }
+
+    /// Get undiscovered plants matching a habitat type
+    func undiscoveredPlantsNearby(habitatType: String) -> [CatalogPlant] {
+        undiscoveredPlants.filter { plant in
+            plant.habitat.lowercased().contains(habitatType.lowercased())
+        }
+    }
+
     var mixedPlantsByLocation: [(location: String, discovered: [Plant], undiscovered: [CatalogPlant])] {
         plantsByLocation.map { locationGroup in
             let undiscovered = undiscoveredPlants(forHabitat: locationGroup.location)

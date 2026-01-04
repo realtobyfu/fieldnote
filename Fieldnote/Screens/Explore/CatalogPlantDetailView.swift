@@ -69,6 +69,19 @@ struct CatalogPlantDetailView: View {
                             }
                         }
 
+                        // Native range
+                        if !catalogPlant.nativeRange.isEmpty {
+                            HStack(spacing: FieldSpace.xs) {
+                                Image(systemName: "globe.americas.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(FieldColor.fadedInk)
+                                Text(catalogPlant.nativeRange)
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                                Spacer()
+                            }
+                        }
+
                         // Traits
                         if !catalogPlant.traits.isEmpty {
                             RuledLine()

@@ -13,6 +13,7 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
     let scientificName: String
     let family: String
     let habitat: String  // e.g., "forests", "meadows", "urban", "wetlands"
+    let nativeRange: String  // e.g., "Native to eastern North America"
     let summary: String
     let traits: [String]
     let defaultPlaceholder: String  // SF Symbol name
@@ -23,6 +24,7 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
         scientificName: String,
         family: String,
         habitat: String,
+        nativeRange: String = "",
         summary: String = "",
         traits: [String],
         defaultPlaceholder: String = "leaf.fill"
@@ -32,6 +34,7 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
         self.scientificName = scientificName
         self.family = family
         self.habitat = habitat
+        self.nativeRange = nativeRange
         self.summary = summary
         self.traits = traits
         self.defaultPlaceholder = defaultPlaceholder

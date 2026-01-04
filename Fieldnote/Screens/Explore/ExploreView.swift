@@ -20,25 +20,33 @@ struct ExploreView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.xl) {
+                // GPS-based nearby plants section
+                NearMeSection()
+
                 // Recently Encountered section
                 ExploreSection(
                     title: "Recently Encountered",
                     plants: appStore.recentlyEncountered
                 )
 
-                // Location-based sections (discovered + undiscovered)
-                ForEach(appStore.mixedPlantsByLocation.prefix(2), id: \.location) { locationGroup in
-                    LocationSection(
-                        title: "Common in \(locationGroup.location)",
-                        discoveredPlants: locationGroup.discovered,
-                        undiscoveredPlants: locationGroup.undiscovered
-                    )
-                }
+                // TODO: Re-enable location-based sections when regional plant data is available
+                // Option 1: Add `regions: [String]` to CatalogPlant (e.g., ["Northeast", "Mid-Atlantic"])
+                // - Detect user's region from GPS coordinates
+                // - Only suggest plants that actually grow in that region
+                // - Generate regional data for 50 plants similar to nativeRange
+                //
+                // ForEach(appStore.mixedPlantsByLocation.prefix(2), id: \.location) { locationGroup in
+                //     LocationSection(
+                //         title: "Common in \(locationGroup.location)",
+                //         discoveredPlants: locationGroup.discovered,
+                //         undiscoveredPlants: locationGroup.undiscovered
+                //     )
+                // }
 
-                // Undiscovered plants from catalog
-                CatalogSection(
-                    title: "Discover More",
-                    catalogPlants: Array(appStore.undiscoveredPlants.prefix(15))
+                // Full plant catalog grid
+                FullCatalogSection(
+                    catalogPlants: appStore.catalogPlants,
+                    isDiscovered: appStore.isDiscovered
                 )
             }
             .padding(.vertical, FieldSpace.md)

@@ -48,11 +48,15 @@ struct SettingsView: View {
                         .foregroundColor(FieldColor.mutedInk)
                 }
 
-                HStack {
-                    Label("Total Encounters", systemImage: "camera.fill")
-                    Spacer()
-                    Text("\(appStore.allEncounters.count)")
-                        .foregroundColor(FieldColor.mutedInk)
+                NavigationLink {
+                    AllEncountersView()
+                } label: {
+                    HStack {
+                        Label("Total Encounters", systemImage: "camera.fill")
+                        Spacer()
+                        Text("\(appStore.allEncounters.count)")
+                            .foregroundColor(FieldColor.mutedInk)
+                    }
                 }
 
                 Button {
