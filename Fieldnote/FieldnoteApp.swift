@@ -12,6 +12,7 @@ import SwiftData
 struct FieldnoteApp: App {
     let sharedModelContainer: ModelContainer
     @State private var appStore: AppStore
+    @State private var onboardingStore = OnboardingStore()
 
     init() {
         let schema = Schema([Plant.self, Encounter.self])
@@ -31,9 +32,17 @@ struct FieldnoteApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
-                .environment(\.appStore, appStore)
-                .preferredColorScheme(.light)
+            Group {
+                if onboardingStore.shouldShowOnboarding {
+                    OnboardingContainerView()
+                } else {
+                    MainTabView()
+                }
+            }
+            .environment(\.appStore, appStore)
+            .environment(\.onboardingStore, onboardingStore)
+            .animation(.easeInOut(duration: 0.4), value: onboardingStore.shouldShowOnboarding)
+            .preferredColorScheme(.light)
         }
         .modelContainer(sharedModelContainer)
     }

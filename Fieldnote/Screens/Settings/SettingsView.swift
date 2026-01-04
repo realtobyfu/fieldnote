@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.appStore) private var store
+    @Environment(\.onboardingStore) private var onboardingStore
     @State private var plantToRemoveIllustration: Plant?
 
     private var appStore: AppStore {
@@ -16,6 +17,19 @@ struct SettingsView: View {
             fatalError("AppStore not found in environment")
         }
         return store
+    }
+
+    private func sendFeedback() {
+        let email = "3tobiasfu@gmail.com"
+        let subject = "Fieldnote Feedback"
+        let body = "\n\n---\nFieldnote v1.0.0"
+
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
+            UIApplication.shared.open(url)
+        }
     }
 
     var body: some View {
@@ -107,6 +121,19 @@ struct SettingsView: View {
                     .padding(.top, FieldSpace.xs)
                 }
                 .padding(.vertical, FieldSpace.xs)
+
+                // Feedback button
+                Button {
+                    sendFeedback()
+                } label: {
+                    HStack {
+                        Label("Send Feedback", systemImage: "envelope")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundColor(FieldColor.mutedInk)
+                    }
+                }
             }
 
             // Design section
@@ -123,6 +150,15 @@ struct SettingsView: View {
                 }
                 .padding(.vertical, FieldSpace.xs)
             }
+
+            #if DEBUG
+            Section("Developer") {
+                Button("Reset Onboarding") {
+                    onboardingStore.resetOnboarding()
+                }
+                .foregroundColor(FieldColor.errorRed)
+            }
+            #endif
         }
         .navigationTitle("Settings")
         .confirmationDialog(

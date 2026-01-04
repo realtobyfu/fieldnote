@@ -20,3 +20,15 @@ extension EnvironmentValues {
         set { self[AppStoreKey.self] = newValue }
     }
 }
+
+// Environment key for OnboardingStore
+private struct OnboardingStoreKey: EnvironmentKey {
+    @MainActor static let defaultValue: OnboardingStore = OnboardingStore()
+}
+
+extension EnvironmentValues {
+    var onboardingStore: OnboardingStore {
+        get { self[OnboardingStoreKey.self] }
+        set { self[OnboardingStoreKey.self] = newValue }
+    }
+}
