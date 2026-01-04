@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import CoreLocation
 
 enum Tab: Int {
     case library
@@ -244,7 +245,11 @@ class AppStore {
 
     func removeCustomIllustration(from plant: Plant) async {
         guard let filename = plant.customIllustrationFileName else { return }
-        await PlantIllustrationStorageService.shared.deleteIllustration(filename: filename)
+        do {
+            try await PlantIllustrationStorageService.shared.deleteIllustration(filename: filename)
+        } catch {
+            print("Failed to delete illustration: \(error)")
+        }
         plant.customIllustrationFileName = nil
         save()
         refreshTrigger += 1
@@ -280,5 +285,51 @@ class AppStore {
     /// Check if any encounters have location data (for showing map button)
     var hasLocationsWithCoordinates: Bool {
         allEncounters.contains { $0.coordinates != nil }
+    }
+
+    /// Get locations with coordinates grouped for map display
+    var locationsWithCoordinates: [LocationCluster] {
+        var clusters: [String: LocationCluster] = [:]
+
+        for plant in plants {
+            for encounter in plant.encounters {
+                guard let coordinate = encounter.coordinates,
+                      let locationName = encounter.displayLocationName else { continue }
+
+                let key = locationName.lowercased()
+                if var cluster = clusters[key] {
+                    if !cluster.plantIds.contains(plant.id) {
+                        cluster.plantIds.insert(plant.id)
+                        cluster.plants.append(plant)
+                    }
+                    clusters[key] = cluster
+                } else {
+                    clusters[key] = LocationCluster(
+                        name: locationName,
+                        coordinate: coordinate,
+                        plants: [plant],
+                        plantIds: [plant.id]
+                    )
+                }
+            }
+        }
+
+        return Array(clusters.values).sorted { $0.plants.count > $1.plants.count }
+    }
+}
+
+// MARK: - Location Cluster Model
+
+struct LocationCluster: Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+    var plants: [Plant]
+    var plantIds: Set<UUID>
+
+    var plantCount: Int { plants.count }
+
+    static func == (lhs: LocationCluster, rhs: LocationCluster) -> Bool {
+        lhs.id == rhs.id
     }
 }

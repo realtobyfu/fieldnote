@@ -107,6 +107,18 @@ struct LibraryView: View {
             PlantDetailView(plant: plant)
         }
         .searchable(text: $searchText, prompt: "Search plants...")
+        .toolbar {
+            if appStore.hasLocationsWithCoordinates {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        LocationMapView()
+                    } label: {
+                        Image(systemName: "map")
+                            .foregroundColor(FieldColor.accent)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Filter Chips

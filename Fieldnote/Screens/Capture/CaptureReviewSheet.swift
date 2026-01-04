@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreLocation
+import PhotosUI
 
 struct CaptureReviewSheet: View {
     @Bindable var viewModel: CaptureViewModel
@@ -22,20 +23,19 @@ struct CaptureReviewSheet: View {
     @State private var selectedCatalogPlant: CatalogPlant?
     @State private var showCatalogPicker = false
     @State private var locationLabel = ""
-    @State private var resolvedLocationName: String?
-    @State private var locationCoordinates: CLLocationCoordinate2D?
-    @State private var isLocating = false
-    @State private var isResolvingLocation = false
-    @State private var locationError: String?
+    @State private var selectedLocation: SelectedLocation?
+    @State private var showLocationPicker = false
     @State private var notes = ""
     @State private var selectedConditions: Set<String> = []
     @State private var isSaving = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var addedImage: UIImage?
 
     let availableConditions = ["sun", "shade", "wet", "dry", "snow", "windy", "hot", "cold"]
     let placeholderSymbols = ["leaf.fill", "camera.fill", "sun.max.fill", "cloud.fill", "tree.fill", "allergens.fill"]
 
     private var capturedImage: UIImage? {
-        captureMode.image
+        addedImage ?? captureMode.image
     }
 
     init(viewModel: CaptureViewModel, store: AppStore, captureMode: CaptureMode) {
@@ -152,58 +152,51 @@ struct CaptureReviewSheet: View {
                                     .font(FieldType.bodyEmphasized)
                                     .foregroundColor(FieldColor.vintageInk)
 
-                                TextField("Location label (optional)", text: $locationLabel)
-                                    .vintageTextField()
+                                Button {
+                                    showLocationPicker = true
+                                } label: {
+                                    HStack(spacing: FieldSpace.sm) {
+                                        Image(systemName: "mappin.circle.fill")
+                                            .font(.title2)
+                                            .foregroundColor(selectedLocation != nil ? FieldColor.accent : FieldColor.fadedInk)
 
-                                if let coordinateDisplay {
-                                    Text("Coords: \(coordinateDisplay)")
-                                        .font(FieldType.caption)
-                                        .foregroundColor(FieldColor.fadedInk)
-                                }
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(selectedLocation?.name ?? "Add Location")
+                                                .font(FieldType.body)
+                                                .foregroundColor(selectedLocation != nil ? FieldColor.ink : FieldColor.fadedInk)
+                                                .lineLimit(1)
 
-                                HStack(spacing: FieldSpace.xs) {
-                                    locationActionButton(
-                                        title: isLocating ? "Locating..." : "Use Current Location",
-                                        systemImage: "location.fill",
-                                        isEnabled: !isLocating
-                                    ) {
-                                        Task {
-                                            await requestLocation()
+                                            if let subtitle = selectedLocation?.subtitle {
+                                                Text(subtitle)
+                                                    .font(FieldType.caption)
+                                                    .foregroundColor(FieldColor.fadedInk)
+                                                    .lineLimit(1)
+                                            }
                                         }
-                                    }
-
-                                    locationActionButton(
-                                        title: isResolvingLocation ? "Looking Up..." : "Look Up Place Name",
-                                        systemImage: "mappin.and.ellipse",
-                                        isEnabled: locationCoordinates != nil && !isResolvingLocation
-                                    ) {
-                                        Task {
-                                            await resolveLocationName()
-                                        }
-                                    }
-                                }
-
-                                if let resolvedLocationName {
-                                    HStack(spacing: FieldSpace.xs) {
-                                        Text("Detected: \(resolvedLocationName)")
-                                            .font(FieldType.caption)
-                                            .foregroundColor(FieldColor.mutedInk)
 
                                         Spacer()
 
-                                        Button("Use") {
-                                            locationLabel = resolvedLocationName
-                                        }
-                                        .font(FieldType.caption)
-                                        .foregroundColor(FieldColor.accent)
-                                        .buttonStyle(.plain)
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundColor(FieldColor.fadedInk)
                                     }
+                                    .padding(FieldSpace.sm)
+                                    .background(FieldColor.surface)
+                                    .cornerRadius(FieldRadius.sm)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                            .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                                    )
                                 }
+                                .buttonStyle(.plain)
 
-                                if let locationError {
-                                    Text(locationError)
-                                        .font(FieldType.caption)
-                                        .foregroundColor(FieldColor.fadedInk)
+                                if !locationLabel.isEmpty {
+                                    HStack(spacing: FieldSpace.xs) {
+                                        Text("Label: \(locationLabel)")
+                                            .font(FieldType.caption)
+                                            .foregroundColor(FieldColor.mutedInk)
+                                        Spacer()
+                                    }
                                 }
                             }
                         }
@@ -289,6 +282,12 @@ struct CaptureReviewSheet: View {
                 applyCatalogPlant(plant)
             }
         }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerSheet(
+                selectedLocation: $selectedLocation,
+                customLabel: $locationLabel
+            )
+        }
     }
 
     // MARK: - AI Badge
@@ -329,26 +328,46 @@ struct CaptureReviewSheet: View {
                             .stroke(FieldColor.bookBorder.opacity(0.6), lineWidth: 0.8)
                     )
             } else {
-                ZStack {
-                    RoundedRectangle(cornerRadius: FieldRadius.sm)
-                        .fill(FieldColor.illustrationBg)
+                // Tappable placeholder to add photo
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: FieldRadius.sm)
+                            .fill(FieldColor.illustrationBg)
 
-                    VStack(spacing: FieldSpace.xs) {
-                        Image(systemName: "leaf.fill")
-                            .font(.system(size: 32))
-                            .foregroundColor(FieldColor.botanicalBrown.opacity(0.4))
+                        VStack(spacing: FieldSpace.xs) {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(FieldColor.accent.opacity(0.6))
 
-                        Text("No photo")
-                            .font(FieldType.caption)
-                            .foregroundColor(FieldColor.fadedInk)
+                            Text("Tap to add photo")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.fadedInk)
+                        }
                     }
+                    .frame(width: 200, height: 140)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FieldRadius.sm)
+                            .stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                    )
                 }
-                .frame(width: 200, height: 140)
-                .overlay(
-                    RoundedRectangle(cornerRadius: FieldRadius.sm)
-                        .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-                )
             }
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            guard let newItem else { return }
+            Task {
+                await loadSelectedPhoto(from: newItem)
+            }
+        }
+    }
+
+    private func loadSelectedPhoto(from item: PhotosPickerItem) async {
+        do {
+            if let data = try await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                addedImage = image
+            }
+        } catch {
+            print("Failed to load photo: \(error)")
         }
     }
 
@@ -376,12 +395,18 @@ struct CaptureReviewSheet: View {
         let trimmedCommonName = commonName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedScientificName = scientificName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedFamily = family.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Build location data from selected location
+        let locationName = selectedLocation?.name
+        let finalLocationLabel = trimmedLabel.isEmpty ? nil : trimmedLabel
+        let coordinates = selectedLocation?.coordinate
+
         let encounter = Encounter(
             id: encounterId,
             date: Date(),
-            locationName: resolvedLocationName,
-            locationLabel: trimmedLabel.isEmpty ? nil : trimmedLabel,
-            coordinates: locationCoordinates,
+            locationName: locationName,
+            locationLabel: finalLocationLabel,
+            coordinates: coordinates,
             photoPlaceholder: placeholderSymbols.randomElement() ?? "leaf.fill",
             confidence: confidence,
             notes: notes.isEmpty ? nil : notes,
@@ -415,44 +440,6 @@ struct CaptureReviewSheet: View {
         viewModel.reset()
     }
 
-    private var coordinateDisplay: String? {
-        guard let coordinates = locationCoordinates else { return nil }
-        return String(format: "%.4f, %.4f", coordinates.latitude, coordinates.longitude)
-    }
-
-    private func requestLocation() async {
-        isLocating = true
-        locationError = nil
-
-        let coordinates = await LocationService.shared.requestCurrentLocation()
-        if let coordinates {
-            locationCoordinates = coordinates
-        } else {
-            locationError = "Location unavailable. Check permissions or try again."
-        }
-
-        isLocating = false
-    }
-
-    private func resolveLocationName() async {
-        guard let coordinates = locationCoordinates else {
-            locationError = "Add coordinates before looking up a place name."
-            return
-        }
-
-        isResolvingLocation = true
-        locationError = nil
-
-        let name = await LocationGeocoderService.shared.reverseGeocode(coordinates)
-        if let name {
-            resolvedLocationName = name
-        } else {
-            locationError = "Unable to resolve a place name right now."
-        }
-
-        isResolvingLocation = false
-    }
-
     private func applyCatalogPlant(_ plant: CatalogPlant) {
         selectedCatalogPlant = plant
         commonName = plant.commonName
@@ -467,31 +454,6 @@ struct CaptureReviewSheet: View {
             family != selectedCatalogPlant.family {
             self.selectedCatalogPlant = nil
         }
-    }
-
-    private func locationActionButton(
-        title: String,
-        systemImage: String,
-        isEnabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: FieldSpace.xs) {
-                Image(systemName: systemImage)
-                    .font(.caption2)
-                Text(title)
-                    .font(FieldType.caption)
-            }
-            .foregroundColor(isEnabled ? FieldColor.accent : FieldColor.fadedInk)
-            .padding(.vertical, FieldSpace.xs)
-            .padding(.horizontal, FieldSpace.sm)
-            .background(
-                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                    .stroke(isEnabled ? FieldColor.accent : FieldColor.separator, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
     }
 }
 
