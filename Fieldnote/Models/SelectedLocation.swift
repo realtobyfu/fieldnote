@@ -15,6 +15,7 @@ struct SelectedLocation: Identifiable, Equatable {
     let coordinate: CLLocationCoordinate2D?
     let isCurrentLocation: Bool
     let lastUsed: Date?
+    let category: LocationCategory
 
     init(
         id: UUID = UUID(),
@@ -22,7 +23,8 @@ struct SelectedLocation: Identifiable, Equatable {
         subtitle: String? = nil,
         coordinate: CLLocationCoordinate2D? = nil,
         isCurrentLocation: Bool = false,
-        lastUsed: Date? = nil
+        lastUsed: Date? = nil,
+        category: LocationCategory = .unknown
     ) {
         self.id = id
         self.name = name
@@ -30,6 +32,8 @@ struct SelectedLocation: Identifiable, Equatable {
         self.coordinate = coordinate
         self.isCurrentLocation = isCurrentLocation
         self.lastUsed = lastUsed
+        // If no category provided, try to infer from name
+        self.category = category == .unknown ? LocationCategory.infer(from: name) : category
     }
 
     // MARK: - Distance Formatting

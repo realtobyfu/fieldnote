@@ -343,6 +343,7 @@ class AppStore {
                     clusters[key] = LocationCluster(
                         name: locationName,
                         coordinate: coordinate,
+                        category: LocationCategory.infer(from: locationName),
                         plants: [plant],
                         plantIds: [plant.id]
                     )
@@ -360,6 +361,7 @@ struct LocationCluster: Identifiable, Equatable {
     let id = UUID()
     let name: String
     let coordinate: CLLocationCoordinate2D
+    let category: LocationCategory
     var plants: [Plant]
     var plantIds: Set<UUID>
 

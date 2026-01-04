@@ -44,10 +44,13 @@ final class NearbyPlacesService {
                     item.placemark.administrativeArea
                 ].compactMap { $0 }.joined(separator: ", ")
 
+                let category = LocationCategory(from: item.pointOfInterestCategory)
+
                 return SelectedLocation(
                     name: name,
                     subtitle: subtitle.isEmpty ? nil : subtitle,
-                    coordinate: item.placemark.coordinate
+                    coordinate: item.placemark.coordinate,
+                    category: category
                 )
             }
         } catch {
@@ -97,10 +100,13 @@ final class NearbyPlacesService {
                     item.placemark.administrativeArea
                 ].compactMap { $0 }.joined(separator: ", ")
 
+                let category = LocationCategory(from: item.pointOfInterestCategory)
+
                 return SelectedLocation(
                     name: name,
                     subtitle: subtitle.isEmpty ? nil : subtitle,
-                    coordinate: item.placemark.coordinate
+                    coordinate: item.placemark.coordinate,
+                    category: category
                 )
             }
 

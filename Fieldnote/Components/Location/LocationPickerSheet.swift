@@ -104,21 +104,7 @@ struct LocationPickerSheet: View {
             }
         } label: {
             HStack(spacing: FieldSpace.sm) {
-                ZStack {
-                    Circle()
-                        .fill(FieldColor.accent)
-                        .frame(width: 32, height: 32)
-
-                    if isLoadingCurrent {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.7)
-                    } else {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white)
-                    }
-                }
+                CurrentLocationIcon(isLoading: isLoadingCurrent)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Use Current Location")
@@ -280,9 +266,7 @@ struct LocationRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: FieldSpace.sm) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(isSelected ? FieldColor.accent : FieldColor.fadedInk)
+                LocationIcon(category: location.category, size: .small)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(location.name)
@@ -310,7 +294,7 @@ struct LocationRow: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.body)
-                        .foregroundColor(FieldColor.accent)
+                        .foregroundColor(location.category.color)
                 }
             }
         }

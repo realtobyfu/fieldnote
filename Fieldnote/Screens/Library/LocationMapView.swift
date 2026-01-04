@@ -79,6 +79,7 @@ struct LocationMapView: View {
         ) {
             PlantAnnotationView(
                 count: cluster.plantCount,
+                category: cluster.category,
                 isSelected: selectedCluster?.id == cluster.id
             )
             .onTapGesture {
@@ -158,6 +159,7 @@ struct LocationMapView: View {
 
 struct PlantAnnotationView: View {
     let count: Int
+    let category: LocationCategory
     let isSelected: Bool
 
     var body: some View {
@@ -179,7 +181,7 @@ struct PlantAnnotationView: View {
 
     private var mainCircle: some View {
         Circle()
-            .fill(isSelected ? FieldColor.accent : FieldColor.accent.opacity(0.9))
+            .fill(isSelected ? category.color : category.color.opacity(0.9))
             .frame(width: 40, height: 40)
             .overlay(
                 Circle()
@@ -228,7 +230,9 @@ struct LocationDetailSheet: View {
     }
 
     private var headerSection: some View {
-        HStack {
+        HStack(spacing: FieldSpace.sm) {
+            LocationIcon(category: cluster.category, size: .medium)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(cluster.name)
                     .font(FieldType.bodyEmphasized)
