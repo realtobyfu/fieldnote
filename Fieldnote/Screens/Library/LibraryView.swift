@@ -126,6 +126,9 @@ struct LibraryView: View {
                 }
                 .padding(FieldSpace.md)
             }
+            .refreshable {
+                await appStore.refresh()
+            }
         }
     }
 

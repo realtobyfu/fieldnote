@@ -24,52 +24,19 @@ struct LocationPickerSheet: View {
     @State private var isLoadingNearby = false
     @State private var isSearching = false
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
-        }
-        return store
-    }
-
     var body: some View {
         NavigationStack {
-            List {
-                // Search bar
-                Section {
-                    TextField("Search places...", text: $searchText)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-                }
-
-                // Current location button
-                Section {
-                    currentLocationButton
-                }
-
-                // Search results (when searching)
-                if !searchText.isEmpty {
-                    searchResultsSection
+            Group {
+                if let appStore = store {
+                    locationPickerContent(appStore: appStore)
                 } else {
-                    // Recent locations
-                    if !appStore.recentLocations.isEmpty {
-                        recentLocationsSection
-                    }
-
-                    // Nearby places
-                    nearbySection
-                }
-
-                // Custom label
-                Section {
-                    TextField("Custom label (optional)", text: $customLabel)
-                        .textFieldStyle(.plain)
-                } header: {
-                    Text("Custom Label")
-                } footer: {
-                    Text("Add your own name for this location")
+                    ContentUnavailableView(
+                        "Unable to Load",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("Please restart the app.")
+                    )
                 }
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("Select Location")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -93,6 +60,47 @@ struct LocationPickerSheet: View {
                 await performSearch(query: newValue)
             }
         }
+    }
+
+    @ViewBuilder
+    private func locationPickerContent(appStore: AppStore) -> some View {
+        List {
+            // Search bar
+            Section {
+                TextField("Search places...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+            }
+
+            // Current location button
+            Section {
+                currentLocationButton
+            }
+
+            // Search results (when searching)
+            if !searchText.isEmpty {
+                searchResultsSection
+            } else {
+                // Recent locations
+                if !appStore.recentLocations.isEmpty {
+                    recentLocationsSection(appStore: appStore)
+                }
+
+                // Nearby places
+                nearbySection
+            }
+
+            // Custom label
+            Section {
+                TextField("Custom label (optional)", text: $customLabel)
+                    .textFieldStyle(.plain)
+            } header: {
+                Text("Custom Label")
+            } footer: {
+                Text("Add your own name for this location")
+            }
+        }
+        .listStyle(.insetGrouped)
     }
 
     // MARK: - Current Location Button
@@ -160,7 +168,7 @@ struct LocationPickerSheet: View {
 
     // MARK: - Recent Locations Section
 
-    private var recentLocationsSection: some View {
+    private func recentLocationsSection(appStore: AppStore) -> some View {
         Section("Recent Locations") {
             ForEach(appStore.recentLocations) { location in
                 LocationRow(

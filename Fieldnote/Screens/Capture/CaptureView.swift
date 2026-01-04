@@ -15,24 +15,17 @@ struct CaptureView: View {
     @State private var capturedImage: UIImage?
     @State private var shutterExpanding = false
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
-        }
-        return store
-    }
-
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                mainContent(geometry: geometry)
-                shutterOverlay(geometry: geometry)
-
-                if viewModel.isIdentifying {
-                    identifyingOverlay
-                }
+        Group {
+            if let appStore = store {
+                captureContent(appStore: appStore)
+            } else {
+                ContentUnavailableView(
+                    "Unable to Load",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Please restart the app.")
+                )
             }
-            .background(FieldColor.paper)
         }
         .navigationTitle("Capture")
         .onChange(of: viewModel.selectedItem) { _, _ in
@@ -59,19 +52,36 @@ struct CaptureView: View {
             shutterExpanding = false
             capturedImage = nil
         } content: {
-            CaptureReviewSheet(
-                viewModel: viewModel,
-                store: appStore,
-                captureMode: viewModel.captureMode ?? .manualEntry
-            )
-            .environment(\.appStore, store)
+            if let appStore = store {
+                CaptureReviewSheet(
+                    viewModel: viewModel,
+                    store: appStore,
+                    captureMode: viewModel.captureMode ?? .manualEntry
+                )
+                .environment(\.appStore, store)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func captureContent(appStore: AppStore) -> some View {
+        GeometryReader { geometry in
+            ZStack {
+                mainContent(appStore: appStore, geometry: geometry)
+                shutterOverlay(geometry: geometry)
+
+                if viewModel.isIdentifying {
+                    identifyingOverlay
+                }
+            }
+            .background(FieldColor.paper)
         }
     }
 
     // MARK: - Main Content
 
     @ViewBuilder
-    private func mainContent(geometry: GeometryProxy) -> some View {
+    private func mainContent(appStore: AppStore, geometry: GeometryProxy) -> some View {
         VStack(spacing: FieldSpace.xl) {
             Spacer()
             VStack(spacing: FieldSpace.md) {
@@ -194,17 +204,6 @@ struct CaptureView: View {
         }
         .opacity(shutterExpanding ? 0 : 1)
         .padding(.bottom, FieldSpace.xl)
-    }
-
-    @ViewBuilder
-    private var recentCapturesSection: some View {
-        if !appStore.allEncounters.isEmpty {
-            Text("\(appStore.allEncounters.count) observations")
-                .font(FieldType.caption2)
-                .foregroundColor(FieldColor.mutedInk)
-                .opacity(shutterExpanding ? 0 : 1)
-                .padding(.bottom, FieldSpace.md)
-        }
     }
 
     // MARK: - Identifying Overlay

@@ -222,6 +222,15 @@ class AppStore {
         }
     }
 
+    // MARK: - Refresh
+
+    /// Force a refresh of all data by incrementing the trigger
+    func refresh() async {
+        // Small delay for visual feedback
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        refreshTrigger += 1
+    }
+
     // MARK: - Computed Collections
 
     var allEncounters: [Encounter] {

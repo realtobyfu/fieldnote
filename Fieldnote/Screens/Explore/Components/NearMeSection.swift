@@ -17,19 +17,23 @@ struct NearMeSection: View {
     @State private var isLoading = false
     @State private var hasLoaded = false
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
-        }
-        return store
-    }
-
-    private var nearbyPlants: [CatalogPlant] {
+    private func nearbyPlants(from appStore: AppStore) -> [CatalogPlant] {
         guard let habitat = habitatType else { return [] }
         return Array(appStore.undiscoveredPlantsNearby(habitatType: habitat).prefix(15))
     }
 
     var body: some View {
+        if let appStore = store {
+            nearMeContent(appStore: appStore)
+        } else {
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func nearMeContent(appStore: AppStore) -> some View {
+        let plants = nearbyPlants(from: appStore)
+
         VStack(alignment: .leading, spacing: FieldSpace.sm) {
             // Header
             HStack {
@@ -38,8 +42,8 @@ struct NearMeSection: View {
                 if isLoading {
                     ProgressView()
                         .scaleEffect(0.8)
-                } else if !nearbyPlants.isEmpty {
-                    Text("\(nearbyPlants.count)")
+                } else if !plants.isEmpty {
+                    Text("\(plants.count)")
                         .font(FieldType.caption)
                         .foregroundColor(FieldColor.fadedInk)
                 }
@@ -59,12 +63,12 @@ struct NearMeSection: View {
                 loadingState
             } else if !hasLoaded {
                 enableLocationState
-            } else if nearbyPlants.isEmpty {
+            } else if plants.isEmpty {
                 emptyState
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: FieldSpace.sm) {
-                        ForEach(nearbyPlants) { catalogPlant in
+                        ForEach(plants) { catalogPlant in
                             NavigationLink(value: catalogPlant) {
                                 UndiscoveredPlantCard(catalogPlant: catalogPlant)
                             }
@@ -76,7 +80,7 @@ struct NearMeSection: View {
             }
         }
         .task {
-            await loadNearbyLocation()
+            await loadNearbyLocation(appStore: appStore)
         }
     }
 
@@ -124,7 +128,7 @@ struct NearMeSection: View {
 
     // MARK: - Location Loading
 
-    private func loadNearbyLocation() async {
+    private func loadNearbyLocation(appStore: AppStore) async {
         guard !hasLoaded else { return }
 
         isLoading = true

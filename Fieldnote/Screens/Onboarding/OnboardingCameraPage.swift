@@ -2,33 +2,46 @@
 //  OnboardingCameraPage.swift
 //  Fieldnote
 //
-//  "Ready Your Lens" - Camera permission request with field journal framing
+//  "Ready Your Lens" - Camera and location permission requests
 //
 
 import SwiftUI
 import AVFoundation
+import CoreLocation
+import Combine
 
 struct OnboardingCameraPage: View {
     @Environment(\.onboardingStore) private var onboardingStore
     @State private var cameraAuthorized = false
-    @State private var permissionDenied = false
+    @State private var cameraDenied = false
+    @State private var locationAuthorized = false
+    @State private var locationDenied = false
     @State private var contentVisible = false
+    @StateObject private var locationDelegate = LocationPermissionDelegate()
+
+    private var showLocationStep: Bool {
+        cameraAuthorized && !locationAuthorized && !locationDenied
+    }
+
+    private var showBeginButton: Bool {
+        cameraAuthorized && (locationAuthorized || locationDenied)
+    }
 
     var body: some View {
         VStack(spacing: FieldSpace.xl) {
             Spacer()
 
-            // Camera illustration/icon
-            cameraIllustration
+            // Illustration/icon
+            permissionIllustration
 
             // Request text
             VStack(spacing: FieldSpace.md) {
-                Text("Ready Your Lens")
+                Text(showLocationStep ? "One More Thing" : "Ready Your Lens")
                     .font(FieldType.displayTitle)
                     .foregroundColor(FieldColor.vintageInk)
                     .multilineTextAlignment(.center)
 
-                Text("To document your botanical discoveries, Fieldnote needs access to your camera. Your photos stay private on your device.")
+                Text(permissionDescription)
                     .font(FieldType.body)
                     .foregroundColor(FieldColor.fadedInk)
                     .multilineTextAlignment(.center)
@@ -36,8 +49,8 @@ struct OnboardingCameraPage: View {
                     .padding(.horizontal, FieldSpace.md)
             }
 
-            // Permission button
-            permissionButton
+            // Permission buttons
+            permissionButtons
 
             Spacer()
             Spacer()
@@ -46,15 +59,27 @@ struct OnboardingCameraPage: View {
         .opacity(contentVisible ? 1 : 0)
         .onAppear {
             checkCameraPermission()
+            checkLocationPermission()
             withAnimation(.easeOut(duration: 0.5)) {
                 contentVisible = true
             }
         }
+        .onChange(of: locationDelegate.authorizationStatus) { _, newStatus in
+            handleLocationStatusChange(newStatus)
+        }
     }
 
-    // MARK: - Camera Illustration
+    private var permissionDescription: String {
+        if showLocationStep {
+            return "Enable location to discover plants commonly found near you. This helps personalize your exploration experience."
+        } else {
+            return "To document your botanical discoveries, Fieldnote needs access to your camera. Your photos stay private on your device."
+        }
+    }
 
-    private var cameraIllustration: some View {
+    // MARK: - Permission Illustration
+
+    private var permissionIllustration: some View {
         ZStack {
             // Vintage frame background
             RoundedRectangle(cornerRadius: FieldRadius.lg)
@@ -66,26 +91,57 @@ struct OnboardingCameraPage: View {
                 .stroke(FieldColor.bookBorder, lineWidth: 1.5)
                 .frame(width: 160, height: 160)
 
-            // Camera icon
-            Image(systemName: cameraAuthorized ? "checkmark.circle.fill" : "camera.viewfinder")
-                .font(.system(size: 64, weight: .light))
-                .foregroundColor(cameraAuthorized ? FieldColor.successGreen : FieldColor.accent)
+            // Icon based on current step
+            if showBeginButton {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 64, weight: .light))
+                    .foregroundColor(FieldColor.successGreen)
+            } else if showLocationStep {
+                Image(systemName: "location.viewfinder")
+                    .font(.system(size: 64, weight: .light))
+                    .foregroundColor(FieldColor.accent)
+            } else if cameraAuthorized {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 64, weight: .light))
+                    .foregroundColor(FieldColor.successGreen)
+            } else {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 64, weight: .light))
+                    .foregroundColor(FieldColor.accent)
+            }
         }
         .fieldShadow(FieldShadow.card)
+        .animation(.easeInOut(duration: 0.3), value: showLocationStep)
+        .animation(.easeInOut(duration: 0.3), value: showBeginButton)
     }
 
-    // MARK: - Permission Button
+    // MARK: - Permission Buttons
 
-    private var permissionButton: some View {
+    private var permissionButtons: some View {
         VStack(spacing: FieldSpace.sm) {
-            if cameraAuthorized {
-                // Camera authorized - show begin button
+            if showBeginButton {
+                // All permissions handled - show begin button
                 PrimaryButton("Begin Your Journal") {
                     onboardingStore.completeOnboarding()
                 }
                 .frame(maxWidth: 280)
-            } else if permissionDenied {
-                // Permission denied - show settings button
+            } else if showLocationStep {
+                // Camera done, now location
+                PrimaryButton("Enable Location") {
+                    requestLocationPermission()
+                }
+                .frame(maxWidth: 280)
+
+                Button("Skip") {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        locationDenied = true
+                    }
+                }
+                .font(FieldType.callout)
+                .foregroundColor(FieldColor.mutedInk)
+                .padding(.top, FieldSpace.xs)
+            } else if cameraDenied {
+                // Camera permission denied
                 VStack(spacing: FieldSpace.sm) {
                     Text("Camera access was denied")
                         .font(FieldType.callout)
@@ -104,7 +160,7 @@ struct OnboardingCameraPage: View {
                     .padding(.top, FieldSpace.xs)
                 }
             } else {
-                // Request permission
+                // Request camera permission
                 PrimaryButton("Allow Camera Access") {
                     requestCameraPermission()
                 }
@@ -118,9 +174,11 @@ struct OnboardingCameraPage: View {
                 .padding(.top, FieldSpace.xs)
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: showLocationStep)
+        .animation(.easeInOut(duration: 0.3), value: showBeginButton)
     }
 
-    // MARK: - Permission Logic
+    // MARK: - Camera Permission Logic
 
     private func checkCameraPermission() {
         let status = AVCaptureDevice.authorizationStatus(for: .video)
@@ -128,7 +186,7 @@ struct OnboardingCameraPage: View {
         case .authorized:
             cameraAuthorized = true
         case .denied, .restricted:
-            permissionDenied = true
+            cameraDenied = true
         case .notDetermined:
             break
         @unknown default:
@@ -139,14 +197,49 @@ struct OnboardingCameraPage: View {
     private func requestCameraPermission() {
         AVCaptureDevice.requestAccess(for: .video) { granted in
             DispatchQueue.main.async {
-                if granted {
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    if granted {
                         cameraAuthorized = true
+                    } else {
+                        cameraDenied = true
                     }
-                } else {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        permissionDenied = true
-                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Location Permission Logic
+
+    private func checkLocationPermission() {
+        let status = CLLocationManager.authorizationStatus()
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            locationAuthorized = true
+        case .denied, .restricted:
+            locationDenied = true
+        case .notDetermined:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func requestLocationPermission() {
+        locationDelegate.requestPermission()
+    }
+
+    private func handleLocationStatusChange(_ status: CLAuthorizationStatus) {
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                switch status {
+                case .authorizedWhenInUse, .authorizedAlways:
+                    locationAuthorized = true
+                case .denied, .restricted:
+                    locationDenied = true
+                case .notDetermined:
+                    break
+                @unknown default:
+                    break
                 }
             }
         }
@@ -156,6 +249,27 @@ struct OnboardingCameraPage: View {
         if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(settingsUrl)
         }
+    }
+}
+
+// MARK: - Location Permission Delegate
+
+private class LocationPermissionDelegate: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    private let locationManager = CLLocationManager()
+
+    override init() {
+        super.init()
+        locationManager.delegate = self
+        authorizationStatus = CLLocationManager.authorizationStatus()
+    }
+
+    func requestPermission() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        authorizationStatus = manager.authorizationStatus
     }
 }
 

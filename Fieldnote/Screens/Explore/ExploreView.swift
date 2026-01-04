@@ -53,6 +53,9 @@ struct ExploreView: View {
             }
             .padding(.vertical, FieldSpace.md)
         }
+        .refreshable {
+            await appStore.refresh()
+        }
     }
 }
 

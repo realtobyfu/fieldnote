@@ -14,14 +14,23 @@ struct AllEncountersView: View {
 
     @State private var encounterToDelete: Encounter?
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
+    var body: some View {
+        Group {
+            if let appStore = store {
+                encountersContent(appStore: appStore)
+            } else {
+                ContentUnavailableView(
+                    "Unable to Load",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Please restart the app.")
+                )
+            }
         }
-        return store
+        .navigationTitle("All Encounters")
     }
 
-    var body: some View {
+    @ViewBuilder
+    private func encountersContent(appStore: AppStore) -> some View {
         Group {
             if appStore.allEncounters.isEmpty {
                 emptyState
@@ -36,12 +45,13 @@ struct AllEncountersView: View {
                             }
                         }
                     }
-                    .onDelete(perform: confirmDelete)
+                    .onDelete { offsets in
+                        confirmDelete(at: offsets, appStore: appStore)
+                    }
                 }
                 .listStyle(.plain)
             }
         }
-        .navigationTitle("All Encounters")
         .confirmationDialog(
             "Delete Observation?",
             isPresented: Binding(
@@ -82,7 +92,7 @@ struct AllEncountersView: View {
         .padding(FieldSpace.xl)
     }
 
-    private func confirmDelete(at offsets: IndexSet) {
+    private func confirmDelete(at offsets: IndexSet, appStore: AppStore) {
         if let index = offsets.first {
             encounterToDelete = appStore.allEncounters[index]
         }

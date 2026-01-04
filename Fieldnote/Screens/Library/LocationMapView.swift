@@ -16,15 +16,8 @@ struct LocationMapView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var showDetailSheet = false
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
-        }
-        return store
-    }
-
     private var clusters: [LocationCluster] {
-        appStore.locationsWithCoordinates
+        store?.locationsWithCoordinates ?? []
     }
 
     var body: some View {
