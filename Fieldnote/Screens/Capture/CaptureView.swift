@@ -250,6 +250,10 @@ struct CaptureView: View {
     // MARK: - Actions
 
     private func triggerShutter(geometry: GeometryProxy) {
+        // Haptic feedback for camera shutter
+        let impact = UIImpactFeedbackGenerator(style: .medium)
+        impact.impactOccurred()
+
         withAnimation(.easeInOut(duration: 0.35)) {
             shutterExpanding = true
         }

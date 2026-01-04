@@ -10,14 +10,20 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(\.appStore) private var store
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
+    var body: some View {
+        if let appStore = store {
+            mainContent(appStore: appStore)
+        } else {
+            ContentUnavailableView(
+                "Unable to Load",
+                systemImage: "exclamationmark.triangle",
+                description: Text("Please restart the app.")
+            )
         }
-        return store
     }
 
-    var body: some View {
+    @ViewBuilder
+    private func mainContent(appStore: AppStore) -> some View {
         TabView(selection: Binding(
             get: { appStore.selectedTab },
             set: { appStore.selectedTab = $0 }

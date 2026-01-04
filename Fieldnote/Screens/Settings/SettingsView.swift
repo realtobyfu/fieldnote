@@ -12,13 +12,6 @@ struct SettingsView: View {
     @Environment(\.onboardingStore) private var onboardingStore
     @State private var plantToRemoveIllustration: Plant?
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
-        }
-        return store
-    }
-
     private func sendFeedback() {
         let email = "3tobiasfu@gmail.com"
         let subject = "Fieldnote Feedback"
@@ -33,6 +26,22 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        Group {
+            if let appStore = store {
+                settingsContent(appStore: appStore)
+            } else {
+                ContentUnavailableView(
+                    "Unable to Load",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Please restart the app.")
+                )
+            }
+        }
+        .navigationTitle("Settings")
+    }
+
+    @ViewBuilder
+    private func settingsContent(appStore: AppStore) -> some View {
         List {
             // App Philosophy section
             Section {
@@ -72,20 +81,6 @@ struct SettingsView: View {
                             .foregroundColor(FieldColor.mutedInk)
                     }
                 }
-
-//                Button {
-//                    // Export functionality - placeholder
-//                } label: {
-//                    HStack {
-//                        Label("Export Data", systemImage: "square.and.arrow.up")
-//                        Spacer()
-//                        Image(systemName: "chevron.right")
-//                            .font(.caption)
-//                            .foregroundColor(FieldColor.mutedInk)
-//                    }
-//                }
-//                .disabled(true)
-//                .foregroundColor(FieldColor.mutedInk)
             }
 
             // Custom Illustrations section (only show if any exist)
@@ -160,7 +155,6 @@ struct SettingsView: View {
             }
             #endif
         }
-        .navigationTitle("Settings")
         .confirmationDialog(
             "Remove Illustration?",
             isPresented: Binding(

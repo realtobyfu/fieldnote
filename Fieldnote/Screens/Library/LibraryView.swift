@@ -13,13 +13,6 @@ struct LibraryView: View {
     @State private var selectedFamily = "All"
     @State private var sortOrder: SortOrder = .recent
 
-    private var appStore: AppStore {
-        guard let store = store else {
-            fatalError("AppStore not found in environment")
-        }
-        return store
-    }
-
     enum SortOrder {
         case recent
         case name
@@ -36,69 +29,14 @@ struct LibraryView: View {
 
     var body: some View {
         Group {
-            if filteredAndSortedPlants.isEmpty {
-                if searchText.isEmpty && selectedFamily == "All" {
-                    EmptyStateView(
-                        icon: "leaf",
-                        title: "No Plants Yet",
-                        message: "Start your field journal by capturing your first plant encounter.",
-                        actionLabel: "Capture Plant",
-                        action: {
-                            appStore.selectedTab = .capture
-                        }
-                    )
-                } else {
-                    EmptyStateView(
-                        icon: "magnifyingglass",
-                        title: "No Results",
-                        message: "We couldn't find any plants matching your filters. Try adjusting your search or filters."
-                    )
-                }
+            if let appStore = store {
+                libraryContent(appStore: appStore)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: FieldSpace.md) {
-                        // Filter chips
-                        filterChips
-
-                        // Sort menu
-                        HStack {
-                            Text("\(filteredAndSortedPlants.count) plants")
-                                .font(FieldType.caption)
-                                .foregroundColor(FieldColor.mutedInk)
-
-                            Spacer()
-
-                            Menu {
-                                Button("Recent") { sortOrder = .recent }
-                                Button("Name") { sortOrder = .name }
-                                Button("Confidence") { sortOrder = .confidence }
-                            } label: {
-                                HStack(spacing: FieldSpace.xs) {
-                                    Text(sortOrder.label)
-                                        .font(FieldType.caption)
-                                        .foregroundColor(FieldColor.ink)
-                                    Image(systemName: "chevron.down")
-                                        .font(.caption2)
-                                        .foregroundColor(FieldColor.mutedInk)
-                                }
-                            }
-                        }
-
-                        // Plant grid
-                        LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: FieldSpace.md),
-                            GridItem(.flexible(), spacing: FieldSpace.md)
-                        ], spacing: FieldSpace.md) {
-                            ForEach(filteredAndSortedPlants) { plant in
-                                NavigationLink(value: plant) {
-                                    PlantCard(plant: plant, layout: .grid)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    .padding(FieldSpace.md)
-                }
+                ContentUnavailableView(
+                    "Unable to Load",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Please restart the app.")
+                )
             }
         }
         .background(FieldColor.paper)
@@ -108,7 +46,7 @@ struct LibraryView: View {
         }
         .searchable(text: $searchText, prompt: "Search plants...")
         .toolbar {
-            if appStore.hasLocationsWithCoordinates {
+            if let appStore = store, appStore.hasLocationsWithCoordinates {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         LocationMapView()
@@ -121,9 +59,79 @@ struct LibraryView: View {
         }
     }
 
+    @ViewBuilder
+    private func libraryContent(appStore: AppStore) -> some View {
+        let plants = filteredAndSortedPlants(from: appStore)
+
+        if plants.isEmpty {
+            if searchText.isEmpty && selectedFamily == "All" {
+                EmptyStateView(
+                    icon: "leaf",
+                    title: "No Plants Yet",
+                    message: "Start your field journal by capturing your first plant encounter.",
+                    actionLabel: "Capture Plant",
+                    action: {
+                        appStore.selectedTab = .capture
+                    }
+                )
+            } else {
+                EmptyStateView(
+                    icon: "magnifyingglass",
+                    title: "No Results",
+                    message: "We couldn't find any plants matching your filters. Try adjusting your search or filters."
+                )
+            }
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: FieldSpace.md) {
+                    // Filter chips
+                    filterChips(appStore: appStore)
+
+                    // Sort menu
+                    HStack {
+                        Text("\(plants.count) plants")
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.mutedInk)
+
+                        Spacer()
+
+                        Menu {
+                            Button("Recent") { sortOrder = .recent }
+                            Button("Name") { sortOrder = .name }
+                            Button("Confidence") { sortOrder = .confidence }
+                        } label: {
+                            HStack(spacing: FieldSpace.xs) {
+                                Text(sortOrder.label)
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.ink)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2)
+                                    .foregroundColor(FieldColor.mutedInk)
+                            }
+                        }
+                    }
+
+                    // Plant grid
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: FieldSpace.md),
+                        GridItem(.flexible(), spacing: FieldSpace.md)
+                    ], spacing: FieldSpace.md) {
+                        ForEach(plants) { plant in
+                            NavigationLink(value: plant) {
+                                PlantCard(plant: plant, layout: .grid)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(FieldSpace.md)
+            }
+        }
+    }
+
     // MARK: - Filter Chips
 
-    private var filterChips: some View {
+    private func filterChips(appStore: AppStore) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FieldSpace.xs) {
                 FilterChip("All", isSelected: selectedFamily == "All") {
@@ -141,7 +149,7 @@ struct LibraryView: View {
 
     // MARK: - Filtered and Sorted Plants
 
-    private var filteredAndSortedPlants: [Plant] {
+    private func filteredAndSortedPlants(from appStore: AppStore) -> [Plant] {
         var plants = appStore.plants
 
         // Apply search filter
