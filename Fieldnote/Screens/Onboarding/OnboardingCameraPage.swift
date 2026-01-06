@@ -81,38 +81,45 @@ struct OnboardingCameraPage: View {
 
     private var permissionIllustration: some View {
         ZStack {
-            // Vintage frame background
+            // Vintage frame background - larger size
             RoundedRectangle(cornerRadius: FieldRadius.lg)
                 .fill(FieldColor.illustrationBg)
-                .frame(width: 160, height: 160)
+                .frame(width: 180, height: 180)
 
-            // Decorative border
+            // Decorative outer border
             RoundedRectangle(cornerRadius: FieldRadius.lg)
-                .stroke(FieldColor.bookBorder, lineWidth: 1.5)
-                .frame(width: 160, height: 160)
+                .stroke(FieldColor.bookBorder, lineWidth: 2)
+                .frame(width: 180, height: 180)
+
+            // Inner decorative border
+            RoundedRectangle(cornerRadius: FieldRadius.md)
+                .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 1)
+                .frame(width: 166, height: 166)
 
             // Icon based on current step
             if showBeginButton {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 64, weight: .light))
+                    .font(.system(size: 72, weight: .light))
                     .foregroundColor(FieldColor.successGreen)
             } else if showLocationStep {
                 Image(systemName: "location.viewfinder")
-                    .font(.system(size: 64, weight: .light))
+                    .font(.system(size: 72, weight: .light))
                     .foregroundColor(FieldColor.accent)
             } else if cameraAuthorized {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 64, weight: .light))
+                    .font(.system(size: 72, weight: .light))
                     .foregroundColor(FieldColor.successGreen)
             } else {
                 Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 64, weight: .light))
+                    .font(.system(size: 72, weight: .light))
                     .foregroundColor(FieldColor.accent)
             }
         }
         .fieldShadow(FieldShadow.card)
-        .animation(.easeInOut(duration: 0.3), value: showLocationStep)
-        .animation(.easeInOut(duration: 0.3), value: showBeginButton)
+        .scaleEffect(contentVisible ? 1 : 0.85)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: contentVisible)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showLocationStep)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showBeginButton)
     }
 
     // MARK: - Permission Buttons
@@ -275,5 +282,5 @@ private class LocationPermissionDelegate: NSObject, ObservableObject, CLLocation
 
 #Preview {
     OnboardingCameraPage()
-        .background(FieldColor.agedPaper)
+        .background(FieldColor.paper)
 }

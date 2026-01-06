@@ -13,8 +13,8 @@ struct OnboardingContainerView: View {
 
     var body: some View {
         ZStack {
-            // Aged paper background
-            FieldColor.agedPaper
+            // Paper background (consistent with main app)
+            FieldColor.paper
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -84,7 +84,7 @@ struct OnboardingContainerView: View {
         .background(
             // Subtle gradient fade from content to navigation
             LinearGradient(
-                colors: [FieldColor.agedPaper.opacity(0), FieldColor.agedPaper],
+                colors: [FieldColor.paper.opacity(0), FieldColor.paper],
                 startPoint: .top,
                 endPoint: .bottom
             )

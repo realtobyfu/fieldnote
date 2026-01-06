@@ -18,32 +18,63 @@ struct PaywallView: View {
     @State private var errorMessage: String?
     @State private var isLoading = true
 
+    // Animation states
+    @State private var headerVisible = false
+    @State private var usageVisible = false
+    @State private var pricingVisible = false
+    @State private var buttonsVisible = false
+
     var body: some View {
         NavigationStack {
             ZStack {
-                FieldColor.agedPaper.ignoresSafeArea()
+                FieldColor.paper.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: FieldSpace.lg) {
                         // Header with botanical icon
                         headerSection
+                            .scaleEffect(headerVisible ? 1 : 0.85)
+                            .opacity(headerVisible ? 1 : 0)
 
                         // Usage indicator
                         usageIndicator
+                            .offset(y: usageVisible ? 0 : 20)
+                            .opacity(usageVisible ? 1 : 0)
 
                         // Pricing cards
                         pricingSection
+                            .offset(y: pricingVisible ? 0 : 20)
+                            .opacity(pricingVisible ? 1 : 0)
 
                         // CTA buttons
                         actionButtons
+                            .offset(y: buttonsVisible ? 0 : 15)
+                            .opacity(buttonsVisible ? 1 : 0)
 
                         // Restore purchases
                         restoreButton
+                            .opacity(buttonsVisible ? 1 : 0)
 
                         // Legal text
                         legalText
+                            .opacity(buttonsVisible ? 1 : 0)
                     }
                     .padding(FieldSpace.md)
+                }
+            }
+            .onAppear {
+                // Staggered entrance animations
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    headerVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.15)) {
+                    usageVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.25)) {
+                    pricingVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.4)) {
+                    buttonsVisible = true
                 }
             }
             .navigationTitle("Upgrade")
@@ -73,16 +104,28 @@ struct PaywallView: View {
 
     private var headerSection: some View {
         VStack(spacing: FieldSpace.md) {
-            // Botanical icon
+            // Botanical icon with decorative frame
             ZStack {
-                Circle()
-                    .fill(FieldColor.accent.opacity(0.1))
-                    .frame(width: 80, height: 80)
+                // Vintage frame background
+                RoundedRectangle(cornerRadius: FieldRadius.lg)
+                    .fill(FieldColor.illustrationBg)
+                    .frame(width: 100, height: 100)
+
+                // Decorative outer border
+                RoundedRectangle(cornerRadius: FieldRadius.lg)
+                    .stroke(FieldColor.bookBorder, lineWidth: 2)
+                    .frame(width: 100, height: 100)
+
+                // Inner decorative border
+                RoundedRectangle(cornerRadius: FieldRadius.md)
+                    .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 1)
+                    .frame(width: 88, height: 88)
 
                 Image(systemName: "leaf.fill")
-                    .font(.system(size: 36))
+                    .font(.system(size: 42))
                     .foregroundColor(FieldColor.accent)
             }
+            .fieldShadow(FieldShadow.card)
 
             VStack(spacing: FieldSpace.xs) {
                 Text("Unlock Unlimited Discovery")

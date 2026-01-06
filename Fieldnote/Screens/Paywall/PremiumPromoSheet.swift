@@ -18,32 +18,67 @@ struct PremiumPromoSheet: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
+    // Animation states
+    @State private var headerVisible = false
+    @State private var titleVisible = false
+    @State private var benefitsVisible = false
+    @State private var pricingVisible = false
+    @State private var buttonsVisible = false
+
     var body: some View {
         NavigationStack {
             ZStack {
-                FieldColor.agedPaper.ignoresSafeArea()
+                FieldColor.paper.ignoresSafeArea()
 
                 ScrollView {
                     VStack(spacing: FieldSpace.lg) {
                         // Header icon
                         headerIcon
                             .padding(.top, FieldSpace.lg)
+                            .scaleEffect(headerVisible ? 1 : 0.8)
+                            .opacity(headerVisible ? 1 : 0)
 
                         // Title and description
                         titleSection
+                            .offset(y: titleVisible ? 0 : 15)
+                            .opacity(titleVisible ? 1 : 0)
 
                         // Benefits card
                         benefitsCard
+                            .offset(y: benefitsVisible ? 0 : 20)
+                            .opacity(benefitsVisible ? 1 : 0)
 
                         // Pricing options
                         pricingSection
+                            .offset(y: pricingVisible ? 0 : 20)
+                            .opacity(pricingVisible ? 1 : 0)
 
                         // CTA buttons
                         actionButtons
+                            .offset(y: buttonsVisible ? 0 : 15)
+                            .opacity(buttonsVisible ? 1 : 0)
 
                         Spacer(minLength: FieldSpace.xl)
                     }
                     .padding(.horizontal, FieldSpace.md)
+                }
+            }
+            .onAppear {
+                // Staggered entrance animations
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    headerVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.15)) {
+                    titleVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.25)) {
+                    benefitsVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.35)) {
+                    pricingVisible = true
+                }
+                withAnimation(.easeOut(duration: 0.5).delay(0.45)) {
+                    buttonsVisible = true
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -75,26 +110,31 @@ struct PremiumPromoSheet: View {
 
     private var headerIcon: some View {
         ZStack {
-            // Vintage frame background
+            // Vintage frame background - larger
             RoundedRectangle(cornerRadius: FieldRadius.lg)
                 .fill(FieldColor.illustrationBg)
-                .frame(width: 120, height: 120)
+                .frame(width: 140, height: 140)
 
-            // Decorative border
+            // Decorative outer border
             RoundedRectangle(cornerRadius: FieldRadius.lg)
-                .stroke(FieldColor.bookBorder, lineWidth: 1.5)
-                .frame(width: 120, height: 120)
+                .stroke(FieldColor.bookBorder, lineWidth: 2)
+                .frame(width: 140, height: 140)
 
-            // Combined icon
+            // Inner decorative border
+            RoundedRectangle(cornerRadius: FieldRadius.md)
+                .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 1)
+                .frame(width: 126, height: 126)
+
+            // Combined icon - larger
             ZStack {
                 Image(systemName: "leaf.fill")
-                    .font(.system(size: 40, weight: .light))
+                    .font(.system(size: 52, weight: .light))
                     .foregroundColor(FieldColor.accent)
 
                 Image(systemName: "sparkles")
-                    .font(.system(size: 18))
+                    .font(.system(size: 22))
                     .foregroundColor(FieldColor.accent)
-                    .offset(x: 24, y: -20)
+                    .offset(x: 30, y: -26)
             }
         }
         .fieldShadow(FieldShadow.card)
