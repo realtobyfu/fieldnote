@@ -11,8 +11,10 @@ struct SettingsView: View {
     @Environment(\.appStore) private var store
     @Environment(\.onboardingStore) private var onboardingStore
     @Environment(\.subscriptionStore) private var subscriptionStore
+    @Environment(\.syncStore) private var syncStore
 
     @State private var showPaywall = false
+    @State private var showRestartAlert = false
 
     private func sendFeedback() {
         let email = "3tobiasfu@gmail.com"
@@ -58,23 +60,95 @@ struct SettingsView: View {
     @ViewBuilder
     private func settingsContent(appStore: AppStore) -> some View {
         List {
-            // App Philosophy section
+            // App Philosophy / Sync Status section
             Section {
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                    Label {
-                        Text("Offline-First")
-                            .font(FieldType.bodyEmphasized)
-                    } icon: {
-                        Image(systemName: "icloud.slash.fill")
-                            .foregroundColor(FieldColor.accent)
-                    }
+                    if syncStore.iCloudSyncEnabled {
+                        Label {
+                            Text("Synced with iCloud")
+                                .font(FieldType.bodyEmphasized)
+                        } icon: {
+                            Image(systemName: "icloud.fill")
+                                .foregroundColor(FieldColor.accent)
+                        }
 
-                    Text("Fieldnote stores all your observations locally on your device. Your field journal is yours, always accessible without an internet connection.")
-                        .font(FieldType.callout)
-                        .foregroundColor(FieldColor.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(syncStore.statusText)
+                            .font(FieldType.callout)
+                            .foregroundColor(FieldColor.mutedInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Label {
+                            Text("Offline-First")
+                                .font(FieldType.bodyEmphasized)
+                        } icon: {
+                            Image(systemName: "icloud.slash.fill")
+                                .foregroundColor(FieldColor.accent)
+                        }
+
+                        Text("Fieldnote stores all your observations locally on your device. Your field journal is yours, always accessible without an internet connection.")
+                            .font(FieldType.callout)
+                            .foregroundColor(FieldColor.mutedInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.vertical, FieldSpace.xs)
+            }
+
+            // iCloud Sync section
+            Section {
+                Toggle(isOn: Binding(
+                    get: { syncStore.iCloudSyncEnabled },
+                    set: { newValue in
+                        if newValue != syncStore.iCloudSyncEnabled {
+                            showRestartAlert = true
+                        }
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("iCloud Sync")
+                            .font(FieldType.body)
+                            .foregroundColor(FieldColor.ink)
+
+                        Text("Sync plant data across your devices")
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+                }
+                .tint(FieldColor.accent)
+                .disabled(!syncStore.canEnableSync && !syncStore.iCloudSyncEnabled)
+
+                if !syncStore.iCloudAvailable {
+                    HStack(spacing: FieldSpace.sm) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+//                            .foregroundColor(FieldColor.warningAmber)
+                            .font(.caption)
+
+                        Text(syncStore.iCloudUnavailableReason ?? "iCloud unavailable")
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+                }
+
+                if syncStore.iCloudSyncEnabled {
+                    HStack {
+                        Text("Photos")
+                            .font(FieldType.callout)
+                            .foregroundColor(FieldColor.mutedInk)
+
+                        Spacer()
+
+                        Text("Local only")
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+                }
+            } header: {
+                Text("Sync")
+            } footer: {
+                if syncStore.iCloudSyncEnabled {
+                    Text("Plant names and encounter details sync to iCloud. Photos remain stored locally on each device.")
+                        .font(FieldType.caption)
+                }
             }
 
             // Data section
@@ -218,8 +292,23 @@ struct SettingsView: View {
                     subscriptionStore.resetForTesting()
                 }
                 .foregroundColor(FieldColor.errorRed)
+
+                Button("Toggle iCloud Sync (Testing)") {
+                    syncStore.toggleSync()
+                }
+//                .foregroundColor(FieldColor.warningAmber)
             }
             #endif
+        }
+        .alert("Restart Required", isPresented: $showRestartAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button(syncStore.iCloudSyncEnabled ? "Disable Sync" : "Enable Sync") {
+                syncStore.toggleSync()
+            }
+        } message: {
+            Text(syncStore.iCloudSyncEnabled
+                ? "Disabling iCloud sync requires restarting the app. Your data will remain on this device."
+                : "Enabling iCloud sync requires restarting the app. Your plants and encounters will sync across your devices.")
         }
     }
 }

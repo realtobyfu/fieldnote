@@ -14,14 +14,19 @@ struct FieldnoteApp: App {
     @State private var appStore: AppStore
     @State private var onboardingStore = OnboardingStore()
     @State private var subscriptionStore = SubscriptionStore()
+    @State private var syncStore = SyncStore()
     @State private var showPremiumPromo = false
 
     init() {
         let schema = Schema([Plant.self, Encounter.self])
+
+        // Check if user has enabled iCloud sync
+        let syncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
+
         let config = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic
+            cloudKitDatabase: syncEnabled ? .automatic : .none
         )
         do {
             let container = try ModelContainer(for: schema, configurations: [config])
@@ -44,6 +49,7 @@ struct FieldnoteApp: App {
             .environment(\.appStore, appStore)
             .environment(\.onboardingStore, onboardingStore)
             .environment(\.subscriptionStore, subscriptionStore)
+            .environment(\.syncStore, syncStore)
             .animation(.easeInOut(duration: 0.4), value: onboardingStore.shouldShowOnboarding)
             .preferredColorScheme(.light)
             .task {

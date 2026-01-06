@@ -44,3 +44,15 @@ extension EnvironmentValues {
         set { self[SubscriptionStoreKey.self] = newValue }
     }
 }
+
+// Environment key for SyncStore
+private struct SyncStoreKey: EnvironmentKey {
+    @MainActor static let defaultValue: SyncStore = SyncStore()
+}
+
+extension EnvironmentValues {
+    var syncStore: SyncStore {
+        get { self[SyncStoreKey.self] }
+        set { self[SyncStoreKey.self] = newValue }
+    }
+}
