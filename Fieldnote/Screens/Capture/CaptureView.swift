@@ -71,6 +71,7 @@ struct CaptureView: View {
             }
         } content: {
             PaywallView()
+                .environment(\.subscriptionStore, subscriptionStore)
         }
     }
 

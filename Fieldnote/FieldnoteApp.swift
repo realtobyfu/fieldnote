@@ -71,6 +71,7 @@ struct FieldnoteApp: App {
                 subscriptionStore.markPromoAsSeen()
             } content: {
                 PremiumPromoSheet()
+                    .environment(\.subscriptionStore, subscriptionStore)
             }
         }
         .modelContainer(sharedModelContainer)

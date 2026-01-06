@@ -154,14 +154,10 @@ class SubscriptionStore {
 
     /// Check and update subscription status (called on app launch)
     func checkAndUpdateStatus() async {
-        // Check if annual subscription has expired
-        if subscriptionType == .annual,
-           let expirationDate = subscriptionExpirationDate,
-           expirationDate <= Date() {
-            // Subscription expired, verify with StoreKit
-            let currentType = await StoreKitService.shared.checkCurrentEntitlements()
-            updateSubscription(type: currentType, expiresAt: nil)
-        }
+        // Always verify current entitlements with StoreKit
+        let currentType = await StoreKitService.shared.checkCurrentEntitlements()
+        let expirationDate = await StoreKitService.shared.getSubscriptionExpirationDate()
+        updateSubscription(type: currentType, expiresAt: expirationDate)
     }
 
     /// Mark that user has seen the premium promo
