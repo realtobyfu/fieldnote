@@ -16,7 +16,11 @@ struct IllustrationService {
         "common_dandelion": "dandelion",
         "common_blue_violet": "wild_violet",
         "blue_violet": "wild_violet",
-        "black_eyed_susan": "black-eyed_susan"
+        "black_eyed_susan": "black-eyed_susan",
+        "spicebush": "northern_spicebush",
+        "joe_pye_weed": "joe-pye_weed",
+        "joe_pye-weed": "joe-pye_weed",
+        "dutchmans_breeches": "dutchman's_breeches"
     ]
 
     // MARK: - Public API
@@ -80,8 +84,11 @@ struct IllustrationService {
         "cardinal_flower",
         "common_milkweed",
         "dandelion",
+        "dutchman's_breeches",
         "goldenrod",
+        "joe-pye_weed",
         "purple_coneflower",
+        "trillium",
         "queen_annes_lace",
         "virginia_bluebells",
         "wild_bergamot",
@@ -90,8 +97,12 @@ struct IllustrationService {
         "wild_violet",
 
         // Shrubs
+        "button_bush",
         "elderberry",
         "mountain_laurel",
+        "northern_spicebush",
+        "rhododendron",
+        "viburnum",
         "winterberry",
         "witch_hazel",
 

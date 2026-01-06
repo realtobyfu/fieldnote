@@ -22,9 +22,18 @@ struct PlantDetailView: View {
             VStack(alignment: .leading, spacing: FieldSpace.lg) {
                 // Hero botanical illustration
                 heroIllustration
+                    .onAppear {
+                        print("DEBUG PlantDetailView: Loading plant '\(plant.commonName)'")
+                        print("DEBUG PlantDetailView: summary length=\(plant.summary.count)")
+                        print("DEBUG PlantDetailView: habitat=\(plant.habitat ?? "nil")")
+                        print("DEBUG PlantDetailView: nativeRange=\(plant.nativeRange ?? "nil")")
+                    }
 
                 // Curated photo gallery (exact-match only)
-                PlantPhotoGalleryView(plantName: plant.commonName)
+                PlantPhotoGalleryView(
+                    plantName: plant.commonName,
+                    userPhotoFilenames: encounterPhotoFilenames
+                )
 
                 // Plant info card
                 VintageCard {
@@ -41,14 +50,40 @@ struct PlantDetailView: View {
                         RuledLine()
 
 
-                        // Family
-                        VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                            Text("Family")
-                                .font(FieldType.caption)
-                                .foregroundColor(FieldColor.fadedInk)
-                            Text(plant.family)
-                                .font(FieldType.bodyEmphasized)
-                                .foregroundColor(FieldColor.vintageInk)
+                        // Family & Habitat row
+                        HStack(alignment: .top, spacing: FieldSpace.lg) {
+                            VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                                Text("Family")
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                                Text(plant.family)
+                                    .font(FieldType.bodyEmphasized)
+                                    .foregroundColor(FieldColor.vintageInk)
+                            }
+                            Spacer()
+
+                            if let habitat = plant.habitat, !habitat.isEmpty {
+                                VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                                    Text("Habitat")
+                                        .font(FieldType.caption)
+                                        .foregroundColor(FieldColor.fadedInk)
+                                    Text(habitat.capitalized)
+                                        .font(FieldType.bodyEmphasized)
+                                        .foregroundColor(FieldColor.vintageInk)
+                                }
+                            }
+                        }
+
+                        // Native Range
+                        if let nativeRange = plant.nativeRange, !nativeRange.isEmpty {
+                            VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                                Text("Native Range")
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                                Text(nativeRange)
+                                    .font(FieldType.body)
+                                    .foregroundColor(FieldColor.vintageInk)
+                            }
                         }
 
                         // Traits
@@ -163,6 +198,12 @@ extension PlantDetailView {
         let hasCustom = (plant.customIllustrationFileName?.isEmpty == false)
         let hasBuiltIn = IllustrationService.hasIllustration(for: plant.commonName, family: plant.family)
         return !hasCustom && !hasBuiltIn
+    }
+
+    private var encounterPhotoFilenames: [String] {
+        plant.encounters
+            .sorted { $0.date > $1.date }
+            .compactMap { $0.photoFileName }
     }
 
     private func saveCustomIllustration(from item: PhotosPickerItem) async {

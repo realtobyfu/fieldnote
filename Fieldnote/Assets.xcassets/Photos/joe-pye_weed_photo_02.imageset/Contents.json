@@ -1,8 +1,9 @@
 {
-  "data" : [
+  "images" : [
     {
       "filename" : "joe-pye_weed_photo_02.webp",
-      "idiom" : "universal"
+      "idiom" : "universal",
+      "scale" : "1x"
     }
   ],
   "info" : {

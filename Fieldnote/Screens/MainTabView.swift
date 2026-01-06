@@ -69,10 +69,10 @@ struct MainTabView: View {
             .tint(FieldColor.accent)
 
             // Offline banner
-            if !networkMonitor.isConnected {
-                OfflineBanner()
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
+//            if !networkMonitor.isConnected {
+//                OfflineBanner()
+//                    .transition(.move(edge: .top).combined(with: .opacity))
+//            }
         }
         .animation(.easeInOut(duration: 0.3), value: networkMonitor.isConnected)
     }

@@ -40,7 +40,7 @@ struct OnboardingWelcomePage: View {
     private var illustrationSection: some View {
         VStack(spacing: FieldSpace.md) {
             // Botanical illustration
-            Image("common_milkweed")
+            Image("white_pine")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 200)

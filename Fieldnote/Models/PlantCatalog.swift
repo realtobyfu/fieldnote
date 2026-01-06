@@ -62,8 +62,10 @@ extension CatalogPlant {
             commonName: commonName,
             scientificName: scientificName,
             family: family,
-            summary: shortDescription,
+            summary: summary.isEmpty ? shortDescription : summary,
             traits: traits,
+            habitat: habitat,
+            nativeRange: nativeRange.isEmpty ? nil : nativeRange,
             encounters: []
         )
     }

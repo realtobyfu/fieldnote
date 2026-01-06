@@ -44,7 +44,7 @@ class CaptureViewModel {
     private func identifyPlant(image: UIImage) async {
         isIdentifying = true
         identificationError = nil
-
+        
         do {
             // Fetch location for better API accuracy (non-blocking)
             let location = await LocationService.shared.requestCurrentLocation()

@@ -52,10 +52,10 @@ struct CatalogGridCard: View {
                     .foregroundColor(isDiscovered ? FieldColor.vintageInk : FieldColor.fadedInk)
                     .lineLimit(2)
 
-                Text(catalogPlant.habitat.capitalized)
-                    .font(FieldType.caption)
-                    .foregroundColor(FieldColor.fadedInk)
-                    .lineLimit(1)
+//                Text(catalogPlant.habitat.capitalized)
+//                    .font(FieldType.caption)
+//                    .foregroundColor(FieldColor.fadedInk)
+//                    .lineLimit(1)
             }
             .frame(height: 50, alignment: .top)
             .frame(maxWidth: .infinity, alignment: .leading)

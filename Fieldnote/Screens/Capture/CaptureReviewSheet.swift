@@ -31,6 +31,12 @@ struct CaptureReviewSheet: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var addedImage: UIImage?
 
+    // Enrichment data for uncatalogued plants
+    @State private var enrichedSummary: String = ""
+    @State private var enrichedHabitat: String?
+    @State private var enrichedNativeRange: String?
+    @State private var isEnriching = false
+
     let availableConditions = ["sun", "shade", "wet", "dry", "snow", "windy", "hot", "cold"]
     let placeholderSymbols = ["leaf.fill", "camera.fill", "sun.max.fill", "cloud.fill", "tree.fill", "allergens.fill"]
 
@@ -82,6 +88,12 @@ struct CaptureReviewSheet: View {
                                     if captureMode.hasPrefilledData {
                                         aiIdentifiedBadge
                                     }
+
+//                                    if isEnriching {
+//                                        enrichingBadge
+//                                    } else if !enrichedSummary.isEmpty && selectedCatalogPlant == nil {
+//                                        enrichedBadge
+//                                    }
                                 }
 
                                 TextField("Common name", text: $commonName)
@@ -288,6 +300,40 @@ struct CaptureReviewSheet: View {
                 customLabel: $locationLabel
             )
         }
+        .task {
+            await fetchEnrichmentDataIfNeeded()
+        }
+    }
+
+    // MARK: - Wikipedia Enrichment
+
+    private func fetchEnrichmentDataIfNeeded() async {
+        // Only fetch if not in catalog and we have identification data
+        guard selectedCatalogPlant == nil,
+              !scientificName.isEmpty || !commonName.isEmpty else {
+            print("DEBUG CaptureReview: Skipping enrichment (catalogPlant=\(selectedCatalogPlant != nil), scientific='\(scientificName)', common='\(commonName)')")
+            return
+        }
+
+        print("DEBUG CaptureReview: Starting enrichment fetch...")
+        isEnriching = true
+
+        if let enrichment = await WikipediaPlantService.fetchPlantData(
+            scientificName: scientificName,
+            commonName: commonName
+        ) {
+            enrichedSummary = enrichment.summary
+            enrichedHabitat = enrichment.habitat
+            enrichedNativeRange = enrichment.nativeRange
+            print("DEBUG CaptureReview: Enrichment received!")
+            print("DEBUG CaptureReview: summary length=\(enrichedSummary.count)")
+            print("DEBUG CaptureReview: habitat=\(enrichedHabitat ?? "nil")")
+            print("DEBUG CaptureReview: nativeRange=\(enrichedNativeRange ?? "nil")")
+        } else {
+            print("DEBUG CaptureReview: Enrichment returned nil")
+        }
+
+        isEnriching = false
     }
 
     // MARK: - AI Badge
@@ -305,6 +351,34 @@ struct CaptureReviewSheet: View {
         .background(FieldColor.accent.opacity(0.1))
         .cornerRadius(FieldRadius.sm)
     }
+
+    private var enrichingBadge: some View {
+        HStack(spacing: FieldSpace.xs) {
+            ProgressView()
+                .scaleEffect(0.7)
+            Text("Loading info...")
+                .font(FieldType.caption2)
+        }
+        .foregroundColor(FieldColor.mutedInk)
+        .padding(.horizontal, FieldSpace.sm)
+        .padding(.vertical, FieldSpace.xs)
+        .background(FieldColor.fadedInk.opacity(0.1))
+        .cornerRadius(FieldRadius.sm)
+    }
+
+//    private var enrichedBadge: some View {
+//        HStack(spacing: FieldSpace.xs) {
+//            Image(systemName: "checkmark.circle.fill")
+//                .font(.caption)
+//            Text("Enriched")
+//                .font(FieldType.caption2)
+//        }
+//        .foregroundColor(FieldColor.successGreen)
+//        .padding(.horizontal, FieldSpace.sm)
+//        .padding(.vertical, FieldSpace.xs)
+//        .background(FieldColor.successGreen.opacity(0.1))
+//        .cornerRadius(FieldRadius.sm)
+//    }
 
     // MARK: - Photo Preview
 
@@ -420,17 +494,43 @@ struct CaptureReviewSheet: View {
             store.addEncounter(encounter, to: existingPlant)
         } else {
             // Create new plant with this encounter
-            let catalogTraits = selectedCatalogPlant?.traits ?? []
-            let catalogSummary = selectedCatalogPlant?.summary ?? ""
+            // Use catalog data if available, otherwise use Wikipedia enrichment
+            let plantSummary: String
+            let plantTraits: [String]
+            let plantHabitat: String?
+            let plantNativeRange: String?
+
+            if let catalogPlant = selectedCatalogPlant {
+                // Use catalog data
+                plantSummary = catalogPlant.summary
+                plantTraits = catalogPlant.traits
+                plantHabitat = catalogPlant.habitat
+                plantNativeRange = catalogPlant.nativeRange.isEmpty ? nil : catalogPlant.nativeRange
+            } else {
+                // Use Wikipedia enrichment data
+                plantSummary = enrichedSummary
+                plantTraits = []
+                plantHabitat = enrichedHabitat
+                plantNativeRange = enrichedNativeRange
+                print("DEBUG Save: Using enriched data - summary length=\(plantSummary.count), habitat=\(plantHabitat ?? "nil"), nativeRange=\(plantNativeRange ?? "nil")")
+            }
+
+            print("DEBUG Save: Creating new plant '\(trimmedCommonName)'")
+            print("DEBUG Save: summary='\(plantSummary.prefix(50))...'")
+            print("DEBUG Save: habitat=\(plantHabitat ?? "nil"), nativeRange=\(plantNativeRange ?? "nil")")
+
             let newPlant = Plant(
                 commonName: trimmedCommonName,
                 scientificName: trimmedScientificName.isEmpty ? "Species unknown" : trimmedScientificName,
                 family: trimmedFamily.isEmpty ? "Unknown" : trimmedFamily,
-                summary: catalogSummary,
-                traits: catalogTraits
+                summary: plantSummary,
+                traits: plantTraits,
+                habitat: plantHabitat,
+                nativeRange: plantNativeRange
             )
             store.addPlant(newPlant)
             store.addEncounter(encounter, to: newPlant)
+            print("DEBUG Save: Plant saved with id=\(newPlant.id)")
         }
 
         isSaving = false

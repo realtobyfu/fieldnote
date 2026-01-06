@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct PlantIllustrationView: View {
     let plant: Plant
@@ -13,6 +14,8 @@ struct PlantIllustrationView: View {
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
+    @State private var fallbackHeroPhoto: UIImage?
+    @State private var isLoadingFallbackPhoto = false
 
     init(plant: Plant, size: BotanicalIllustrationView.IllustrationSize = .card) {
         self.plant = plant
@@ -25,6 +28,12 @@ struct PlantIllustrationView: View {
                 customIllustration(image)
             } else if hasCustomIllustration {
                 loadingPlaceholder
+            } else if hasBuiltInIllustration {
+                BotanicalIllustrationView(plant.commonName, family: plant.family, size: size)
+            } else if let heroPhoto = fallbackHeroPhoto {
+                userPhoto(heroPhoto)
+            } else if isLoadingFallbackPhoto {
+                loadingPlaceholder
             } else {
                 BotanicalIllustrationView(plant.commonName, family: plant.family, size: size)
             }
@@ -33,12 +42,24 @@ struct PlantIllustrationView: View {
         .frame(maxWidth: size == .hero ? .infinity : nil)
         .task {
             await loadCustomIllustrationIfNeeded()
+            await loadFallbackPhotoIfNeeded()
         }
     }
 
     private var hasCustomIllustration: Bool {
         guard let filename = plant.customIllustrationFileName else { return false }
         return !filename.isEmpty
+    }
+
+    private var hasBuiltInIllustration: Bool {
+        IllustrationService.hasIllustration(for: plant.commonName, family: plant.family)
+    }
+
+    private var fallbackPhotoFilename: String? {
+        plant.encounters
+            .sorted { $0.date > $1.date }
+            .compactMap { $0.photoFileName }
+            .first
     }
 
     private func loadCustomIllustrationIfNeeded() async {
@@ -52,10 +73,41 @@ struct PlantIllustrationView: View {
         isLoading = false
     }
 
+    private func loadFallbackPhotoIfNeeded() async {
+        guard !hasCustomIllustration,
+              !hasBuiltInIllustration,
+              fallbackHeroPhoto == nil,
+              !isLoadingFallbackPhoto,
+              let filename = fallbackPhotoFilename else { return }
+
+        isLoadingFallbackPhoto = true
+        let image = await PhotoStorageService.shared.loadPhoto(filename: filename)
+        await MainActor.run {
+            fallbackHeroPhoto = image
+            isLoadingFallbackPhoto = false
+        }
+    }
+
     private func customIllustration(_ image: UIImage) -> some View {
         Image(uiImage: image)
             .resizable()
             .scaledToFit()
+            .background(FieldColor.illustrationBg)
+            .overlay(
+                Rectangle()
+                    .fill(FieldColor.sepia.opacity(0.03))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: FieldRadius.sm)
+                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+            )
+            .cornerRadius(FieldRadius.sm)
+    }
+
+    private func userPhoto(_ image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
             .background(FieldColor.illustrationBg)
             .overlay(
                 Rectangle()
