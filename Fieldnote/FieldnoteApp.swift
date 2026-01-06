@@ -13,6 +13,8 @@ struct FieldnoteApp: App {
     let sharedModelContainer: ModelContainer
     @State private var appStore: AppStore
     @State private var onboardingStore = OnboardingStore()
+    @State private var subscriptionStore = SubscriptionStore()
+    @State private var showPremiumPromo = false
 
     init() {
         let schema = Schema([Plant.self, Encounter.self])
@@ -41,8 +43,35 @@ struct FieldnoteApp: App {
             }
             .environment(\.appStore, appStore)
             .environment(\.onboardingStore, onboardingStore)
+            .environment(\.subscriptionStore, subscriptionStore)
             .animation(.easeInOut(duration: 0.4), value: onboardingStore.shouldShowOnboarding)
             .preferredColorScheme(.light)
+            .task {
+                // Check subscription status on launch
+                await subscriptionStore.checkAndUpdateStatus()
+
+                // Start listening for StoreKit transaction updates
+                await StoreKitService.shared.startTransactionListener { type, expirationDate in
+                    await MainActor.run {
+                        subscriptionStore.updateSubscription(type: type, expiresAt: expirationDate)
+                    }
+                }
+            }
+            .onChange(of: onboardingStore.hasCompletedOnboarding) { _, completed in
+                // Show premium promo after onboarding completes (only once)
+                if completed && subscriptionStore.shouldShowPremiumPromo {
+                    // Small delay to let the transition complete
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        showPremiumPromo = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showPremiumPromo) {
+                // Mark as seen when dismissed
+                subscriptionStore.markPromoAsSeen()
+            } content: {
+                PremiumPromoSheet()
+            }
         }
         .modelContainer(sharedModelContainer)
     }

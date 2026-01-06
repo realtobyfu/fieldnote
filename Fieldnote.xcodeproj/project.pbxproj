@@ -13,6 +13,7 @@
 		3EB31FC62F0284A40016DB46 /* screenshot-3.png in Resources */ = {isa = PBXBuildFile; fileRef = 3EB31FC22F0284A40016DB46 /* screenshot-3.png */; };
 		3EB31FC72F0284A40016DB46 /* screenshot-2.png in Resources */ = {isa = PBXBuildFile; fileRef = 3EB31FC12F0284A40016DB46 /* screenshot-2.png */; };
 		3EB3212F2F0674FA0016DB46 /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3EB3212E2F0674FA0016DB46 /* Config.plist */; };
+		3EF888C72F0CBEDC0082C357 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3EF888C62F0CBEDB0082C357 /* StoreKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +24,7 @@
 		3EB31FC22F0284A40016DB46 /* screenshot-3.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "screenshot-3.png"; sourceTree = "<group>"; };
 		3EB31FC32F0284A40016DB46 /* screenshot-4.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "screenshot-4.png"; sourceTree = "<group>"; };
 		3EB3212E2F0674FA0016DB46 /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Config.plist; sourceTree = "<group>"; };
+		3EF888C62F0CBEDB0082C357 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3EF888C72F0CBEDC0082C357 /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -54,6 +57,7 @@
 				3EB31FC32F0284A40016DB46 /* screenshot-4.png */,
 				3EB31FBE2F0284900016DB46 /* README.md */,
 				3E6546A22EF93C4C003C38AC /* Fieldnote */,
+				3EF888C52F0CBEDB0082C357 /* Frameworks */,
 				3E6546A12EF93C4C003C38AC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -64,6 +68,14 @@
 				3E6546A02EF93C4C003C38AC /* Fieldnote.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		3EF888C52F0CBEDB0082C357 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3EF888C62F0CBEDB0082C357 /* StoreKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

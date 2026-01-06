@@ -1,0 +1,124 @@
+{
+  "identifier" : "B2F5D8A1-3E47-4C92-9F6B-8A1D5E7C3F2A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "39.99",
+      "familyShareable" : false,
+      "internalID" : "6737D8B1-2E54-4A89-9C3F-7B5E4D2A1F08",
+      "localizations" : [
+        {
+          "description" : "Unlimited AI plant identifications forever. One-time purchase for permanent access.",
+          "displayName" : "Fieldnote Premium Lifetime",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.fieldnote.premium.lifetime.1",
+      "referenceName" : "Premium Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6739847261",
+    "_developerTeamID" : "XXXXXXXXXX",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 758592847.38291001,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "A1B2C3D4-5E6F-7890-ABCD-EF1234567890",
+      "localizations" : [
+
+      ],
+      "name" : "Fieldnote Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "E5F6A7B8-9C0D-1E2F-3A4B-5C6D7E8F9A0B",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "F7E8D9C0-B1A2-3456-7890-ABCDEF123456",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Unlimited AI plant identifications. Identify any plant instantly with advanced recognition.",
+              "displayName" : "Fieldnote Premium",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.fieldnote.premium.annual.1",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Premium Annual",
+          "subscriptionGroupID" : "A1B2C3D4-5E6F-7890-ABCD-EF1234567890",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -10,6 +10,7 @@ import PhotosUI
 
 struct CaptureView: View {
     @Environment(\.appStore) private var store
+    @Environment(\.subscriptionStore) private var subscriptionStore
     @State private var viewModel = CaptureViewModel()
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
@@ -30,13 +31,13 @@ struct CaptureView: View {
         .navigationTitle("Capture")
         .onChange(of: viewModel.selectedItem) { _, _ in
             Task {
-                await viewModel.loadPhoto()
+                await viewModel.loadPhoto(subscriptionStore: subscriptionStore)
             }
         }
         .onChange(of: capturedImage) { _, newImage in
             if let image = newImage {
                 Task {
-                    await viewModel.handleCapturedImage(image)
+                    await viewModel.handleCapturedImage(image, subscriptionStore: subscriptionStore)
                 }
             }
         }
@@ -60,6 +61,16 @@ struct CaptureView: View {
                 )
                 .environment(\.appStore, store)
             }
+        }
+        .sheet(isPresented: $viewModel.showPaywall) {
+            // On dismiss, check if user now has access and retry
+            if subscriptionStore.canUseAIIdentification {
+                Task {
+                    await viewModel.retryPendingIdentification(subscriptionStore: subscriptionStore)
+                }
+            }
+        } content: {
+            PaywallView()
         }
     }
 

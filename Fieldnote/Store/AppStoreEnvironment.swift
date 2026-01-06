@@ -32,3 +32,15 @@ extension EnvironmentValues {
         set { self[OnboardingStoreKey.self] = newValue }
     }
 }
+
+// Environment key for SubscriptionStore
+private struct SubscriptionStoreKey: EnvironmentKey {
+    @MainActor static let defaultValue: SubscriptionStore = SubscriptionStore()
+}
+
+extension EnvironmentValues {
+    var subscriptionStore: SubscriptionStore {
+        get { self[SubscriptionStoreKey.self] }
+        set { self[SubscriptionStoreKey.self] = newValue }
+    }
+}

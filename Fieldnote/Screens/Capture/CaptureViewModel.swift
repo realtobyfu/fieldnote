@@ -15,13 +15,17 @@ class CaptureViewModel {
     var selectedItem: PhotosPickerItem?
     var selectedPhotoData: Data?
     var showReviewSheet = false
+    var showPaywall = false
 
     // ML identification state
     var isIdentifying = false
     var identificationError: Error?
     var captureMode: CaptureMode?
 
-    func loadPhoto() async {
+    // Pending image for retry after paywall dismissal
+    private var pendingImage: UIImage?
+
+    func loadPhoto(subscriptionStore: SubscriptionStore) async {
         guard let item = selectedItem else { return }
 
         do {
@@ -29,7 +33,7 @@ class CaptureViewModel {
                 selectedPhotoData = data
 
                 if let image = UIImage(data: data) {
-                    await identifyPlant(image: image)
+                    await identifyPlant(image: image, subscriptionStore: subscriptionStore)
                 }
             }
         } catch {
@@ -37,14 +41,21 @@ class CaptureViewModel {
         }
     }
 
-    func handleCapturedImage(_ image: UIImage) async {
-        await identifyPlant(image: image)
+    func handleCapturedImage(_ image: UIImage, subscriptionStore: SubscriptionStore) async {
+        await identifyPlant(image: image, subscriptionStore: subscriptionStore)
     }
 
-    private func identifyPlant(image: UIImage) async {
+    private func identifyPlant(image: UIImage, subscriptionStore: SubscriptionStore) async {
+        // Check if user can use AI identification
+        guard subscriptionStore.canUseAIIdentification else {
+            pendingImage = image
+            showPaywall = true
+            return
+        }
+
         isIdentifying = true
         identificationError = nil
-        
+
         do {
             // Fetch location for better API accuracy (non-blocking)
             let location = await LocationService.shared.requestCurrentLocation()
@@ -54,6 +65,10 @@ class CaptureViewModel {
                 image: image,
                 location: location
             )
+
+            // Record AI identification usage
+            subscriptionStore.recordIdentification()
+
             captureMode = .mlIdentification(result: result, image: image)
             isIdentifying = false
             showReviewSheet = true
@@ -72,6 +87,13 @@ class CaptureViewModel {
             )
             showReviewSheet = true
         }
+    }
+
+    /// Retry identification after subscription purchase
+    func retryPendingIdentification(subscriptionStore: SubscriptionStore) async {
+        guard let image = pendingImage else { return }
+        pendingImage = nil
+        await identifyPlant(image: image, subscriptionStore: subscriptionStore)
     }
 
     func startManualEntry() {

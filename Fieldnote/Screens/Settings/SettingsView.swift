@@ -10,6 +10,9 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.appStore) private var store
     @Environment(\.onboardingStore) private var onboardingStore
+    @Environment(\.subscriptionStore) private var subscriptionStore
+
+    @State private var showPaywall = false
 
     private func sendFeedback() {
         let email = "3tobiasfu@gmail.com"
@@ -86,6 +89,44 @@ struct SettingsView: View {
                 }
             }
 
+            // Subscription section
+            Section {
+                NavigationLink {
+                    SubscriptionStatusView()
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(subscriptionStore.isPremium ? "Premium" : "Free")
+                                .font(FieldType.bodyEmphasized)
+                                .foregroundColor(FieldColor.ink)
+
+                            if !subscriptionStore.isPremium {
+                                Text("\(subscriptionStore.remainingFreeIdentifications) AI IDs remaining")
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                            } else {
+                                Text(subscriptionStore.subscriptionType == .lifetime ? "Lifetime access" : "Annual subscription")
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                            }
+                        }
+
+                        Spacer()
+
+                        if subscriptionStore.isPremium {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundColor(FieldColor.accent)
+                        } else {
+                            Text("Upgrade")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.accent)
+                        }
+                    }
+                }
+            } header: {
+                Text("Subscription")
+            }
+
             // About section
             Section("About") {
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
@@ -142,6 +183,11 @@ struct SettingsView: View {
             Section("Developer") {
                 Button("Reset Onboarding") {
                     onboardingStore.resetOnboarding()
+                }
+                .foregroundColor(FieldColor.errorRed)
+
+                Button("Reset Subscription (Testing)") {
+                    subscriptionStore.resetForTesting()
                 }
                 .foregroundColor(FieldColor.errorRed)
             }
