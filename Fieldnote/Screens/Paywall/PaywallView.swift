@@ -121,9 +121,11 @@ struct PaywallView: View {
                     .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 1)
                     .frame(width: 88, height: 88)
 
-                Image(systemName: "leaf.fill")
-                    .font(.system(size: 42))
-                    .foregroundColor(FieldColor.accent)
+                Image("Icon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 84, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: FieldRadius.lg))
             }
             .fieldShadow(FieldShadow.card)
 

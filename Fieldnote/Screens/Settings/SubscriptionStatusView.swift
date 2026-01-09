@@ -14,6 +14,20 @@ struct SubscriptionStatusView: View {
     @State private var showPaywall = false
     @State private var isRestoring = false
     @State private var errorMessage: String?
+    
+    private func suggestFeature() {
+        let email = "3tobiasfu@gmail.com"
+        let subject = "Fieldnote Feature Suggestion"
+        let body = "I'd love to see this feature in Fieldnote:\n\n\n\n---\nFieldnote v1.0.0 (Premium)"
+
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
+            UIApplication.shared.open(url)
+        }
+    }
+
 
     var body: some View {
         List {
@@ -84,6 +98,7 @@ struct SubscriptionStatusView: View {
 
             // Info section
             Section {
+
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
                     Text("About Premium")
                         .font(FieldType.bodyEmphasized)
@@ -95,6 +110,22 @@ struct SubscriptionStatusView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, FieldSpace.xs)
+                
+                // Suggest Feature button (Premium only)
+                if subscriptionStore.isPremium {
+                    Button {
+                        suggestFeature()
+                    } label: {
+                        HStack {
+                            Label("Suggest a Feature", systemImage: "lightbulb")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundColor(FieldColor.mutedInk)
+                        }
+                    }
+                }
+
             }
         }
         .navigationTitle("Subscription")

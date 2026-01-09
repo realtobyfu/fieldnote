@@ -56,7 +56,7 @@ struct PlantIllustrationView: View {
     }
 
     private var fallbackPhotoFilename: String? {
-        plant.encounters
+        plant.encounters?
             .sorted { $0.date > $1.date }
             .compactMap { $0.photoFileName }
             .first

@@ -10,21 +10,21 @@ import Foundation
 
 @Model
 final class Plant: Identifiable, Hashable {
-    @Attribute(.unique) var id: UUID
-    var commonName: String
-    var scientificName: String
-    var family: String
-    var summary: String
-    var traits: [String]
+    var id: UUID = UUID()
+    var commonName: String = ""
+    var scientificName: String = ""
+    var family: String = ""
+    var summary: String = ""
+    var traits: [String] = []
     var habitat: String?
     var nativeRange: String?
     var customIllustrationFileName: String?
 
     @Relationship(deleteRule: .cascade, inverse: \Encounter.plant)
-    var encounters: [Encounter] = []
+    var encounters: [Encounter]?
 
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(
         id: UUID = UUID(),
@@ -61,17 +61,17 @@ final class Plant: Identifiable, Hashable {
 
     /// Number of encounters for this plant
     var encounterCount: Int {
-        encounters.count
+        encounters?.count ?? 0
     }
 
     /// Most recent encounter (by date)
     var mostRecentEncounter: Encounter? {
-        encounters.max(by: { $0.date < $1.date })
+        encounters?.max(by: { $0.date < $1.date })
     }
 
     /// Average confidence across all encounters (0.0...1.0)
     var averageConfidence: Double {
-        guard !encounters.isEmpty else { return 0.0 }
+        guard let encounters = encounters, !encounters.isEmpty else { return 0.0 }
         let sum = encounters.reduce(0.0) { $0 + $1.confidence }
         return sum / Double(encounters.count)
     }

@@ -159,7 +159,7 @@ struct OnboardingCameraPage: View {
                     }
                     .frame(maxWidth: 200)
 
-                    Button("Skip for Now") {
+                    Button("Continue Without Camera") {
                         onboardingStore.completeOnboarding()
                     }
                     .font(FieldType.callout)
@@ -168,17 +168,10 @@ struct OnboardingCameraPage: View {
                 }
             } else {
                 // Request camera permission
-                PrimaryButton("Allow Camera Access") {
+                PrimaryButton("Continue") {
                     requestCameraPermission()
                 }
                 .frame(maxWidth: 280)
-
-                Button("Skip for Now") {
-                    onboardingStore.completeOnboarding()
-                }
-                .font(FieldType.callout)
-                .foregroundColor(FieldColor.mutedInk)
-                .padding(.top, FieldSpace.xs)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: showLocationStep)

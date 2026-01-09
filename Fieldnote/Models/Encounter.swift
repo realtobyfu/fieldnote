@@ -11,16 +11,16 @@ import CoreLocation
 
 @Model
 final class Encounter: Identifiable, Hashable {
-    @Attribute(.unique) var id: UUID
-    var date: Date
+    var id: UUID = UUID()
+    var date: Date = Date()
     var locationName: String?
     var locationLabel: String?
     var latitude: Double?
     var longitude: Double?
-    var photoPlaceholder: String  // SF Symbol name for colored placeholder
-    var confidence: Double  // 0.0...1.0
+    var photoPlaceholder: String = "leaf.fill"  // SF Symbol name for colored placeholder
+    var confidence: Double = 0.75  // 0.0...1.0
     var notes: String?
-    var conditions: [String]  // e.g., ["sun", "wet", "windy"]
+    var conditions: [String] = []  // e.g., ["sun", "wet", "windy"]
 
     // User photo storage
     var photoFileName: String?  // Reference to saved image file in Documents/EncounterPhotos/

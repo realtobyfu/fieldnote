@@ -68,7 +68,7 @@ class AppStore {
 
     var uniqueLocations: [String] {
         let locations = plants.flatMap { plant in
-            plant.encounters.compactMap { $0.displayLocationName }
+            (plant.encounters ?? []).compactMap { $0.displayLocationName }
         }
         return Array(Set(locations)).sorted()
     }
@@ -77,7 +77,7 @@ class AppStore {
         var locationMap: [String: Set<UUID>] = [:]
 
         for plant in plants {
-            for encounter in plant.encounters {
+            for encounter in plant.encounters ?? [] {
                 if let location = encounter.displayLocationName {
                     locationMap[location, default: []].insert(plant.id)
                 }
@@ -197,7 +197,10 @@ class AppStore {
 
     func addEncounter(_ encounter: Encounter, to plant: Plant) {
         encounter.plant = plant
-        plant.encounters.append(encounter)
+        if plant.encounters == nil {
+            plant.encounters = []
+        }
+        plant.encounters?.append(encounter)
         plant.updatedAt = Date()
         modelContext.insert(encounter)
         save()
@@ -234,14 +237,14 @@ class AppStore {
     // MARK: - Computed Collections
 
     var allEncounters: [Encounter] {
-        plants.flatMap { $0.encounters }
+        plants.flatMap { $0.encounters ?? [] }
             .sorted { $0.date > $1.date }
     }
 
     var recentlyEncountered: [Plant] {
         let sevenDaysAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
         return plants.filter { plant in
-            plant.encounters.contains { $0.date >= sevenDaysAgo }
+            (plant.encounters ?? []).contains { $0.date >= sevenDaysAgo }
         }
         .sorted { ($0.mostRecentEncounter?.date ?? .distantPast) > ($1.mostRecentEncounter?.date ?? .distantPast) }
     }
@@ -253,7 +256,7 @@ class AppStore {
 
     var winterFinds: [Plant] {
         plants.filter { plant in
-            plant.encounters.contains { encounter in
+            (plant.encounters ?? []).contains { encounter in
                 let month = Calendar.current.component(.month, from: encounter.date)
                 return month == 12 || month == 1 || month == 2
             }
@@ -337,7 +340,7 @@ class AppStore {
         var clusters: [String: LocationCluster] = [:]
 
         for plant in plants {
-            for encounter in plant.encounters {
+            for encounter in plant.encounters ?? [] {
                 guard let coordinate = encounter.coordinates,
                       let locationName = encounter.displayLocationName else { continue }
 

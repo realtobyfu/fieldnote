@@ -14,7 +14,6 @@ struct SettingsView: View {
     @Environment(\.syncStore) private var syncStore
 
     @State private var showPaywall = false
-    @State private var showRestartAlert = false
 
     private func sendFeedback() {
         let email = "3tobiasfu@gmail.com"
@@ -29,18 +28,6 @@ struct SettingsView: View {
         }
     }
 
-    private func suggestFeature() {
-        let email = "3tobiasfu@gmail.com"
-        let subject = "Fieldnote Feature Suggestion"
-        let body = "I'd love to see this feature in Fieldnote:\n\n\n\n---\nFieldnote v1.0.0 (Premium)"
-
-        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-
-        if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)&body=\(encodedBody)") {
-            UIApplication.shared.open(url)
-        }
-    }
 
     var body: some View {
         Group {
@@ -60,10 +47,10 @@ struct SettingsView: View {
     @ViewBuilder
     private func settingsContent(appStore: AppStore) -> some View {
         List {
-            // App Philosophy / Sync Status section
+            // Storage section (status display only - sync is automatic)
             Section {
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                    if syncStore.iCloudSyncEnabled {
+                    if syncStore.iCloudAvailable {
                         Label {
                             Text("Synced with iCloud")
                                 .font(FieldType.bodyEmphasized)
@@ -72,7 +59,7 @@ struct SettingsView: View {
                                 .foregroundColor(FieldColor.accent)
                         }
 
-                        Text(syncStore.statusText)
+                        Text("Your field journal lives on your device first, then syncs quietly to iCloud.")
                             .font(FieldType.callout)
                             .foregroundColor(FieldColor.mutedInk)
                             .fixedSize(horizontal: false, vertical: true)
@@ -89,93 +76,21 @@ struct SettingsView: View {
                             .font(FieldType.callout)
                             .foregroundColor(FieldColor.mutedInk)
                             .fixedSize(horizontal: false, vertical: true)
+
+                        Text("Sign in to iCloud to sync across devices.")
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.fadedInk)
                     }
                 }
                 .padding(.vertical, FieldSpace.xs)
-            }
-
-            // iCloud Sync section
-            Section {
-                Toggle(isOn: Binding(
-                    get: { syncStore.iCloudSyncEnabled },
-                    set: { newValue in
-                        if newValue != syncStore.iCloudSyncEnabled {
-                            showRestartAlert = true
-                        }
-                    }
-                )) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("iCloud Sync")
-                            .font(FieldType.body)
-                            .foregroundColor(FieldColor.ink)
-
-                        Text("Sync plant data across your devices")
-                            .font(FieldType.caption)
-                            .foregroundColor(FieldColor.fadedInk)
-                    }
-                }
-                .tint(FieldColor.accent)
-                .disabled(!syncStore.canEnableSync && !syncStore.iCloudSyncEnabled)
-
-                if !syncStore.iCloudAvailable {
-                    HStack(spacing: FieldSpace.sm) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-//                            .foregroundColor(FieldColor.warningAmber)
-                            .font(.caption)
-
-                        Text(syncStore.iCloudUnavailableReason ?? "iCloud unavailable")
-                            .font(FieldType.caption)
-                            .foregroundColor(FieldColor.fadedInk)
-                    }
-                }
-
-                if syncStore.iCloudSyncEnabled {
-                    HStack {
-                        Text("Photos")
-                            .font(FieldType.callout)
-                            .foregroundColor(FieldColor.mutedInk)
-
-                        Spacer()
-
-                        Text("Local only")
-                            .font(FieldType.caption)
-                            .foregroundColor(FieldColor.fadedInk)
-                    }
-                }
             } header: {
-                Text("Sync")
+                Text("Storage")
             } footer: {
-                if syncStore.iCloudSyncEnabled {
-                    Text("Plant names and encounter details sync to iCloud. Photos remain stored locally on each device.")
-                        .font(FieldType.caption)
+                if syncStore.iCloudAvailable {
+                    Text("Plant data syncs to iCloud. Photos remain stored locally.")
                 }
             }
-
-            // Data section
-            Section("Data") {
-                NavigationLink {
-                    PlantManagementView()
-                } label: {
-                    HStack {
-                        Label("Total Plants", systemImage: "leaf.fill")
-                        Spacer()
-                        Text("\(appStore.plants.count)")
-                            .foregroundColor(FieldColor.mutedInk)
-                    }
-                }
-
-                NavigationLink {
-                    AllEncountersView()
-                } label: {
-                    HStack {
-                        Label("Total Encounters", systemImage: "camera.fill")
-                        Spacer()
-                        Text("\(appStore.allEncounters.count)")
-                            .foregroundColor(FieldColor.mutedInk)
-                    }
-                }
-            }
-
+            
             // Subscription section
             Section {
                 NavigationLink {
@@ -214,6 +129,34 @@ struct SettingsView: View {
                 Text("Subscription")
             }
 
+            // Data section
+            Section("Data") {
+                NavigationLink {
+                    PlantManagementView()
+                } label: {
+                    HStack {
+                        Label("Total Plants", systemImage: "leaf.fill")
+                        Spacer()
+                        Text("\(appStore.plants.count)")
+                            .foregroundColor(FieldColor.mutedInk)
+                    }
+                }
+
+                NavigationLink {
+                    AllEncountersView()
+                } label: {
+                    HStack {
+                        Label("Total Encounters", systemImage: "camera.fill")
+                        Spacer()
+                        Text("\(appStore.allEncounters.count)")
+                            .foregroundColor(FieldColor.mutedInk)
+                    }
+                }
+            }
+
+
+
+
             // About section
             Section("About") {
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
@@ -250,20 +193,6 @@ struct SettingsView: View {
                     }
                 }
 
-                // Suggest Feature button (Premium only)
-                if subscriptionStore.isPremium {
-                    Button {
-                        suggestFeature()
-                    } label: {
-                        HStack {
-                            Label("Suggest a Feature", systemImage: "lightbulb")
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundColor(FieldColor.mutedInk)
-                        }
-                    }
-                }
             }
 
             // Design section
@@ -292,23 +221,8 @@ struct SettingsView: View {
                     subscriptionStore.resetForTesting()
                 }
                 .foregroundColor(FieldColor.errorRed)
-
-                Button("Toggle iCloud Sync (Testing)") {
-                    syncStore.toggleSync()
-                }
-//                .foregroundColor(FieldColor.warningAmber)
             }
             #endif
-        }
-        .alert("Restart Required", isPresented: $showRestartAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button(syncStore.iCloudSyncEnabled ? "Disable Sync" : "Enable Sync") {
-                syncStore.toggleSync()
-            }
-        } message: {
-            Text(syncStore.iCloudSyncEnabled
-                ? "Disabling iCloud sync requires restarting the app. Your data will remain on this device."
-                : "Enabling iCloud sync requires restarting the app. Your plants and encounters will sync across your devices.")
         }
     }
 }

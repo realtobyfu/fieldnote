@@ -116,11 +116,11 @@ struct PlantDetailView: View {
                 }
 
                 // Encounters section
-                if !plant.encounters.isEmpty {
+                if !(plant.encounters ?? []).isEmpty {
                     VStack(alignment: .leading, spacing: FieldSpace.md) {
                         SectionHeader(title: "Observations (\(plant.encounterCount))", showRuledLine: true)
 
-                        ForEach(plant.encounters.sorted(by: { $0.date > $1.date })) { encounter in
+                        ForEach((plant.encounters ?? []).sorted(by: { $0.date > $1.date })) { encounter in
                             NavigationLink {
                                 EncounterDetailView(encounter: encounter, plant: plant)
                             } label: {
@@ -201,7 +201,7 @@ extension PlantDetailView {
     }
 
     private var encounterPhotoFilenames: [String] {
-        plant.encounters
+        (plant.encounters ?? [])
             .sorted { $0.date > $1.date }
             .compactMap { $0.photoFileName }
     }

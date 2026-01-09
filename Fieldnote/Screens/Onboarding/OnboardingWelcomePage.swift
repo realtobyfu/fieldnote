@@ -112,6 +112,7 @@ struct OnboardingWelcomePage: View {
                 .font(FieldType.displayTitle)
                 .foregroundColor(FieldColor.vintageInk)
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
 
             Text("Welcome, fellow naturalist. Begin your journey of discovery through the botanical world around you.")
                 .font(FieldType.body)

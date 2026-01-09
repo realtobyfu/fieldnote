@@ -36,8 +36,8 @@ struct ExploreView: View {
     private func exploreContent(appStore: AppStore) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.xl) {
-                // GPS-based nearby plants section
-                NearMeSection()
+                // TODO: GPS-based nearby plants section
+//                NearMeSection()
 
                 // Recently Encountered section
                 ExploreSection(

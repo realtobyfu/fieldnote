@@ -113,8 +113,7 @@ struct LibraryView: View {
 
                     // Plant grid
                     LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: FieldSpace.md),
-                        GridItem(.flexible(), spacing: FieldSpace.md)
+                        GridItem(.adaptive(minimum: 160, maximum: 200), spacing: FieldSpace.md)
                     ], spacing: FieldSpace.md) {
                         ForEach(plants) { plant in
                             NavigationLink(value: plant) {

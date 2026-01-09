@@ -248,8 +248,10 @@ struct EncounterDetailView: View {
     }
 
     private func deleteEncounter() {
-        if let index = plant.encounters.firstIndex(where: { $0.id == encounter.id }) {
-            plant.encounters.remove(at: index)
+        if var encounters = plant.encounters,
+           let index = encounters.firstIndex(where: { $0.id == encounter.id }) {
+            encounters.remove(at: index)
+            plant.encounters = encounters
         }
         modelContext.delete(encounter)
         do {

@@ -2,7 +2,7 @@
 //  SyncStore.swift
 //  Fieldnote
 //
-//  Manages iCloud sync state and user preferences
+//  Manages iCloud sync status display (auto-sync, no user toggle)
 //
 
 import Foundation
@@ -11,26 +11,11 @@ import CloudKit
 
 /// Sync status for UI display
 enum SyncStatus: Equatable {
-    case disabled
+    case unavailable
     case idle
     case syncing
     case synced(Date)
     case error(String)
-
-    var description: String {
-        switch self {
-        case .disabled:
-            return "iCloud sync disabled"
-        case .idle:
-            return "Ready to sync"
-        case .syncing:
-            return "Syncing..."
-        case .synced(let date):
-            return "Last synced \(date.formatted(.relative(presentation: .named)))"
-        case .error(let message):
-            return "Sync error: \(message)"
-        }
-    }
 }
 
 @MainActor
@@ -39,24 +24,13 @@ class SyncStore {
     // MARK: - Keys
 
     private enum Keys {
-        static let iCloudSyncEnabled = "iCloudSyncEnabled"
         static let lastSyncDate = "lastSyncDate"
     }
 
     // MARK: - Observable State
 
-    /// Whether iCloud sync is enabled by user
-    var iCloudSyncEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(iCloudSyncEnabled, forKey: Keys.iCloudSyncEnabled)
-            if iCloudSyncEnabled {
-                checkiCloudAvailability()
-            }
-        }
-    }
-
     /// Current sync status
-    var syncStatus: SyncStatus = .disabled
+    var syncStatus: SyncStatus = .unavailable
 
     /// Last successful sync date
     var lastSyncDate: Date? {
@@ -76,19 +50,7 @@ class SyncStore {
     // MARK: - Init
 
     init() {
-        self.iCloudSyncEnabled = UserDefaults.standard.bool(forKey: Keys.iCloudSyncEnabled)
         self.lastSyncDate = UserDefaults.standard.object(forKey: Keys.lastSyncDate) as? Date
-
-        // Set initial status
-        if iCloudSyncEnabled {
-            if let lastSync = lastSyncDate {
-                syncStatus = .synced(lastSync)
-            } else {
-                syncStatus = .idle
-            }
-        } else {
-            syncStatus = .disabled
-        }
 
         // Check iCloud availability
         checkiCloudAvailability()
@@ -103,96 +65,73 @@ class SyncStore {
                 case .available:
                     self?.iCloudAvailable = true
                     self?.iCloudUnavailableReason = nil
+                    // Set status based on last sync
+                    if let lastSync = self?.lastSyncDate {
+                        self?.syncStatus = .synced(lastSync)
+                    } else {
+                        self?.syncStatus = .idle
+                    }
                 case .noAccount:
                     self?.iCloudAvailable = false
                     self?.iCloudUnavailableReason = "Sign in to iCloud in Settings"
+                    self?.syncStatus = .unavailable
                 case .restricted:
                     self?.iCloudAvailable = false
                     self?.iCloudUnavailableReason = "iCloud access is restricted"
+                    self?.syncStatus = .unavailable
                 case .couldNotDetermine:
                     self?.iCloudAvailable = false
                     self?.iCloudUnavailableReason = "Could not determine iCloud status"
+                    self?.syncStatus = .unavailable
                 case .temporarilyUnavailable:
                     self?.iCloudAvailable = false
                     self?.iCloudUnavailableReason = "iCloud temporarily unavailable"
+                    self?.syncStatus = .unavailable
                 @unknown default:
                     self?.iCloudAvailable = false
                     self?.iCloudUnavailableReason = "Unknown iCloud status"
+                    self?.syncStatus = .unavailable
                 }
             }
         }
     }
 
-    // MARK: - Sync Actions
-
-    /// Toggle sync on/off
-    func toggleSync() {
-        if !iCloudSyncEnabled && !iCloudAvailable {
-            // Can't enable sync without iCloud
-            return
-        }
-
-        iCloudSyncEnabled.toggle()
-
-        if iCloudSyncEnabled {
-            syncStatus = .idle
-            // SwiftData will automatically start syncing
-            // In a real implementation, we'd listen to NSPersistentCloudKitContainer notifications
-            simulateSyncComplete()
-        } else {
-            syncStatus = .disabled
-        }
-    }
+    // MARK: - Sync Status Updates
 
     /// Mark sync as in progress
     func startSync() {
-        guard iCloudSyncEnabled else { return }
+        guard iCloudAvailable else { return }
         syncStatus = .syncing
     }
 
     /// Mark sync as complete
     func syncCompleted() {
-        guard iCloudSyncEnabled else { return }
+        guard iCloudAvailable else { return }
         lastSyncDate = Date()
         syncStatus = .synced(Date())
     }
 
     /// Mark sync as failed
     func syncFailed(error: String) {
-        guard iCloudSyncEnabled else { return }
+        guard iCloudAvailable else { return }
         syncStatus = .error(error)
-    }
-
-    /// Simulate sync completion (for demo purposes)
-    /// In production, this would be triggered by CloudKit notifications
-    private func simulateSyncComplete() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.syncCompleted()
-        }
     }
 
     // MARK: - Computed Properties
 
-    /// Whether user can enable sync
-    var canEnableSync: Bool {
-        iCloudAvailable
-    }
-
     /// Human-readable sync status for UI
     var statusText: String {
-        if !iCloudSyncEnabled {
-            return "Your observations are stored locally on this device."
-        }
-
         switch syncStatus {
+        case .unavailable:
+            return "Your observations are stored locally on this device."
+        case .idle:
+            return "Ready to sync across your devices."
         case .syncing:
             return "Syncing your botanical journal..."
         case .synced(let date):
-            return "Your journal syncs across all your devices.\nLast synced \(date.formatted(.relative(presentation: .named)))"
+            return "Last synced \(date.formatted(.relative(presentation: .named)))"
         case .error(let message):
             return "Sync error: \(message)"
-        default:
-            return "Ready to sync across your devices."
         }
     }
 }

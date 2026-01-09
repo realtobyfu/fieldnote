@@ -20,21 +20,36 @@ struct FieldnoteApp: App {
     init() {
         let schema = Schema([Plant.self, Encounter.self])
 
-        // Check if user has enabled iCloud sync
-        let syncEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
+        // Try CloudKit first, fall back to local if unavailable
+        var container: ModelContainer?
 
-        let config = ModelConfiguration(
+        let cloudConfig = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
-            cloudKitDatabase: syncEnabled ? .automatic : .none
+            cloudKitDatabase: .automatic
         )
         do {
-            let container = try ModelContainer(for: schema, configurations: [config])
-            self.sharedModelContainer = container
-            self._appStore = State(initialValue: AppStore(modelContext: container.mainContext))
+            container = try ModelContainer(for: schema, configurations: [cloudConfig])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            print("CloudKit unavailable, using local storage: \(error)")
         }
+
+        // Fall back to local-only if CloudKit failed
+        if container == nil {
+            let localConfig = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .none
+            )
+            do {
+                container = try ModelContainer(for: schema, configurations: [localConfig])
+            } catch {
+                fatalError("Could not create ModelContainer: \(error)")
+            }
+        }
+
+        self.sharedModelContainer = container!
+        self._appStore = State(initialValue: AppStore(modelContext: container!.mainContext))
     }
 
     var body: some Scene {

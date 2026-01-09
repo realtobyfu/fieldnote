@@ -101,8 +101,8 @@ struct AllEncountersView: View {
     private func deleteEncounter(_ encounter: Encounter) {
         // Remove from plant's encounters array
         if let plant = encounter.plant,
-           let index = plant.encounters.firstIndex(where: { $0.id == encounter.id }) {
-            plant.encounters.remove(at: index)
+           let index = plant.encounters?.firstIndex(where: { $0.id == encounter.id }) {
+            plant.encounters?.remove(at: index)
         }
 
         modelContext.delete(encounter)
