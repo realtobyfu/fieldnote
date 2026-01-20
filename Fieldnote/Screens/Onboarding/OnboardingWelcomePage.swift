@@ -120,6 +120,7 @@ struct OnboardingWelcomePage: View {
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .padding(.horizontal, FieldSpace.md)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .offset(y: textVisible ? 0 : 15)
         .opacity(textVisible ? 1 : 0)

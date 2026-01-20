@@ -47,6 +47,8 @@ struct OnboardingCameraPage: View {
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
                     .padding(.horizontal, FieldSpace.md)
+                    .fixedSize(horizontal: false, vertical: true)
+                
             }
 
             // Permission buttons
@@ -134,19 +136,10 @@ struct OnboardingCameraPage: View {
                 .frame(maxWidth: 280)
             } else if showLocationStep {
                 // Camera done, now location
-                PrimaryButton("Enable Location") {
+                PrimaryButton("Continue") {
                     requestLocationPermission()
                 }
                 .frame(maxWidth: 280)
-
-                Button("Skip") {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        locationDenied = true
-                    }
-                }
-                .font(FieldType.callout)
-                .foregroundColor(FieldColor.mutedInk)
-                .padding(.top, FieldSpace.xs)
             } else if cameraDenied {
                 // Camera permission denied
                 VStack(spacing: FieldSpace.sm) {

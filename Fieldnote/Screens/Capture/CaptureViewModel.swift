@@ -5,9 +5,27 @@
 //  View model for capture screen photo handling
 //
 
+import CoreLocation
 import Foundation
 import PhotosUI
 import SwiftUI
+
+protocol CaptureLocationProviding {
+    func requestCurrentLocation() async -> CLLocationCoordinate2D?
+}
+
+protocol PlantIdentificationProviding {
+    func identify(image: UIImage, location: CLLocationCoordinate2D?) async throws -> PlantIdentificationResult
+}
+
+protocol CaptureSubscriptionProviding: AnyObject {
+    var canUseAIIdentification: Bool { get }
+    func recordIdentification()
+}
+
+extension LocationService: CaptureLocationProviding {}
+extension HybridPlantIdentificationService: PlantIdentificationProviding {}
+extension SubscriptionStore: CaptureSubscriptionProviding {}
 
 @MainActor
 @Observable
@@ -25,7 +43,18 @@ class CaptureViewModel {
     // Pending image for retry after paywall dismissal
     private var pendingImage: UIImage?
 
-    func loadPhoto(subscriptionStore: SubscriptionStore) async {
+    private let locationService: CaptureLocationProviding
+    private let identificationService: PlantIdentificationProviding
+
+    init(
+        locationService: CaptureLocationProviding = LocationService.shared,
+        identificationService: PlantIdentificationProviding = HybridPlantIdentificationService.shared
+    ) {
+        self.locationService = locationService
+        self.identificationService = identificationService
+    }
+
+    func loadPhoto(subscriptionStore: CaptureSubscriptionProviding) async {
         guard let item = selectedItem else { return }
 
         do {
@@ -41,11 +70,11 @@ class CaptureViewModel {
         }
     }
 
-    func handleCapturedImage(_ image: UIImage, subscriptionStore: SubscriptionStore) async {
+    func handleCapturedImage(_ image: UIImage, subscriptionStore: CaptureSubscriptionProviding) async {
         await identifyPlant(image: image, subscriptionStore: subscriptionStore)
     }
 
-    private func identifyPlant(image: UIImage, subscriptionStore: SubscriptionStore) async {
+    private func identifyPlant(image: UIImage, subscriptionStore: CaptureSubscriptionProviding) async {
         // Check if user can use AI identification
         guard subscriptionStore.canUseAIIdentification else {
             pendingImage = image
@@ -56,12 +85,16 @@ class CaptureViewModel {
         isIdentifying = true
         identificationError = nil
 
+        defer {
+            isIdentifying = false
+        }
+
         do {
             // Fetch location for better API accuracy (non-blocking)
-            let location = await LocationService.shared.requestCurrentLocation()
+            let location = await locationService.requestCurrentLocation()
 
             // Use hybrid service (API-first, CoreML fallback)
-            let result = try await HybridPlantIdentificationService.shared.identify(
+            let result = try await identificationService.identify(
                 image: image,
                 location: location
             )
@@ -70,11 +103,9 @@ class CaptureViewModel {
             subscriptionStore.recordIdentification()
 
             captureMode = .mlIdentification(result: result, image: image)
-            isIdentifying = false
             showReviewSheet = true
         } catch {
             identificationError = error
-            isIdentifying = false
             // Still show review sheet but with empty fields for manual entry
             captureMode = .mlIdentification(
                 result: PlantIdentificationResult(
@@ -90,7 +121,7 @@ class CaptureViewModel {
     }
 
     /// Retry identification after subscription purchase
-    func retryPendingIdentification(subscriptionStore: SubscriptionStore) async {
+    func retryPendingIdentification(subscriptionStore: CaptureSubscriptionProviding) async {
         guard let image = pendingImage else { return }
         pendingImage = nil
         await identifyPlant(image: image, subscriptionStore: subscriptionStore)
