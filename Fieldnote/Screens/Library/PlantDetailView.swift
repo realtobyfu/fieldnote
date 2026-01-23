@@ -20,20 +20,26 @@ struct PlantDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.lg) {
-                // Hero botanical illustration
-                heroIllustration
-                    .onAppear {
-                        print("DEBUG PlantDetailView: Loading plant '\(plant.commonName)'")
-                        print("DEBUG PlantDetailView: summary length=\(plant.summary.count)")
-                        print("DEBUG PlantDetailView: habitat=\(plant.habitat ?? "nil")")
-                        print("DEBUG PlantDetailView: nativeRange=\(plant.nativeRange ?? "nil")")
-                    }
+                if hasIllustration {
+                    // Standard layout: Hero botanical illustration
+                    heroIllustration
+                        .onAppear {
+                            print("DEBUG PlantDetailView: Loading plant '\(plant.commonName)' (standard layout)")
+                            print("DEBUG PlantDetailView: summary length=\(plant.summary.count)")
+                        }
 
-                // Curated photo gallery (exact-match only)
-                PlantPhotoGalleryView(
-                    plantName: plant.commonName,
-                    userPhotoFilenames: encounterPhotoFilenames
-                )
+                    // Curated photo gallery (exact-match only)
+                    PlantPhotoGalleryView(
+                        plantName: plant.commonName,
+                        userPhotoFilenames: encounterPhotoFilenames
+                    )
+                } else {
+                    // Gallery-first layout: No hero, prominent gallery at top
+                    galleryFirstHeader
+                        .onAppear {
+                            print("DEBUG PlantDetailView: Loading plant '\(plant.commonName)' (gallery-first layout)")
+                        }
+                }
 
                 // Plant info card
                 VintageCard {
@@ -194,16 +200,52 @@ struct PlantDetailView: View {
 }
 
 extension PlantDetailView {
-    private var shouldOfferCustomIllustration: Bool {
+    /// Check if the plant has any illustration (custom or built-in)
+    private var hasIllustration: Bool {
         let hasCustom = (plant.customIllustrationFileName?.isEmpty == false)
         let hasBuiltIn = IllustrationService.hasIllustration(for: plant.commonName, family: plant.family)
-        return !hasCustom && !hasBuiltIn
+        return hasCustom || hasBuiltIn
+    }
+
+    private var shouldOfferCustomIllustration: Bool {
+        !hasIllustration
     }
 
     private var encounterPhotoFilenames: [String] {
         (plant.encounters ?? [])
             .sorted { $0.date > $1.date }
             .compactMap { $0.photoFileName }
+    }
+
+    // MARK: - Gallery-First Layout
+
+    /// Header for gallery-first layout (when no illustration is available)
+    private var galleryFirstHeader: some View {
+        VStack(alignment: .leading, spacing: FieldSpace.md) {
+            // Prominent gallery view - first photo larger, rest in horizontal scroll
+            PlantPhotoGalleryView(
+                plantName: plant.commonName,
+                userPhotoFilenames: encounterPhotoFilenames,
+                isProminent: true
+            )
+
+            // Scientific name plate (without hero)
+            ScientificNamePlate(name: plant.scientificName)
+                .padding(.horizontal, FieldSpace.lg)
+
+            // Option to add custom illustration
+            PhotosPicker(selection: $selectedIllustrationItem, matching: .images) {
+                HStack {
+                    Image(systemName: "photo.badge.plus")
+                        .foregroundColor(FieldColor.accent)
+                    Text("Add illustration")
+                        .font(FieldType.callout)
+                        .foregroundColor(FieldColor.accent)
+                }
+                .padding(.horizontal, FieldSpace.lg)
+            }
+            .disabled(isSavingIllustration)
+        }
     }
 
     private func saveCustomIllustration(from item: PhotosPickerItem) async {

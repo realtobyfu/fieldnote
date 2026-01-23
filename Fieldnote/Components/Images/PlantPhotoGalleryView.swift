@@ -11,16 +11,19 @@ import UIKit
 struct PlantPhotoGalleryView: View {
     let plantName: String
     let userPhotoFilenames: [String]
+    let isProminent: Bool
 
     @State private var selectedIndex: Int?
     @State private var userThumbnails: [String: UIImage] = [:]
     @State private var isLoadingUserPhotos = false
 
     private let itemSize = CGSize(width: 200, height: 140)
+    private let prominentHeroSize = CGSize(width: 320, height: 220)
 
-    init(plantName: String, userPhotoFilenames: [String] = []) {
+    init(plantName: String, userPhotoFilenames: [String] = [], isProminent: Bool = false) {
         self.plantName = plantName
         self.userPhotoFilenames = userPhotoFilenames
+        self.isProminent = isProminent
     }
 
     var body: some View {
@@ -28,21 +31,17 @@ struct PlantPhotoGalleryView: View {
 
         VStack(alignment: .leading, spacing: FieldSpace.sm) {
             if !items.isEmpty {
-                SectionHeader(title: "Gallery", showRuledLine: true)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: FieldSpace.sm) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            Button {
-                                selectedIndex = index
-                            } label: {
-                                galleryItem(item)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, FieldSpace.xs)
+                if isProminent {
+                    // Gallery-first mode: first photo is hero-sized
+                    prominentGalleryView(items: items)
+                } else {
+                    // Standard mode: horizontal scroll gallery
+                    SectionHeader(title: "Gallery", showRuledLine: true)
+                    standardGalleryView(items: items)
                 }
+            } else if isProminent {
+                // No photos available in prominent mode - show empty state
+                emptyProminentState
             }
         }
         .fullScreenCover(isPresented: Binding(
@@ -60,6 +59,126 @@ struct PlantPhotoGalleryView: View {
         .task(id: userPhotoFilenames) {
             await loadUserThumbnails()
         }
+    }
+
+    // MARK: - Standard Gallery View
+
+    private func standardGalleryView(items: [GalleryItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: FieldSpace.sm) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    Button {
+                        selectedIndex = index
+                    } label: {
+                        galleryItem(item)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, FieldSpace.xs)
+        }
+    }
+
+    // MARK: - Prominent (Gallery-First) View
+
+    private func prominentGalleryView(items: [GalleryItem]) -> some View {
+        VStack(alignment: .leading, spacing: FieldSpace.md) {
+            // First photo as hero
+            if let firstItem = items.first {
+                Button {
+                    selectedIndex = 0
+                } label: {
+                    prominentHeroItem(firstItem)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Remaining photos in horizontal scroll
+            if items.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: FieldSpace.sm) {
+                        ForEach(Array(items.dropFirst().enumerated()), id: \.element.id) { index, item in
+                            Button {
+                                selectedIndex = index + 1
+                            } label: {
+                                galleryItem(item)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, FieldSpace.xs)
+                }
+            }
+        }
+    }
+
+    private func prominentHeroItem(_ item: GalleryItem) -> some View {
+        ZStack {
+            switch item {
+            case .asset(let name):
+                Image(name)
+                    .resizable()
+                    .scaledToFill()
+            case .user(let filename):
+                if let image = userThumbnails[filename] {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else if isLoadingUserPhotos {
+                    RoundedRectangle(cornerRadius: FieldRadius.md)
+                        .fill(FieldColor.illustrationBg)
+                        .overlay(
+                            ProgressView()
+                                .tint(FieldColor.fadedInk)
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: FieldRadius.md)
+                        .fill(FieldColor.illustrationBg)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.largeTitle)
+                                .foregroundColor(FieldColor.fadedInk)
+                        )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: prominentHeroSize.height)
+        .clipped()
+        .overlay(
+            RoundedRectangle(cornerRadius: FieldRadius.md)
+                .stroke(FieldColor.bookBorder.opacity(0.6), lineWidth: 0.8)
+        )
+        .cornerRadius(FieldRadius.md)
+        .overlay(
+            Rectangle()
+                .fill(FieldColor.sepia.opacity(0.03))
+        )
+    }
+
+    private var emptyProminentState: some View {
+        VStack(spacing: FieldSpace.sm) {
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.system(size: 40))
+                .foregroundColor(FieldColor.fadedInk)
+
+            Text("No photos yet")
+                .font(FieldType.callout)
+                .foregroundColor(FieldColor.fadedInk)
+
+            Text("Photos from observations will appear here")
+                .font(FieldType.caption)
+                .foregroundColor(FieldColor.fadedInk)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: prominentHeroSize.height)
+        .background(FieldColor.illustrationBg)
+        .cornerRadius(FieldRadius.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: FieldRadius.md)
+                .stroke(FieldColor.bookBorder.opacity(0.4), lineWidth: 0.5)
+        )
     }
 
     private var galleryItems: [GalleryItem] {

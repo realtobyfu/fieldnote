@@ -25,6 +25,7 @@ class SyncStore {
 
     private enum Keys {
         static let lastSyncDate = "lastSyncDate"
+        static let lastPhotoSyncDate = "lastPhotoSyncDate"
     }
 
     // MARK: - Observable State
@@ -47,13 +48,45 @@ class SyncStore {
     /// Error message if iCloud is unavailable
     var iCloudUnavailableReason: String?
 
+    // MARK: - Photo Sync Status
+
+    /// Current photo sync status
+    var photoSyncStatus: PhotoSyncOverallStatus = .idle
+
+    /// Number of photos pending upload
+    var pendingPhotoUploads: Int = 0
+
+    /// Number of photos pending download
+    var pendingPhotoDownloads: Int = 0
+
+    /// Last successful photo sync date
+    var lastPhotoSyncDate: Date? {
+        didSet {
+            if let date = lastPhotoSyncDate {
+                UserDefaults.standard.set(date, forKey: Keys.lastPhotoSyncDate)
+            }
+        }
+    }
+
     // MARK: - Init
 
     init() {
         self.lastSyncDate = UserDefaults.standard.object(forKey: Keys.lastSyncDate) as? Date
+        self.lastPhotoSyncDate = UserDefaults.standard.object(forKey: Keys.lastPhotoSyncDate) as? Date
 
         // Check iCloud availability
         checkiCloudAvailability()
+
+        // Listen for photo sync status changes
+        NotificationCenter.default.addObserver(
+            forName: .photoSyncStatusChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.updatePhotoSyncStatus()
+            }
+        }
     }
 
     // MARK: - iCloud Availability
@@ -133,5 +166,58 @@ class SyncStore {
         case .error(let message):
             return "Sync error: \(message)"
         }
+    }
+
+    /// Human-readable photo sync status for UI
+    var photoSyncStatusText: String {
+        if !iCloudAvailable {
+            return "Photos stored locally only"
+        }
+
+        switch photoSyncStatus {
+        case .idle:
+            if pendingPhotoUploads > 0 || pendingPhotoDownloads > 0 {
+                var parts: [String] = []
+                if pendingPhotoUploads > 0 {
+                    parts.append("\(pendingPhotoUploads) to upload")
+                }
+                if pendingPhotoDownloads > 0 {
+                    parts.append("\(pendingPhotoDownloads) to download")
+                }
+                return parts.joined(separator: ", ")
+            }
+            return "Photos synced"
+        case .syncing:
+            return "Syncing photos..."
+        case .error(let message):
+            return "Photo sync error: \(message)"
+        }
+    }
+
+    /// Whether photos are currently syncing
+    var isPhotosSyncing: Bool {
+        pendingPhotoUploads > 0 || pendingPhotoDownloads > 0
+    }
+
+    // MARK: - Photo Sync Status Updates
+
+    /// Update photo sync status from the iCloud service
+    func updatePhotoSyncStatus() async {
+        guard iCloudAvailable else { return }
+
+        pendingPhotoUploads = await iCloudPhotoSyncService.shared.pendingUploadCount
+        pendingPhotoDownloads = await iCloudPhotoSyncService.shared.pendingDownloadCount
+
+        if pendingPhotoUploads == 0 && pendingPhotoDownloads == 0 {
+            photoSyncStatus = .idle
+            lastPhotoSyncDate = Date()
+        } else {
+            photoSyncStatus = .syncing
+        }
+    }
+
+    /// Mark photo sync as failed
+    func photoSyncFailed(error: String) {
+        photoSyncStatus = .error(error)
     }
 }

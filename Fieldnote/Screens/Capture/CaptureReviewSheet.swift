@@ -531,6 +531,14 @@ struct CaptureReviewSheet: View {
             store.addPlant(newPlant)
             store.addEncounter(encounter, to: newPlant)
             print("DEBUG Save: Plant saved with id=\(newPlant.id)")
+
+            // Fetch Wikipedia image for uncatalogued plants (no catalog match, no built-in illustration)
+            if selectedCatalogPlant == nil && !IllustrationService.hasIllustration(for: trimmedCommonName, family: trimmedFamily) {
+                Task.detached {
+                    let success = await WikimediaService.shared.fetchAndSaveIllustration(for: newPlant)
+                    print("DEBUG Save: Wikipedia image fetch \(success ? "succeeded" : "failed") for '\(trimmedCommonName)'")
+                }
+            }
         }
 
         isSaving = false

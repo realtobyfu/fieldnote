@@ -167,6 +167,7 @@ struct CompactPlantCard: View {
             // Botanical illustration
             PlantIllustrationView(plant: plant, size: .card)
             .frame(width: 140, height: 100)
+            .clipped()
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(plant.commonName)

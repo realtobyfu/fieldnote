@@ -14,8 +14,8 @@ struct PlantIllustrationView: View {
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
-    @State private var fallbackHeroPhoto: UIImage?
-    @State private var isLoadingFallbackPhoto = false
+    @State private var fallbackPhoto: UIImage?
+    @State private var isLoadingFallback = false
 
     init(plant: Plant, size: BotanicalIllustrationView.IllustrationSize = .card) {
         self.plant = plant
@@ -30,11 +30,13 @@ struct PlantIllustrationView: View {
                 loadingPlaceholder
             } else if hasBuiltInIllustration {
                 BotanicalIllustrationView(plant.commonName, family: plant.family, size: size)
-            } else if let heroPhoto = fallbackHeroPhoto {
-                userPhoto(heroPhoto)
-            } else if isLoadingFallbackPhoto {
+            } else if size != .hero, let photo = fallbackPhoto {
+                // Show encounter photo for card sizes only (not hero)
+                userPhotoView(photo)
+            } else if size != .hero && isLoadingFallback {
                 loadingPlaceholder
             } else {
+                // Hero size OR no fallback photo available
                 BotanicalIllustrationView(plant.commonName, family: plant.family, size: size)
             }
         }
@@ -55,13 +57,7 @@ struct PlantIllustrationView: View {
         IllustrationService.hasIllustration(for: plant.commonName, family: plant.family)
     }
 
-    private var fallbackPhotoFilename: String? {
-        plant.encounters?
-            .sorted { $0.date > $1.date }
-            .compactMap { $0.photoFileName }
-            .first
-    }
-
+    @MainActor
     private func loadCustomIllustrationIfNeeded() async {
         guard loadedImage == nil,
               let filename = plant.customIllustrationFileName,
@@ -69,42 +65,35 @@ struct PlantIllustrationView: View {
               !isLoading else { return }
 
         isLoading = true
-        loadedImage = await PlantIllustrationStorageService.shared.loadIllustration(filename: filename)
+        let loaded = await PlantIllustrationStorageService.shared.loadIllustration(filename: filename)
+        loadedImage = loaded
         isLoading = false
     }
 
+    @MainActor
     private func loadFallbackPhotoIfNeeded() async {
-        guard !hasCustomIllustration,
+        // Only load for non-hero sizes when no other illustration exists
+        guard size != .hero,
+              !hasCustomIllustration,
               !hasBuiltInIllustration,
-              fallbackHeroPhoto == nil,
-              !isLoadingFallbackPhoto,
-              let filename = fallbackPhotoFilename else { return }
+              fallbackPhoto == nil,
+              !isLoadingFallback else { return }
 
-        isLoadingFallbackPhoto = true
-        let image = await PhotoStorageService.shared.loadPhoto(filename: filename)
-        await MainActor.run {
-            fallbackHeroPhoto = image
-            isLoadingFallbackPhoto = false
-        }
+        // Access encounters and find photo filename
+        // Note: SwiftData may lazy-load the relationship here
+        guard let encounters = plant.encounters,
+              !encounters.isEmpty else { return }
+
+        let sortedEncounters = encounters.sorted { $0.date > $1.date }
+        guard let filename = sortedEncounters.compactMap({ $0.photoFileName }).first else { return }
+
+        isLoadingFallback = true
+        let loadedPhoto = await PhotoStorageService.shared.loadPhoto(filename: filename)
+        fallbackPhoto = loadedPhoto
+        isLoadingFallback = false
     }
 
     private func customIllustration(_ image: UIImage) -> some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFit()
-            .background(FieldColor.illustrationBg)
-            .overlay(
-                Rectangle()
-                    .fill(FieldColor.sepia.opacity(0.03))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-            )
-            .cornerRadius(FieldRadius.sm)
-    }
-
-    private func userPhoto(_ image: UIImage) -> some View {
         Image(uiImage: image)
             .resizable()
             .scaledToFill()
@@ -117,6 +106,24 @@ struct PlantIllustrationView: View {
                 RoundedRectangle(cornerRadius: FieldRadius.sm)
                     .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
             )
+            .clipped()
+            .cornerRadius(FieldRadius.sm)
+    }
+
+    private func userPhotoView(_ image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .background(FieldColor.illustrationBg)
+            .overlay(
+                Rectangle()
+                    .fill(FieldColor.sepia.opacity(0.03))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: FieldRadius.sm)
+                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+            )
+            .clipped()
             .cornerRadius(FieldRadius.sm)
     }
 

@@ -77,6 +77,20 @@ struct FieldnoteApp: App {
                         subscriptionStore.updateSubscription(type: type, expiresAt: expirationDate)
                     }
                 }
+
+                // Start iCloud photo sync if available
+                if syncStore.iCloudAvailable {
+                    // Start monitoring for remote photo changes
+                    iCloudPhotoSyncService.shared.startMonitoring()
+
+                    // Perform initial sync in background
+                    Task.detached(priority: .background) {
+                        await iCloudPhotoSyncService.shared.syncAllPhotos()
+                    }
+
+                    // Update sync status
+                    await syncStore.updatePhotoSyncStatus()
+                }
             }
             .onChange(of: onboardingStore.hasCompletedOnboarding) { _, completed in
                 // Show premium promo after onboarding completes (only once)

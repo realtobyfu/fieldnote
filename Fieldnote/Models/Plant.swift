@@ -8,6 +8,14 @@
 import SwiftData
 import Foundation
 
+// MARK: - Illustration Source Enum
+
+enum IllustrationSource: String, Codable {
+    case userUploaded = "user_uploaded"
+    case wikipedia = "wikipedia"
+    case builtin = "builtin"
+}
+
 @Model
 final class Plant: Identifiable, Hashable {
     var id: UUID = UUID()
@@ -19,6 +27,7 @@ final class Plant: Identifiable, Hashable {
     var habitat: String?
     var nativeRange: String?
     var customIllustrationFileName: String?
+    var illustrationSourceRaw: String?
 
     @Relationship(deleteRule: .cascade, inverse: \Encounter.plant)
     var encounters: [Encounter]?
@@ -37,6 +46,7 @@ final class Plant: Identifiable, Hashable {
         nativeRange: String? = nil,
         encounters: [Encounter] = [],
         customIllustrationFileName: String? = nil,
+        illustrationSource: IllustrationSource? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -50,10 +60,23 @@ final class Plant: Identifiable, Hashable {
         self.nativeRange = nativeRange
         self.encounters = encounters
         self.customIllustrationFileName = customIllustrationFileName
+        self.illustrationSourceRaw = illustrationSource?.rawValue
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         for encounter in encounters {
             encounter.plant = self
+        }
+    }
+
+    // MARK: - Illustration Source (Computed)
+
+    var illustrationSource: IllustrationSource? {
+        get {
+            guard let raw = illustrationSourceRaw else { return nil }
+            return IllustrationSource(rawValue: raw)
+        }
+        set {
+            illustrationSourceRaw = newValue?.rawValue
         }
     }
 

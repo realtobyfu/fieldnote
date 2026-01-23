@@ -45,6 +45,41 @@ actor PhotoStorageService {
 
         do {
             try data.write(to: fileURL)
+
+            // Upload to iCloud in background
+            Task.detached {
+                try? await iCloudPhotoSyncService.shared.uploadPhoto(filename: filename)
+            }
+
+            return filename
+        } catch {
+            throw PhotoStorageError.saveFailed(error)
+        }
+    }
+
+    /// Save a photo with an index for multiple photos per encounter
+    /// - Parameters:
+    ///   - image: The UIImage to save
+    ///   - encounterId: The encounter's UUID
+    ///   - index: The photo index (0, 1, 2, etc.)
+    /// - Returns: The saved filename
+    func savePhoto(_ image: UIImage, for encounterId: UUID, index: Int) async throws -> String {
+        let filename = "\(encounterId.uuidString)_\(index).jpg"
+        let fileURL = photosDirectory.appendingPathComponent(filename)
+
+        // Compress to JPEG with reasonable quality
+        guard let data = image.jpegData(compressionQuality: 0.8) else {
+            throw PhotoStorageError.compressionFailed
+        }
+
+        do {
+            try data.write(to: fileURL)
+
+            // Upload to iCloud in background
+            Task.detached {
+                try? await iCloudPhotoSyncService.shared.uploadPhoto(filename: filename)
+            }
+
             return filename
         } catch {
             throw PhotoStorageError.saveFailed(error)
@@ -59,13 +94,26 @@ actor PhotoStorageService {
     func loadPhoto(filename: String) async -> UIImage? {
         let fileURL = photosDirectory.appendingPathComponent(filename)
 
-        guard fileManager.fileExists(atPath: fileURL.path),
-              let data = try? Data(contentsOf: fileURL),
-              let image = UIImage(data: data) else {
-            return nil
+        // Try loading from local storage first
+        if fileManager.fileExists(atPath: fileURL.path),
+           let data = try? Data(contentsOf: fileURL),
+           let image = UIImage(data: data) {
+            return image
         }
 
-        return image
+        // If local file missing, try downloading from iCloud
+        if await iCloudPhotoSyncService.shared.isAvailable {
+            let downloaded = try? await iCloudPhotoSyncService.shared.downloadPhoto(filename: filename)
+            if downloaded == true {
+                // Retry loading from local storage
+                if let data = try? Data(contentsOf: fileURL),
+                   let image = UIImage(data: data) {
+                    return image
+                }
+            }
+        }
+
+        return nil
     }
 
     // MARK: - Delete Photo
@@ -76,11 +124,20 @@ actor PhotoStorageService {
         let fileURL = photosDirectory.appendingPathComponent(filename)
 
         guard fileManager.fileExists(atPath: fileURL.path) else {
-            return // Already deleted, that's fine
+            // Still try to delete from iCloud in case it exists there
+            Task.detached {
+                try? await iCloudPhotoSyncService.shared.deletePhoto(filename: filename)
+            }
+            return
         }
 
         do {
             try fileManager.removeItem(at: fileURL)
+
+            // Also delete from iCloud
+            Task.detached {
+                try? await iCloudPhotoSyncService.shared.deletePhoto(filename: filename)
+            }
         } catch {
             throw PhotoStorageError.deleteFailed(error)
         }

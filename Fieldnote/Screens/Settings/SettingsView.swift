@@ -63,6 +63,22 @@ struct SettingsView: View {
                             .font(FieldType.callout)
                             .foregroundColor(FieldColor.mutedInk)
                             .fixedSize(horizontal: false, vertical: true)
+
+                        // Photo sync status
+                        HStack(spacing: FieldSpace.xs) {
+                            if syncStore.isPhotosSyncing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            } else {
+                                Image(systemName: "photo.fill")
+                                    .foregroundColor(FieldColor.fadedInk)
+                                    .font(.caption)
+                            }
+                            Text(syncStore.photoSyncStatusText)
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.fadedInk)
+                        }
+                        .padding(.top, FieldSpace.xs)
                     } else {
                         Label {
                             Text("Offline-First")
@@ -87,7 +103,7 @@ struct SettingsView: View {
                 Text("Storage")
             } footer: {
                 if syncStore.iCloudAvailable {
-                    Text("Plant data syncs to iCloud. Photos remain stored locally.")
+                    Text("Plant data and photos sync to iCloud across your devices.")
                 }
             }
             

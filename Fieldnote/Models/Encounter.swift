@@ -23,7 +23,8 @@ final class Encounter: Identifiable, Hashable {
     var conditions: [String] = []  // e.g., ["sun", "wet", "windy"]
 
     // User photo storage
-    var photoFileName: String?  // Reference to saved image file in Documents/EncounterPhotos/
+    var photoFileName: String?  // Legacy: single photo reference (kept for backward compatibility)
+    var photoFileNames: [String] = []  // Multiple photos support
 
     var plant: Plant?
 
@@ -81,9 +82,18 @@ final class Encounter: Identifiable, Hashable {
         )
     }
 
-    /// Check if this encounter has a user photo
+    /// Check if this encounter has any photos
     var hasPhoto: Bool {
-        photoFileName != nil
+        !photoFileNames.isEmpty || photoFileName != nil
+    }
+
+    /// Get all photo filenames (combines legacy single photo with new array)
+    var allPhotoFileNames: [String] {
+        var all = photoFileNames
+        if let legacy = photoFileName, !all.contains(legacy) {
+            all.insert(legacy, at: 0)
+        }
+        return all
     }
 }
 

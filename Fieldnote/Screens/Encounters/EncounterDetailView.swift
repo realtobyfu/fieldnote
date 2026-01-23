@@ -24,12 +24,16 @@ struct EncounterDetailView: View {
     @State private var showLocationPicker = false
     @State private var selectedLocation: SelectedLocation?
     @State private var locationLabel: String
+    @State private var selectedConditions: Set<String>
+
+    private let availableConditions = ["sun", "shade", "wet", "dry", "snow", "windy", "hot", "cold"]
 
     init(encounter: Encounter, plant: Plant) {
         self.encounter = encounter
         self.plant = plant
         _notes = State(initialValue: encounter.notes ?? "")
         _locationLabel = State(initialValue: encounter.locationLabel ?? "")
+        _selectedConditions = State(initialValue: Set(encounter.conditions))
         // Initialize selected location from encounter
         if let name = encounter.displayLocationName {
             _selectedLocation = State(initialValue: SelectedLocation(
@@ -43,33 +47,30 @@ struct EncounterDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.lg) {
+                // Show existing photos
                 if encounter.hasPhoto {
                     EncounterPhotoView(encounter: encounter, height: 220)
-                } else {
-                    // Tappable placeholder to add photo
-                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                .fill(FieldColor.illustrationBg)
-
-                            VStack(spacing: FieldSpace.xs) {
-                                Image(systemName: isSavingPhoto ? "arrow.triangle.2.circlepath" : "camera.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(FieldColor.accent.opacity(0.6))
-
-                                Text(isSavingPhoto ? "Saving..." : "Tap to add photo")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                            }
-                        }
-                        .frame(height: 160)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                .stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
-                        )
-                    }
-                    .disabled(isSavingPhoto)
                 }
+
+                // Add Photo button (always visible)
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    HStack(spacing: FieldSpace.xs) {
+                        Image(systemName: isSavingPhoto ? "arrow.triangle.2.circlepath" : "plus.circle.fill")
+                            .font(.body)
+                        Text(isSavingPhoto ? "Saving..." : "Add Photo")
+                            .font(FieldType.callout)
+                    }
+                    .foregroundColor(FieldColor.accent)
+                    .padding(.vertical, FieldSpace.sm)
+                    .padding(.horizontal, FieldSpace.md)
+                    .background(FieldColor.surface)
+                    .cornerRadius(FieldRadius.pill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FieldRadius.pill)
+                            .stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                    )
+                }
+                .disabled(isSavingPhoto)
 
                 VintageCard {
                     VStack(alignment: .leading, spacing: FieldSpace.sm) {
@@ -124,10 +125,23 @@ struct EncounterDetailView: View {
                             ConfidencePill(confidence: encounter.confidence)
                         }
 
-                        if !encounter.conditions.isEmpty {
+                        VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                            Text("Conditions")
+                                .font(FieldType.bodyEmphasized)
+                                .foregroundColor(FieldColor.vintageInk)
+
                             FlowLayout(spacing: FieldSpace.xs) {
-                                ForEach(encounter.conditions, id: \.self) { condition in
-                                    TraitChip(condition)
+                                ForEach(availableConditions, id: \.self) { condition in
+                                    TraitChip(
+                                        condition,
+                                        isSelected: selectedConditions.contains(condition)
+                                    ) {
+                                        if selectedConditions.contains(condition) {
+                                            selectedConditions.remove(condition)
+                                        } else {
+                                            selectedConditions.insert(condition)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -211,8 +225,10 @@ struct EncounterDetailView: View {
                 return
             }
 
-            let filename = try await PhotoStorageService.shared.savePhoto(image, for: encounter.id)
-            encounter.photoFileName = filename
+            // Use indexed save, based on current photo count
+            let index = encounter.photoFileNames.count
+            let filename = try await PhotoStorageService.shared.savePhoto(image, for: encounter.id, index: index)
+            encounter.photoFileNames.append(filename)
             try modelContext.save()
         } catch {
             print("Failed to save encounter photo: \(error)")
@@ -238,6 +254,9 @@ struct EncounterDetailView: View {
             encounter.latitude = nil
             encounter.longitude = nil
         }
+
+        // Save conditions
+        encounter.conditions = Array(selectedConditions)
 
         do {
             try modelContext.save()
