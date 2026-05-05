@@ -68,63 +68,134 @@ struct EncounterPhotoView: View {
             selectedPhotoIndex = 0
             showFullscreen = true
         } label: {
-            ZStack {
-                // Vintage letterbox background
-                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                    .fill(FieldColor.illustrationBg)
-
-                // Photo with aspect fit
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .padding(FieldSpace.xs)
-            }
-            .frame(height: height)
-            .overlay(vintageOverlay)
-            .cornerRadius(FieldRadius.sm)
-            .overlay(vintageFrame)
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(height: height)
+                .clipped()
+                .overlay(vintageOverlay)
+                .cornerRadius(FieldRadius.sm)
+                .overlay(vintageFrame)
         }
         .buttonStyle(.plain)
+        .padding(.horizontal, FieldSpace.sm)
     }
 
-    // MARK: - Multi Photo View
+    // MARK: - Multi Photo View (Grid Mosaic)
 
     private var multiPhotoView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: FieldSpace.sm) {
-                ForEach(Array(photoFileNames.enumerated()), id: \.offset) { index, filename in
-                    if let image = loadedImages[filename] {
-                        Button {
-                            selectedPhotoIndex = index
-                            showFullscreen = true
-                        } label: {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                    .fill(FieldColor.illustrationBg)
+        let count = loadedImages.count
 
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .padding(FieldSpace.xs)
-                            }
-                            .frame(width: height * 1.2, height: height)
-                            .overlay(vintageOverlay)
-                            .cornerRadius(FieldRadius.sm)
-                            .overlay(vintageFrame)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+        return Group {
+            switch count {
+            case 2:
+                twoPhotoLayout
+            case 3:
+                threePhotoLayout
+            case 4:
+                fourPhotoLayout
+            default:
+                fourPlusLayout
             }
+        }
+        .cornerRadius(FieldRadius.sm)
+        .overlay(vintageFrame)
+        .padding(.horizontal, FieldSpace.sm)
+    }
+
+    // Two photos: side-by-side, equal width
+    private var twoPhotoLayout: some View {
+        HStack(spacing: 2) {
+            photoCell(index: 0)
+            photoCell(index: 1)
+        }
+        .frame(height: height)
+    }
+
+    // Three photos: 1 large left (2/3) + 2 stacked right (1/3)
+    private var threePhotoLayout: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 2) {
+                photoCell(index: 0)
+                    .frame(width: geometry.size.width * 2 / 3 - 1)
+
+                VStack(spacing: 2) {
+                    photoCell(index: 1)
+                    photoCell(index: 2)
+                }
+                .frame(width: geometry.size.width / 3 - 1)
+            }
+        }
+        .frame(height: height)
+    }
+
+    // Four photos: 2x2 grid
+    private var fourPhotoLayout: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 2) {
+                photoCell(index: 0)
+                photoCell(index: 1)
+            }
+            HStack(spacing: 2) {
+                photoCell(index: 2)
+                photoCell(index: 3)
+            }
+        }
+        .frame(height: height)
+    }
+
+    // Five+ photos: 2x2 grid with "+N" overlay on last cell
+    private var fourPlusLayout: some View {
+        let extraCount = loadedImages.count - 4
+
+        return VStack(spacing: 2) {
+            HStack(spacing: 2) {
+                photoCell(index: 0)
+                photoCell(index: 1)
+            }
+            HStack(spacing: 2) {
+                photoCell(index: 2)
+                photoCell(index: 3, showOverlay: extraCount)
+            }
+        }
+        .frame(height: height)
+    }
+
+    // MARK: - Photo Cell Helper
+
+    @ViewBuilder
+    private func photoCell(index: Int, showOverlay: Int? = nil) -> some View {
+        let filenames = photoFileNames
+        if index < filenames.count,
+           let image = loadedImages[filenames[index]] {
+            Button {
+                selectedPhotoIndex = index
+                showFullscreen = true
+            } label: {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .clipped()
+                    .contentShape(Rectangle())
+                    .overlay {
+                        if let extra = showOverlay, extra > 0 {
+                            Color.black.opacity(0.4)
+                            Text("+\(extra)")
+                                .font(.title2.bold())
+                                .foregroundColor(.white)
+                        }
+                    }
+            }
+            .buttonStyle(.plain)
         }
     }
 
     // MARK: - Vintage Styling
 
     private var vintageOverlay: some View {
-        // Subtle sepia tint for vintage feel
+        // Very subtle sepia tint - reduced for cleaner look
         Rectangle()
-            .fill(FieldColor.sepia.opacity(0.05))
+            .fill(FieldColor.sepia.opacity(0.02))
     }
 
     @ViewBuilder
@@ -141,7 +212,7 @@ struct EncounterPhotoView: View {
     private var loadingView: some View {
         ZStack {
             RoundedRectangle(cornerRadius: FieldRadius.sm)
-                .fill(FieldColor.illustrationBg)
+                .fill(FieldColor.separator.opacity(0.3))
                 .frame(height: height)
 
             VStack(spacing: FieldSpace.xs) {
