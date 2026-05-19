@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ExploreView: View {
     @Environment(\.appStore) private var store
+    @State private var searchQuery = ""
 
     var body: some View {
         Group {
@@ -24,6 +25,7 @@ struct ExploreView: View {
         }
         .background(FieldColor.paper)
         .navigationTitle("Explore")
+        .searchable(text: $searchQuery, prompt: "Search plants")
         .navigationDestination(for: Plant.self) { plant in
             PlantDetailView(plant: plant)
         }
@@ -32,29 +34,73 @@ struct ExploreView: View {
         }
     }
 
+    private var trimmedQuery: String {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     @ViewBuilder
     private func exploreContent(appStore: AppStore) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.xl) {
-                // TODO: GPS-based nearby plants section
-//                NearMeSection()
-
-                // Recently Encountered section
-                ExploreSection(
-                    title: "Recently Encountered",
-                    plants: appStore.recentlyEncountered
-                )
-
-                // Full plant catalog grid
-                FullCatalogSection(
-                    catalogPlants: appStore.catalogPlants,
-                    isDiscovered: appStore.isDiscovered
-                )
+                if trimmedQuery.isEmpty {
+                    browseSections(appStore: appStore)
+                } else {
+                    searchResults(appStore: appStore)
+                }
             }
             .padding(.vertical, FieldSpace.md)
         }
         .refreshable {
             await appStore.refresh()
+        }
+    }
+
+    @ViewBuilder
+    private func browseSections(appStore: AppStore) -> some View {
+        // TODO: GPS-based nearby plants section
+        //                NearMeSection()
+
+        ExploreSection(
+            title: "Recently Encountered",
+            plants: appStore.recentlyEncountered
+        )
+
+        let customPlants = appStore.customPlants
+        if !customPlants.isEmpty {
+            ExploreSection(
+                title: "Your Custom Plants",
+                plants: customPlants
+            )
+        }
+
+        FullCatalogSection(
+            catalogPlants: appStore.catalogPlants,
+            isDiscovered: appStore.isDiscovered
+        )
+    }
+
+    @ViewBuilder
+    private func searchResults(appStore: AppStore) -> some View {
+        let matchedPlants = appStore.searchPlants(trimmedQuery)
+        let matchedCatalog = appStore.searchCatalog(trimmedQuery)
+
+        if matchedPlants.isEmpty && matchedCatalog.isEmpty {
+            ContentUnavailableView.search(text: trimmedQuery)
+                .padding(.top, FieldSpace.xl)
+        } else {
+            if !matchedPlants.isEmpty {
+                ExploreSection(
+                    title: "Your Plants",
+                    plants: matchedPlants
+                )
+            }
+
+            if !matchedCatalog.isEmpty {
+                CatalogSection(
+                    title: "Catalog",
+                    catalogPlants: matchedCatalog
+                )
+            }
         }
     }
 }

@@ -64,6 +64,12 @@ class AppStore {
         catalogPlants.filter { isDiscovered($0) }
     }
 
+    /// User-saved plants whose common name doesn't match any catalog entry.
+    var customPlants: [Plant] {
+        let catalogNames = Set(catalogPlants.map { $0.commonName.lowercased() })
+        return plants.filter { !catalogNames.contains($0.commonName.lowercased()) }
+    }
+
     // MARK: - Location Grouping
 
     var uniqueLocations: [String] {
@@ -270,6 +276,17 @@ class AppStore {
 
         let lowercasedQuery = query.lowercased()
         return plants.filter {
+            $0.commonName.lowercased().contains(lowercasedQuery) ||
+            $0.scientificName.lowercased().contains(lowercasedQuery) ||
+            $0.family.lowercased().contains(lowercasedQuery)
+        }
+    }
+
+    func searchCatalog(_ query: String) -> [CatalogPlant] {
+        guard !query.isEmpty else { return catalogPlants }
+
+        let lowercasedQuery = query.lowercased()
+        return catalogPlants.filter {
             $0.commonName.lowercased().contains(lowercasedQuery) ||
             $0.scientificName.lowercased().contains(lowercasedQuery) ||
             $0.family.lowercased().contains(lowercasedQuery)
