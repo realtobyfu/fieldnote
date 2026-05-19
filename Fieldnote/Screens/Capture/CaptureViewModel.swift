@@ -27,20 +27,32 @@ extension LocationService: CaptureLocationProviding {}
 extension HybridPlantIdentificationService: PlantIdentificationProviding {}
 extension SubscriptionStore: CaptureSubscriptionProviding {}
 
+
+
 @MainActor
 @Observable
 class CaptureViewModel {
+
+    enum Destination: Identifiable {
+        case review(CaptureMode)
+        case paywall
+
+        var id: String {
+            switch self {
+            case .review: return "review"
+            case .paywall: return "paywall"
+            }
+        }
+    }
+
+    var destination: Destination?
+
     var selectedItem: PhotosPickerItem?
     var selectedPhotoData: Data?
-    var showReviewSheet = false
-    var showPaywall = false
 
-    // ML identification state
     var isIdentifying = false
     var identificationError: Error?
-    var captureMode: CaptureMode?
 
-    // Pending image for retry after paywall dismissal
     private var pendingImage: UIImage?
 
     private let locationService: CaptureLocationProviding
@@ -78,7 +90,7 @@ class CaptureViewModel {
         // Check if user can use AI identification
         guard subscriptionStore.canUseAIIdentification else {
             pendingImage = image
-            showPaywall = true
+            destination = .paywall
             return
         }
 
@@ -102,12 +114,11 @@ class CaptureViewModel {
             // Record AI identification usage
             subscriptionStore.recordIdentification()
 
-            captureMode = .mlIdentification(result: result, image: image)
-            showReviewSheet = true
+            destination = .review(.mlIdentification(result: result, image: image))
         } catch {
             identificationError = error
             // Still show review sheet but with empty fields for manual entry
-            captureMode = .mlIdentification(
+            destination = .review(.mlIdentification(
                 result: PlantIdentificationResult(
                     commonName: "",
                     scientificName: "",
@@ -115,8 +126,7 @@ class CaptureViewModel {
                     confidence: 0.75
                 ),
                 image: image
-            )
-            showReviewSheet = true
+            ))
         }
     }
 
@@ -128,16 +138,14 @@ class CaptureViewModel {
     }
 
     func startManualEntry() {
-        captureMode = .manualEntry
-        showReviewSheet = true
+        destination = .review(.manualEntry)
     }
 
     func reset() {
         selectedItem = nil
         selectedPhotoData = nil
-        showReviewSheet = false
+        destination = nil
         isIdentifying = false
         identificationError = nil
-        captureMode = nil
     }
 }

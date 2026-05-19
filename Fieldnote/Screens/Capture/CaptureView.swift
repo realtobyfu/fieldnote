@@ -7,14 +7,25 @@
 
 import SwiftUI
 import PhotosUI
+import SwiftData
 
+@MainActor
 struct CaptureView: View {
     @Environment(\.appStore) private var store
     @Environment(\.subscriptionStore) private var subscriptionStore
-    @State private var viewModel = CaptureViewModel()
+    @State private var viewModel: CaptureViewModel
+    
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var shutterExpanding = false
+
+    init() {
+        _viewModel = State(initialValue: CaptureViewModel())
+    }
+
+    init(viewModel: CaptureViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         Group {
@@ -49,29 +60,37 @@ struct CaptureView: View {
                 .environment(\.appStore, store)
                 .ignoresSafeArea()
         }
-        .sheet(isPresented: $viewModel.showReviewSheet) {
-            shutterExpanding = false
-            capturedImage = nil
-        } content: {
-            if let appStore = store {
-                CaptureReviewSheet(
-                    viewModel: viewModel,
-                    store: appStore,
-                    captureMode: viewModel.captureMode ?? .manualEntry
-                )
-                .environment(\.appStore, store)
+        .sheet(item: $viewModel.destination) { destination in
+            switch destination {
+            case .review(let mode):
+                if let appStore = store {
+                    CaptureReviewSheet(
+                        viewModel: viewModel,
+                        store: appStore,
+                        captureMode: mode
+                    )
+                    .environment(\.appStore, store)
+                }
+            case .paywall:
+                PaywallView()
+                    .environment(\.subscriptionStore, subscriptionStore)
             }
         }
-        .sheet(isPresented: $viewModel.showPaywall) {
-            // On dismiss, check if user now has access and retry
-            if subscriptionStore.canUseAIIdentification {
-                Task {
-                    await viewModel.retryPendingIdentification(subscriptionStore: subscriptionStore)
+        .onChange(of: viewModel.destination?.id) { oldID, newID in
+            guard newID == nil else { return }
+            switch oldID {
+            case "review":
+                shutterExpanding = false
+                capturedImage = nil
+            case "paywall":
+                if subscriptionStore.canUseAIIdentification {
+                    Task {
+                        await viewModel.retryPendingIdentification(subscriptionStore: subscriptionStore)
+                    }
                 }
+            default:
+                break
             }
-        } content: {
-            PaywallView()
-                .environment(\.subscriptionStore, subscriptionStore)
         }
     }
 
@@ -96,44 +115,47 @@ struct CaptureView: View {
     private func mainContent(appStore: AppStore, geometry: GeometryProxy) -> some View {
         VStack(spacing: FieldSpace.xl) {
             Spacer()
+
             VStack(spacing: FieldSpace.md) {
-                cameraButton(geometry: geometry)
+                decorativeEmblem
 
                 VStack(spacing: FieldSpace.xs) {
                     Text("Capture a Plant")
                         .font(FieldType.title2)
                         .foregroundColor(FieldColor.ink)
 
-                    Text("Take a photo or choose from your library")
+                    Text("Identify or log a plant you've found")
                         .font(FieldType.body)
                         .foregroundColor(FieldColor.mutedInk)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, FieldSpace.xl)
                 }
             }
-            .padding(.bottom, 5)
 
-            VStack(spacing: FieldSpace.sm) {
-                // Choose from Library
+            VStack(spacing: FieldSpace.md) {
+                // Take Photo (PRIMARY)
+                if CameraView.isAvailable {
+                    Button {
+                        triggerShutter(geometry: geometry)
+                    } label: {
+                        Text("Take Photo")
+                            .font(FieldType.buttonLabel)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: 280)
+                            .padding(.vertical, FieldSpace.sm + FieldSpace.xs)
+                            .background(FieldColor.accent)
+                            .cornerRadius(FieldRadius.button)
+                    }
+                    .opacity(shutterExpanding ? 0 : 1)
+                }
+
+                // Choose from Library (SECONDARY)
                 PhotosPicker(
                     selection: $viewModel.selectedItem,
                     matching: .images,
                     photoLibrary: .shared()
                 ) {
                     Label("Choose from Library", systemImage: "photo.on.rectangle")
-                        .font(FieldType.buttonLabel)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: 280)
-                        .padding(.vertical, FieldSpace.sm + FieldSpace.xs)
-                        .background(FieldColor.accent)
-                        .cornerRadius(FieldRadius.button)
-                }
-
-                // Manual Entry (secondary)
-                Button {
-                    viewModel.startManualEntry()
-                } label: {
-                    Label("Manual Entry", systemImage: "pencil.line")
                         .font(FieldType.buttonLabel)
                         .foregroundColor(FieldColor.accent)
                         .frame(maxWidth: 280)
@@ -143,20 +165,43 @@ struct CaptureView: View {
                                 .stroke(FieldColor.accent, lineWidth: 1.5)
                         )
                 }
+
+                // Manual Entry (TERTIARY)
+                Button {
+                    viewModel.startManualEntry()
+                } label: {
+                    Label("Manual Entry", systemImage: "pencil.line")
+                        .font(FieldType.buttonLabel)
+                        .foregroundColor(FieldColor.mutedInk)
+                        .frame(maxWidth: 280)
+                        .padding(.vertical, FieldSpace.sm)
+                }
             }
+
             // Recent captures hint
             if !appStore.allEncounters.isEmpty {
-                VStack(spacing: FieldSpace.xs) {
-                    Text("\(appStore.allEncounters.count) total observations")
-                        .font(FieldType.footnote)
-                        .foregroundColor(FieldColor.mutedInk)
-                }
-                .padding(.top, 10)
+                Text("\(appStore.allEncounters.count) total observations")
+                    .font(FieldType.footnote)
+                    .foregroundColor(FieldColor.mutedInk)
             }
 
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var decorativeEmblem: some View {
+        ZStack {
+            Circle()
+                .fill(FieldColor.accent.opacity(0.12))
+                .frame(width: 76, height: 76)
+
+            Image(systemName: "camera.fill")
+                .font(.system(size: 28, weight: .regular))
+                .foregroundColor(FieldColor.accent.opacity(0.85))
+        }
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 
     private var instructionsSection: some View {
@@ -170,35 +215,6 @@ struct CaptureView: View {
                 .foregroundColor(FieldColor.mutedInk)
         }
         .opacity(shutterExpanding ? 0 : 1)
-    }
-
-    @ViewBuilder
-    private func cameraButton(geometry: GeometryProxy) -> some View {
-        if CameraView.isAvailable {
-            Button {
-                triggerShutter(geometry: geometry)
-            } label: {
-                cameraButtonLabel
-            }
-            .opacity(shutterExpanding ? 0 : 1)
-        }
-    }
-
-    private var cameraButtonLabel: some View {
-        ZStack {
-            Circle()
-                .fill(FieldColor.surface)
-                .frame(width: 88, height: 88)
-                .shadow(color: Color.black.opacity(0.1), radius: 8, y: 4)
-
-            Circle()
-                .stroke(FieldColor.accent, lineWidth: 3)
-                .frame(width: 88, height: 88)
-
-            Image(systemName: "camera.fill")
-                .font(.system(size: 32, weight: .medium))
-                .foregroundColor(FieldColor.accent)
-        }
     }
 
     private var libraryPickerSection: some View {
@@ -278,7 +294,128 @@ struct CaptureView: View {
     }
 }
 
-// Previews disabled - require SwiftData ModelContainer setup
-//#Preview {
-//    CaptureView()
-//}
+#if DEBUG
+@MainActor
+private enum CapturePreviewData {
+    static func makeContainer() -> ModelContainer {
+        let schema = Schema([Plant.self, Encounter.self])
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true,
+            cloudKitDatabase: .none
+        )
+        return try! ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    static func makeAppStore(container: ModelContainer) -> AppStore {
+        let context = container.mainContext
+        for plant in Plant.mockPlants {
+            context.insert(plant)
+        }
+        return AppStore(modelContext: context)
+    }
+
+    static func makeFreeSubscriptionStore() -> SubscriptionStore {
+        let store = SubscriptionStore()
+        store.aiIdentificationsUsed = 0
+        store.subscriptionType = .none
+        store.subscriptionExpirationDate = nil
+        store.hasSeenPremiumPromo = false
+        return store
+    }
+}
+
+@MainActor
+private enum CapturePreviewModels {
+    static func idle() -> CaptureViewModel {
+        CaptureViewModel()
+    }
+
+    static func identifying() -> CaptureViewModel {
+        let viewModel = CaptureViewModel()
+        viewModel.isIdentifying = true
+        return viewModel
+    }
+
+    static func manualReview() -> CaptureViewModel {
+        let viewModel = CaptureViewModel()
+        viewModel.destination = .review(.manualEntry)
+        return viewModel
+    }
+
+    static func aiReview() -> CaptureViewModel {
+        let viewModel = CaptureViewModel()
+        viewModel.destination = .review(.mlIdentification(
+            result: PlantIdentificationResult(
+                commonName: "Common Dandelion",
+                scientificName: "Taraxacum officinale",
+                family: "Asteraceae",
+                confidence: 0.92
+            ),
+            image: UIImage(systemName: "leaf.fill")!
+        ))
+        return viewModel
+    }
+
+    static func paywall() -> CaptureViewModel {
+        let viewModel = CaptureViewModel()
+        viewModel.destination = .paywall
+        return viewModel
+    }
+}
+
+private struct CapturePreviewHost: View {
+    @State private var appStore: AppStore
+    @State private var subscriptionStore: SubscriptionStore
+
+    private let container: ModelContainer
+    private let viewModel: CaptureViewModel
+
+    @MainActor
+    init(viewModel: CaptureViewModel) {
+        let container = CapturePreviewData.makeContainer()
+        self.container = container
+        self.viewModel = viewModel
+        _appStore = State(initialValue: CapturePreviewData.makeAppStore(container: container))
+        _subscriptionStore = State(initialValue: CapturePreviewData.makeFreeSubscriptionStore())
+    }
+
+    @MainActor
+    init(viewModel: CaptureViewModel, subscriptionStore: SubscriptionStore) {
+        let container = CapturePreviewData.makeContainer()
+        self.container = container
+        self.viewModel = viewModel
+        _appStore = State(initialValue: CapturePreviewData.makeAppStore(container: container))
+        _subscriptionStore = State(initialValue: subscriptionStore)
+    }
+
+    var body: some View {
+        NavigationStack {
+            CaptureView(viewModel: viewModel)
+        }
+        .environment(\.appStore, appStore)
+        .environment(\.subscriptionStore, subscriptionStore)
+        .modelContainer(container)
+    }
+}
+
+#Preview("Idle") {
+    CapturePreviewHost(viewModel: CapturePreviewModels.idle())
+}
+
+#Preview("Identifying") {
+    CapturePreviewHost(viewModel: CapturePreviewModels.identifying())
+}
+
+#Preview("Manual Review") {
+    CapturePreviewHost(viewModel: CapturePreviewModels.manualReview())
+}
+
+#Preview("AI Review") {
+    CapturePreviewHost(viewModel: CapturePreviewModels.aiReview())
+}
+
+#Preview("Paywall") {
+    CapturePreviewHost(viewModel: CapturePreviewModels.paywall())
+}
+#endif
