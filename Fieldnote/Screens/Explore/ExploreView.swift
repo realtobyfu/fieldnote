@@ -10,6 +10,10 @@ import SwiftUI
 struct ExploreView: View {
     @Environment(\.appStore) private var store
     @State private var searchQuery = ""
+    @State private var showRegionPicker = false
+    /// True once we've kicked off a local-catalog load this session, so the
+    /// pre-permission prompt doesn't flash while the first fetch is in flight.
+    @State private var didRequestLocalCatalog = false
 
     var body: some View {
         Group {
@@ -53,13 +57,73 @@ struct ExploreView: View {
         .refreshable {
             await appStore.refresh()
         }
+        .task {
+            // Attempt a locale-aware load once Explore appears. Resilient: if no
+            // location is available, state stays empty and we show the prompt.
+            guard !didRequestLocalCatalog else { return }
+            didRequestLocalCatalog = true
+            await appStore.refreshLocalCatalog()
+        }
+        .sheet(isPresented: $showRegionPicker) {
+            RegionPickerSheet { region in
+                Task { await appStore.selectRegion(region) }
+            }
+        }
     }
 
     @ViewBuilder
     private func browseSections(appStore: AppStore) -> some View {
-        // TODO: GPS-based nearby plants section
-        //                NearMeSection()
+        if appStore.hasLocalCatalog {
+            localCatalogSections(appStore: appStore)
+        } else if !didRequestLocalCatalog || appStore.isRefreshingLocalCatalog {
+            // First load in flight — fall through to the standard sections so
+            // nothing flashes; the local sections appear once ranked.
+            standardSections(appStore: appStore)
+        } else {
+            // No locality resolved (permission not granted, no region chosen):
+            // offer the value prompt, then the standard sections below it.
+            LocalDiscoveryPrompt(
+                onUseLocation: {
+                    Task { await appStore.selectRegion(.currentLocation) }
+                },
+                onChooseRegion: { region in
+                    Task { await appStore.selectRegion(region) }
+                }
+            )
+            standardSections(appStore: appStore)
+        }
+    }
 
+    /// Ecology-led ordering when a locality exists: Near You Now → Reported This
+    /// Month → the existing Recently Encountered / custom / full catalog.
+    @ViewBuilder
+    private func localCatalogSections(appStore: AppStore) -> some View {
+        regionHeader(appStore: appStore)
+
+        let nearby = appStore.nearYouNowItems
+        if !nearby.isEmpty {
+            LocalCatalogSection(
+                title: "Near You Now",
+                items: nearby,
+                isDiscovered: appStore.isDiscovered
+            )
+        }
+
+        let thisMonth = appStore.reportedThisMonthItems
+        if !thisMonth.isEmpty {
+            LocalCatalogSection(
+                title: "Reported This Month",
+                items: thisMonth,
+                isDiscovered: appStore.isDiscovered
+            )
+        }
+
+        standardSections(appStore: appStore)
+    }
+
+    /// The pre-existing browse experience, used as a fallback so nothing regresses.
+    @ViewBuilder
+    private func standardSections(appStore: AppStore) -> some View {
         ExploreSection(
             title: "Recently Encountered",
             plants: appStore.recentlyEncountered
@@ -77,6 +141,47 @@ struct ExploreView: View {
             catalogPlants: appStore.catalogPlants,
             isDiscovered: appStore.isDiscovered
         )
+    }
+
+    /// Region picker + freshness pill shown above the locale-aware sections.
+    @ViewBuilder
+    private func regionHeader(appStore: AppStore) -> some View {
+        VStack(alignment: .leading, spacing: FieldSpace.xs) {
+            Button {
+                showRegionPicker = true
+            } label: {
+                HStack(spacing: FieldSpace.xs) {
+                    Image(systemName: "location.fill")
+                        .font(.caption)
+                    Text(regionName(appStore: appStore))
+                        .font(FieldType.callout)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2)
+                }
+                .foregroundColor(FieldColor.accent)
+                .padding(.vertical, FieldSpace.xs)
+                .padding(.horizontal, FieldSpace.sm)
+                .background(
+                    Capsule().stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            if let freshness = appStore.catalogFreshnessLabel {
+                Text(freshness)
+                    .font(FieldType.caption2)
+                    .foregroundColor(FieldColor.fadedInk)
+            }
+        }
+        .padding(.horizontal, FieldSpace.md)
+    }
+
+    private func regionName(appStore: AppStore) -> String {
+        if case .chosen(_, _, let name) = appStore.selectedRegionOverride {
+            return name
+        }
+        return appStore.localityProfile?.displayRegion ?? "Current Location"
     }
 
     @ViewBuilder

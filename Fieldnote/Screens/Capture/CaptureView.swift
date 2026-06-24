@@ -42,13 +42,22 @@ struct CaptureView: View {
         .navigationTitle("Capture")
         .onChange(of: viewModel.selectedItem) { _, _ in
             Task {
-                await viewModel.loadPhoto(subscriptionStore: subscriptionStore)
+                await viewModel.loadPhoto(
+                    subscriptionStore: subscriptionStore,
+                    localItems: store?.localCatalogItems ?? [],
+                    localMonth: store?.localityProfile?.currentMonth
+                )
             }
         }
         .onChange(of: capturedImage) { _, newImage in
             if let image = newImage {
                 Task {
-                    await viewModel.handleCapturedImage(image, subscriptionStore: subscriptionStore)
+                    await viewModel.handleCapturedImage(
+                        image,
+                        subscriptionStore: subscriptionStore,
+                        localItems: store?.localCatalogItems ?? [],
+                        localMonth: store?.localityProfile?.currentMonth
+                    )
                 }
             }
         }
