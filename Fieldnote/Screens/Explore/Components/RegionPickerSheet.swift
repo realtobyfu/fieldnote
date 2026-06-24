@@ -86,3 +86,9 @@ struct RegionPickerSheet: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Region Picker") {
+    RegionPickerSheet { _ in }
+}
+#endif

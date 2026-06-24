@@ -149,7 +149,10 @@ struct CaptureReviewSheet: View {
                         // close runners-up). Visual signal stays dominant — these
                         // are offered as "did you mean…?", not as equal claims.
                         if !alternatives.isEmpty {
-                            alternativesCard
+                            AlternativeCandidatesCard(
+                                alternatives: alternatives,
+                                onSelect: applyCandidate
+                            )
                         }
 
                         // Confidence
@@ -350,68 +353,6 @@ struct CaptureReviewSheet: View {
     }
 
     // MARK: - Alternatives
-
-    private var alternativesCard: some View {
-        VintageCard {
-            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                HStack(spacing: FieldSpace.xs) {
-                    Image(systemName: "questionmark.circle")
-                        .font(.caption)
-                        .foregroundColor(FieldColor.mutedInk)
-                    Text("Other possibilities")
-                        .font(FieldType.bodyEmphasized)
-                        .foregroundColor(FieldColor.vintageInk)
-                }
-
-                Text("If this isn't quite right, tap a closer match.")
-                    .font(FieldType.caption)
-                    .foregroundColor(FieldColor.fadedInk)
-
-                ForEach(alternatives) { ranked in
-                    Button {
-                        applyCandidate(ranked.candidate)
-                    } label: {
-                        HStack(spacing: FieldSpace.sm) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ranked.candidate.commonName)
-                                    .font(FieldType.callout)
-                                    .foregroundColor(FieldColor.ink)
-                                    .lineLimit(1)
-                                Text(ranked.candidate.scientificName)
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                    .italic()
-                                    .lineLimit(1)
-                                if ranked.hasLocalSupport {
-                                    Text("Also reported nearby")
-                                        .font(FieldType.caption2)
-                                        .foregroundColor(FieldColor.accent)
-                                }
-                            }
-
-                            Spacer()
-
-                            Text("\(Int((ranked.candidate.visualConfidence * 100).rounded()))%")
-                                .font(FieldType.caption)
-                                .foregroundColor(FieldColor.mutedInk)
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                                .foregroundColor(FieldColor.fadedInk)
-                        }
-                        .padding(FieldSpace.sm)
-                        .background(FieldColor.surface)
-                        .cornerRadius(FieldRadius.sm)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
 
     private func applyCandidate(_ candidate: PlantIdentificationCandidate) {
         commonName = candidate.commonName

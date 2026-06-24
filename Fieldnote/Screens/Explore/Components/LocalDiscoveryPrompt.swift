@@ -83,3 +83,16 @@ struct LocalDiscoveryPrompt: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Local Discovery Prompt") {
+    ScrollView {
+        LocalDiscoveryPrompt(
+            onUseLocation: {},
+            onChooseRegion: { _ in }
+        )
+        .padding(.vertical, FieldSpace.md)
+    }
+    .background(FieldColor.paper)
+}
+#endif

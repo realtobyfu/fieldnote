@@ -118,3 +118,40 @@ struct LocalCatalogCard: View {
         .frame(width: 140)
     }
 }
+
+#if DEBUG
+#Preview("Local Catalog Section") {
+    NavigationStack {
+        ScrollView {
+            VStack(alignment: .leading, spacing: FieldSpace.xl) {
+                LocalCatalogSection(
+                    title: "Near You Now",
+                    items: LocaleCatalogPreviewData.items,
+                    isDiscovered: LocaleCatalogPreviewData.isDiscovered
+                )
+                LocalCatalogSection(
+                    title: "Reported This Month",
+                    items: Array(LocaleCatalogPreviewData.items.reversed()),
+                    isDiscovered: LocaleCatalogPreviewData.isDiscovered
+                )
+            }
+            .padding(.vertical, FieldSpace.md)
+        }
+        .background(FieldColor.paper)
+        .navigationDestination(for: CatalogPlant.self) { _ in EmptyView() }
+    }
+}
+
+#Preview("Local Catalog Card") {
+    HStack(spacing: FieldSpace.md) {
+        if let discovered = LocaleCatalogPreviewData.items.first {
+            LocalCatalogCard(item: discovered, isDiscovered: true)
+        }
+        if let undiscovered = LocaleCatalogPreviewData.items.last {
+            LocalCatalogCard(item: undiscovered, isDiscovered: false)
+        }
+    }
+    .padding()
+    .background(FieldColor.paper)
+}
+#endif
