@@ -146,10 +146,11 @@ class CaptureViewModel {
             isIdentifying = false
         }
 
-        do {
-            // Fetch location for better API accuracy (non-blocking)
-            let location = await locationService.requestCurrentLocation()
+        // Fetch location for better API accuracy (non-blocking)
+        let location = await locationService.requestCurrentLocation()
+        let month = localMonth ?? Calendar.current.component(.month, from: Date())
 
+        do {
             // Pull the top visual candidates so we can rerank + offer alternatives.
             let candidates = try await candidateService.identifyCandidates(
                 image: image,
@@ -158,7 +159,6 @@ class CaptureViewModel {
             )
 
             // Rerank with the local + seasonal prior (visual signal stays dominant).
-            let month = localMonth ?? Calendar.current.component(.month, from: Date())
             let ranked = LocalRankingService().rerankCandidates(
                 candidates,
                 localItems: localItems,
@@ -180,17 +180,29 @@ class CaptureViewModel {
                 alternatives: alternatives
             ))
         } catch {
-            identificationError = error
-            // Still show review sheet but with empty fields for manual entry
-            destination = .review(.mlIdentification(
-                result: PlantIdentificationResult(
-                    commonName: "",
-                    scientificName: "",
-                    family: "",
-                    confidence: 0.75
-                ),
-                image: image
-            ))
+            // The candidate path is Pl@ntNet-only. When it fails (offline or API
+            // error), fall back to the hybrid service, which uses the on-device
+            // CoreML model offline. No alternatives are available on this path.
+            do {
+                let result = try await identificationService.identify(
+                    image: image,
+                    location: location
+                )
+                subscriptionStore.recordIdentification()
+                destination = .review(.mlIdentification(result: result, image: image))
+            } catch let fallbackError {
+                identificationError = fallbackError
+                // Still show review sheet but with empty fields for manual entry
+                destination = .review(.mlIdentification(
+                    result: PlantIdentificationResult(
+                        commonName: "",
+                        scientificName: "",
+                        family: "",
+                        confidence: 0.75
+                    ),
+                    image: image
+                ))
+            }
         }
     }
 
