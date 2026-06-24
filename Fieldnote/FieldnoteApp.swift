@@ -15,10 +15,11 @@ struct FieldnoteApp: App {
     @State private var onboardingStore = OnboardingStore()
     @State private var subscriptionStore = SubscriptionStore()
     @State private var syncStore = SyncStore()
+    @State private var gamificationService: GamificationService
     @State private var showPremiumPromo = false
 
     init() {
-        let schema = Schema([Plant.self, Encounter.self])
+        let schema = Schema([Plant.self, Encounter.self, FieldProfile.self, Achievement.self])
 
         // Try CloudKit first, fall back to local if unavailable
         var container: ModelContainer?
@@ -49,7 +50,11 @@ struct FieldnoteApp: App {
         }
 
         self.sharedModelContainer = container!
-        self._appStore = State(initialValue: AppStore(modelContext: container!.mainContext))
+        let appStoreInstance = AppStore(modelContext: container!.mainContext)
+        self._appStore = State(initialValue: appStoreInstance)
+        self._gamificationService = State(
+            initialValue: GamificationService(modelContext: container!.mainContext, appStore: appStoreInstance)
+        )
     }
 
     var body: some Scene {
@@ -65,6 +70,7 @@ struct FieldnoteApp: App {
             .environment(\.onboardingStore, onboardingStore)
             .environment(\.subscriptionStore, subscriptionStore)
             .environment(\.syncStore, syncStore)
+            .environment(\.gamificationService, gamificationService)
             .animation(.easeInOut(duration: 0.4), value: onboardingStore.shouldShowOnboarding)
             .preferredColorScheme(.light)
             .task {

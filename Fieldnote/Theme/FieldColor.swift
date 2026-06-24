@@ -96,6 +96,28 @@ struct FieldColor {
 
     /// Success state
     static let successGreen = confidenceHigh
+
+    // MARK: - Modern Redesign (2026) — "Blend" direction
+    // Additive tokens for the modernized, glass-forward look. Light "Herbarium"
+    // base with an immersive "Dusk" treatment reserved for full-bleed photo/detail/map.
+
+    /// Deep botanical green — gradient base for rings, progress, the Capture button.
+    static let accentDeep = Color(red: 0.23, green: 0.48, blue: 0.36) // #3B7A5C
+
+    /// Bright botanical green — accents on dark immersive surfaces.
+    static let accentBright = Color(red: 0.56, green: 0.78, blue: 0.49) // #8FC77D
+
+    /// Warm canvas gradient start (modern app background).
+    static let canvasTop = Color(red: 0.985, green: 0.965, blue: 0.945) // #FBF6F1
+
+    /// Warm canvas gradient end (modern app background).
+    static let canvasBottom = Color(red: 0.945, green: 0.918, blue: 0.875) // #F1EADF
+
+    /// Near-black ink used for full-bleed photo scrims (immersive "Dusk" treatment).
+    static let photoScrim = Color(red: 0.07, green: 0.06, blue: 0.04) // #121009
+
+    /// Warm ember — streak accent.
+    static let ember = Color(red: 0.76, green: 0.38, blue: 0.17) // #C2602B
 }
 
 // MARK: - Helper for Confidence Colors

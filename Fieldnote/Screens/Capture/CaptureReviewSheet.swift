@@ -15,6 +15,7 @@ struct CaptureReviewSheet: View {
     var captureMode: CaptureMode
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.gamificationService) private var gamification
 
     @State private var commonName: String
     @State private var scientificName: String
@@ -540,6 +541,9 @@ struct CaptureReviewSheet: View {
                 }
             }
         }
+
+        // Update streak, XP, and badge unlocks from the new observation.
+        gamification?.recordObservation()
 
         isSaving = false
 

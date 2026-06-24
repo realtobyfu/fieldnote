@@ -15,6 +15,7 @@ enum Tab: Int {
     case capture
     case explore
     case settings
+    case profile
 }
 
 @MainActor
