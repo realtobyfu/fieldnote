@@ -57,14 +57,14 @@ struct MainTabView: View {
                 }
                 .tag(Tab.explore)
 
-                // Settings Tab
+                // Profile Tab
                 NavigationStack {
-                    SettingsView()
+                    ProfileView()
                 }
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
+                    Label("Profile", systemImage: "person.crop.circle.fill")
                 }
-                .tag(Tab.settings)
+                .tag(Tab.profile)
             }
             .tint(FieldColor.accent)
 

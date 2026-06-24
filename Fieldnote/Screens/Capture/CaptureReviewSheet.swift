@@ -15,6 +15,7 @@ struct CaptureReviewSheet: View {
     var captureMode: CaptureMode
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.gamificationService) private var gamification
 
     @State private var commonName: String
     @State private var scientificName: String
@@ -42,6 +43,11 @@ struct CaptureReviewSheet: View {
 
     private var capturedImage: UIImage? {
         addedImage ?? captureMode.image
+    }
+
+    /// Reranked runner-up candidates surfaced as alternatives.
+    private var alternatives: [RankedCandidate] {
+        captureMode.alternatives
     }
 
     init(viewModel: CaptureViewModel, store: AppStore, captureMode: CaptureMode) {
@@ -137,6 +143,16 @@ struct CaptureReviewSheet: View {
                                     .buttonStyle(.plain)
                                 }
                             }
+                        }
+
+                        // Alternative candidates (shown when the reranker returned
+                        // close runners-up). Visual signal stays dominant — these
+                        // are offered as "did you mean…?", not as equal claims.
+                        if !alternatives.isEmpty {
+                            AlternativeCandidatesCard(
+                                alternatives: alternatives,
+                                onSelect: applyCandidate
+                            )
                         }
 
                         // Confidence
@@ -334,6 +350,20 @@ struct CaptureReviewSheet: View {
         }
 
         isEnriching = false
+    }
+
+    // MARK: - Alternatives
+
+    private func applyCandidate(_ candidate: PlantIdentificationCandidate) {
+        commonName = candidate.commonName
+        scientificName = candidate.scientificName
+        family = candidate.family
+        confidence = candidate.visualConfidence
+        // Re-match against the catalog with the newly chosen names.
+        selectedCatalogPlant = CatalogPlant.match(
+            for: candidate.asResult,
+            in: store.catalogPlants
+        )
     }
 
     // MARK: - AI Badge
@@ -540,6 +570,9 @@ struct CaptureReviewSheet: View {
                 }
             }
         }
+
+        // Update streak, XP, and badge unlocks from the new observation.
+        gamification?.recordObservation()
 
         isSaving = false
 

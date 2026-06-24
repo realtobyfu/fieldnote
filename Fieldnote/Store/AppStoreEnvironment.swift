@@ -56,3 +56,16 @@ extension EnvironmentValues {
         set { self[SyncStoreKey.self] = newValue }
     }
 }
+
+// Environment key for GamificationService
+// Note: injected at app level with the actual ModelContext + AppStore.
+private struct GamificationServiceKey: EnvironmentKey {
+    @MainActor static let defaultValue: GamificationService? = nil
+}
+
+extension EnvironmentValues {
+    var gamificationService: GamificationService? {
+        get { self[GamificationServiceKey.self] }
+        set { self[GamificationServiceKey.self] = newValue }
+    }
+}
