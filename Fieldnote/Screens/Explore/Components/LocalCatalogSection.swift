@@ -53,8 +53,16 @@ struct LocalCatalogCard: View {
     let item: LocalCatalogItem
     let isDiscovered: Bool
 
+    /// The card's "Why this plant?" line. We skip the occurrence codes
+    /// (commonly/also reported) — the section header already says that — and only
+    /// surface a genuinely additive reason like a seasonal peak or a first find.
     private var whyThisPlant: String? {
-        item.explanationCodes.first?.label
+        item.explanationCodes.first { code in
+            switch code {
+            case .commonlyReported, .alsoReported: return false
+            case .seasonalPeak, .easyFirstFind: return true
+            }
+        }?.label
     }
 
     var body: some View {
