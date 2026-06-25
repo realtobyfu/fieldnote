@@ -116,6 +116,17 @@ struct ExploreView: View {
             )
         }
 
+        // Seasonal — only shows when catalog plants carry monthlyAffinity data
+        // that peaks around now. Hidden otherwise.
+        let active = appStore.activeThisMonthItems
+        if !active.isEmpty {
+            LocalCatalogSection(
+                title: appStore.currentMonthName.map { "Active in \($0)" } ?? "Active This Season",
+                items: active,
+                isDiscovered: appStore.isDiscovered
+            )
+        }
+
         let more = appStore.moreToLookForItems
         if !more.isEmpty {
             LocalCatalogSection(

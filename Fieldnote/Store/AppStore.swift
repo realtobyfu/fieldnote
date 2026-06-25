@@ -423,13 +423,34 @@ class AppStore {
             .map { $0 }
     }
 
-    /// The longer tail — reported in the region but less frequently.
+    /// The longer tail — reported in the region but less frequently, excluding
+    /// anything already surfaced in the lead or seasonal sections.
     var moreToLookForItems: [LocalCatalogItem] {
-        let leadIDs = Set(commonlyReportedItems.map { $0.id })
+        let shownIDs = Set(commonlyReportedItems.map { $0.id })
+            .union(activeThisMonthItems.map { $0.id })
         return localCatalogItems
-            .filter { !leadIDs.contains($0.id) }
+            .filter { !shownIDs.contains($0.id) }
             .prefix(12)
             .map { $0 }
+    }
+
+    /// Items whose seasonal affinity peaks around the current month — the
+    /// "Active in {Month}" section. Empty until catalog plants carry
+    /// `monthlyAffinity` data, so the section hides itself gracefully.
+    var activeThisMonthItems: [LocalCatalogItem] {
+        localCatalogItems
+            .filter { item in
+                item.explanationCodes.contains { code in
+                    if case .seasonalPeak = code { return true } else { return false }
+                }
+            }
+            .prefix(12)
+            .map { $0 }
+    }
+
+    /// Standalone name of the current month for the seasonal section title.
+    var currentMonthName: String? {
+        localityProfile.map { LocalRankingService.monthName($0.currentMonth) }
     }
 
     /// Human-readable "Updated 2 days ago" string for the freshness pill.
