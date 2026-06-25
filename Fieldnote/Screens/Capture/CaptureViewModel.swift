@@ -18,6 +18,18 @@ protocol PlantIdentificationProviding {
     func identify(image: UIImage, location: CLLocationCoordinate2D?) async throws -> PlantIdentificationResult
 }
 
+/// Provider of multi-candidate identification, so the review sheet can surface
+/// reranked alternatives. See LocaleAwareCatalogImplementationPlan.md (B4).
+protocol PlantCandidateProviding {
+    func identifyCandidates(
+        image: UIImage,
+        location: CLLocationCoordinate2D?,
+        maxResults: Int
+    ) async throws -> [PlantIdentificationCandidate]
+}
+
+extension PlantIDAPIService: PlantCandidateProviding {}
+
 protocol CaptureSubscriptionProviding: AnyObject {
     var canUseAIIdentification: Bool { get }
     func recordIdentification()
@@ -54,19 +66,30 @@ class CaptureViewModel {
     var identificationError: Error?
 
     private var pendingImage: UIImage?
+    /// Locality context captured from the AppStore at request time, used to
+    /// rerank visual candidates against what's reported nearby this month.
+    private var pendingLocalItems: [LocalCatalogItem] = []
+    private var pendingLocalMonth: Int?
 
     private let locationService: CaptureLocationProviding
     private let identificationService: PlantIdentificationProviding
+    private let candidateService: PlantCandidateProviding
 
     init(
         locationService: CaptureLocationProviding = LocationService.shared,
-        identificationService: PlantIdentificationProviding = HybridPlantIdentificationService.shared
+        identificationService: PlantIdentificationProviding = HybridPlantIdentificationService.shared,
+        candidateService: PlantCandidateProviding = PlantIDAPIService.shared
     ) {
         self.locationService = locationService
         self.identificationService = identificationService
+        self.candidateService = candidateService
     }
 
-    func loadPhoto(subscriptionStore: CaptureSubscriptionProviding) async {
+    func loadPhoto(
+        subscriptionStore: CaptureSubscriptionProviding,
+        localItems: [LocalCatalogItem] = [],
+        localMonth: Int? = nil
+    ) async {
         guard let item = selectedItem else { return }
 
         do {
@@ -74,7 +97,12 @@ class CaptureViewModel {
                 selectedPhotoData = data
 
                 if let image = UIImage(data: data) {
-                    await identifyPlant(image: image, subscriptionStore: subscriptionStore)
+                    await identifyPlant(
+                        image: image,
+                        subscriptionStore: subscriptionStore,
+                        localItems: localItems,
+                        localMonth: localMonth
+                    )
                 }
             }
         } catch {
@@ -82,14 +110,31 @@ class CaptureViewModel {
         }
     }
 
-    func handleCapturedImage(_ image: UIImage, subscriptionStore: CaptureSubscriptionProviding) async {
-        await identifyPlant(image: image, subscriptionStore: subscriptionStore)
+    func handleCapturedImage(
+        _ image: UIImage,
+        subscriptionStore: CaptureSubscriptionProviding,
+        localItems: [LocalCatalogItem] = [],
+        localMonth: Int? = nil
+    ) async {
+        await identifyPlant(
+            image: image,
+            subscriptionStore: subscriptionStore,
+            localItems: localItems,
+            localMonth: localMonth
+        )
     }
 
-    private func identifyPlant(image: UIImage, subscriptionStore: CaptureSubscriptionProviding) async {
+    private func identifyPlant(
+        image: UIImage,
+        subscriptionStore: CaptureSubscriptionProviding,
+        localItems: [LocalCatalogItem],
+        localMonth: Int?
+    ) async {
         // Check if user can use AI identification
         guard subscriptionStore.canUseAIIdentification else {
             pendingImage = image
+            pendingLocalItems = localItems
+            pendingLocalMonth = localMonth
             destination = .paywall
             return
         }
@@ -101,32 +146,63 @@ class CaptureViewModel {
             isIdentifying = false
         }
 
-        do {
-            // Fetch location for better API accuracy (non-blocking)
-            let location = await locationService.requestCurrentLocation()
+        // Fetch location for better API accuracy (non-blocking)
+        let location = await locationService.requestCurrentLocation()
+        let month = localMonth ?? Calendar.current.component(.month, from: Date())
 
-            // Use hybrid service (API-first, CoreML fallback)
-            let result = try await identificationService.identify(
+        do {
+            // Pull the top visual candidates so we can rerank + offer alternatives.
+            let candidates = try await candidateService.identifyCandidates(
                 image: image,
-                location: location
+                location: location,
+                maxResults: 5
             )
+
+            // Rerank with the local + seasonal prior (visual signal stays dominant).
+            let ranked = LocalRankingService().rerankCandidates(
+                candidates,
+                localItems: localItems,
+                month: month
+            )
+
+            guard let top = ranked.first else {
+                throw PlantIdentificationError.noResult
+            }
 
             // Record AI identification usage
             subscriptionStore.recordIdentification()
 
-            destination = .review(.mlIdentification(result: result, image: image))
-        } catch {
-            identificationError = error
-            // Still show review sheet but with empty fields for manual entry
+            // Alternatives = the reranked tail, surfaced when scores are close.
+            let alternatives = Array(ranked.dropFirst())
             destination = .review(.mlIdentification(
-                result: PlantIdentificationResult(
-                    commonName: "",
-                    scientificName: "",
-                    family: "",
-                    confidence: 0.75
-                ),
-                image: image
+                result: top.candidate.asResult,
+                image: image,
+                alternatives: alternatives
             ))
+        } catch {
+            // The candidate path is Pl@ntNet-only. When it fails (offline or API
+            // error), fall back to the hybrid service, which uses the on-device
+            // CoreML model offline. No alternatives are available on this path.
+            do {
+                let result = try await identificationService.identify(
+                    image: image,
+                    location: location
+                )
+                subscriptionStore.recordIdentification()
+                destination = .review(.mlIdentification(result: result, image: image))
+            } catch let fallbackError {
+                identificationError = fallbackError
+                // Still show review sheet but with empty fields for manual entry
+                destination = .review(.mlIdentification(
+                    result: PlantIdentificationResult(
+                        commonName: "",
+                        scientificName: "",
+                        family: "",
+                        confidence: 0.75
+                    ),
+                    image: image
+                ))
+            }
         }
     }
 
@@ -134,7 +210,16 @@ class CaptureViewModel {
     func retryPendingIdentification(subscriptionStore: CaptureSubscriptionProviding) async {
         guard let image = pendingImage else { return }
         pendingImage = nil
-        await identifyPlant(image: image, subscriptionStore: subscriptionStore)
+        let localItems = pendingLocalItems
+        let localMonth = pendingLocalMonth
+        pendingLocalItems = []
+        pendingLocalMonth = nil
+        await identifyPlant(
+            image: image,
+            subscriptionStore: subscriptionStore,
+            localItems: localItems,
+            localMonth: localMonth
+        )
     }
 
     func startManualEntry() {

@@ -20,6 +20,12 @@ struct PlantNetResponse: Codable {
 struct PlantNetResult: Codable {
     let score: Double
     let species: PlantNetSpecies
+    let gbif: PlantNetGBIF?
+}
+
+/// GBIF cross-reference, when Pl@ntNet provides one.
+struct PlantNetGBIF: Codable {
+    let id: String?
 }
 
 /// Species information
@@ -35,6 +41,29 @@ struct PlantNetSpecies: Codable {
 struct PlantNetTaxon: Codable {
     let scientificNameWithoutAuthor: String
     let scientificNameAuthorship: String?
+}
+
+// MARK: - Candidate
+
+/// A single visual identification candidate, carrying the raw provider score so
+/// it can be reranked against a local + seasonal prior before being shown.
+struct PlantIdentificationCandidate: Hashable {
+    let commonName: String
+    let scientificName: String
+    let family: String
+    /// Visual match likelihood from the provider, 0...1.
+    let visualConfidence: Double
+    /// GBIF taxon key when the provider supplied one (used for matching).
+    let gbifTaxonKey: Int?
+
+    var asResult: PlantIdentificationResult {
+        PlantIdentificationResult(
+            commonName: commonName,
+            scientificName: scientificName,
+            family: family,
+            confidence: visualConfidence
+        )
+    }
 }
 
 // MARK: - API Service
@@ -68,8 +97,24 @@ actor PlantIDAPIService {
         }
     }
 
-    /// Identifies a plant from an image using the Pl@ntNet API
+    /// Identifies a plant from an image, returning the single best visual match.
+    /// Retained for callers that don't yet handle alternatives.
     func identify(image: UIImage, location: CLLocationCoordinate2D? = nil) async throws -> PlantIdentificationResult {
+        let candidates = try await identifyCandidates(image: image, location: location)
+        guard let top = candidates.first else {
+            throw PlantIdentificationError.noResult
+        }
+        return top.asResult
+    }
+
+    /// Identifies a plant and returns the top visual candidates (highest score
+    /// first), so the caller can rerank them with a local + seasonal prior and
+    /// surface alternatives. See LocalRankingService.rerankCandidates.
+    func identifyCandidates(
+        image: UIImage,
+        location: CLLocationCoordinate2D? = nil,
+        maxResults: Int = 5
+    ) async throws -> [PlantIdentificationCandidate] {
         // Validate API key is configured
         guard !apiKey.isEmpty else {
             throw PlantIdentificationError.invalidAPIKey
@@ -149,17 +194,25 @@ actor PlantIDAPIService {
         // Decode response
         let decoded = try JSONDecoder().decode(PlantNetResponse.self, from: data)
 
-        // Get top result
-        guard let top = decoded.results.first, top.score >= 0.1 else {
+        // Keep the top candidates above the minimum score threshold.
+        let candidates = decoded.results
+            .filter { $0.score >= 0.1 }
+            .prefix(maxResults)
+            .map { result in
+                PlantIdentificationCandidate(
+                    commonName: result.species.commonNames?.first
+                        ?? result.species.scientificNameWithoutAuthor,
+                    scientificName: result.species.scientificNameWithoutAuthor,
+                    family: result.species.family?.scientificNameWithoutAuthor ?? "",
+                    visualConfidence: result.score,
+                    gbifTaxonKey: result.gbif?.id.flatMap { Int($0) }
+                )
+            }
+
+        guard !candidates.isEmpty else {
             throw PlantIdentificationError.noResult
         }
 
-        // Map to local result type
-        return PlantIdentificationResult(
-            commonName: top.species.commonNames?.first ?? top.species.scientificNameWithoutAuthor,
-            scientificName: top.species.scientificNameWithoutAuthor,
-            family: top.species.family?.scientificNameWithoutAuthor ?? "",
-            confidence: top.score
-        )
+        return Array(candidates)
     }
 }

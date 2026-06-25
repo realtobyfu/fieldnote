@@ -438,7 +438,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Fieldnote;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.reference";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fieldnote needs camera access to capture plant photos.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Fieldnote uses your location to tag plant observations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Fieldnote uses your approximate location to show plants reported near you and what is active this season, and to tag plant observations.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -488,7 +488,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Fieldnote;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.reference";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fieldnote needs camera access to capture plant photos.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Fieldnote uses your location to tag plant observations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Fieldnote uses your approximate location to show plants reported near you and what is active this season, and to tag plant observations.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

@@ -52,6 +52,11 @@ struct CaptureReviewSheet: View {
         addedImage ?? captureMode.image
     }
 
+    /// Reranked runner-up candidates surfaced as alternatives.
+    private var alternatives: [RankedCandidate] {
+        captureMode.alternatives
+    }
+
     init(viewModel: CaptureViewModel, store: AppStore, captureMode: CaptureMode) {
         self.viewModel = viewModel
         self.store = store
@@ -86,6 +91,15 @@ struct CaptureReviewSheet: View {
 
                     VStack(spacing: FieldSpace.md) {
                         identificationCard
+                        // Alternative candidates (shown when the reranker
+                        // returned close runners-up). Visual signal stays
+                        // dominant — offered as "did you mean…?", not equal claims.
+                        if !alternatives.isEmpty {
+                            AlternativeCandidatesCard(
+                                alternatives: alternatives,
+                                onSelect: applyCandidate
+                            )
+                        }
                         locationCard
                         moreDetailsSection
                     }
@@ -424,6 +438,20 @@ struct CaptureReviewSheet: View {
         }
 
         isEnriching = false
+    }
+
+    // MARK: - Alternatives
+
+    private func applyCandidate(_ candidate: PlantIdentificationCandidate) {
+        commonName = candidate.commonName
+        scientificName = candidate.scientificName
+        family = candidate.family
+        confidence = candidate.visualConfidence
+        // Re-match against the catalog with the newly chosen names.
+        selectedCatalogPlant = CatalogPlant.match(
+            for: candidate.asResult,
+            in: store.catalogPlants
+        )
     }
 
     // MARK: - AI Badge

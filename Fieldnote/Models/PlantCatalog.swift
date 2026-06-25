@@ -18,6 +18,16 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
     let traits: [String]
     let defaultPlaceholder: String  // SF Symbol name
 
+    // MARK: Locale-aware identity (optional; see LocaleAwareCatalogImplementationPlan.md)
+
+    /// Canonical GBIF taxon key, when known. Stable across name changes.
+    let gbifTaxonKey: Int?
+    /// iNaturalist taxon ID, used to join against `observations/species_counts`.
+    let inaturalistTaxonID: Int?
+    /// Per-month seasonal affinity, 12 entries (Jan...Dec), normalized 0...1.
+    /// `nil` when no seasonal data has been computed for this taxon yet.
+    let monthlyAffinity: [Double]?
+
     init(
         id: UUID = UUID(),
         commonName: String,
@@ -27,7 +37,10 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
         nativeRange: String = "",
         summary: String = "",
         traits: [String],
-        defaultPlaceholder: String = "leaf.fill"
+        defaultPlaceholder: String = "leaf.fill",
+        gbifTaxonKey: Int? = nil,
+        inaturalistTaxonID: Int? = nil,
+        monthlyAffinity: [Double]? = nil
     ) {
         self.id = id
         self.commonName = commonName
@@ -38,6 +51,9 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
         self.summary = summary
         self.traits = traits
         self.defaultPlaceholder = defaultPlaceholder
+        self.gbifTaxonKey = gbifTaxonKey
+        self.inaturalistTaxonID = inaturalistTaxonID
+        self.monthlyAffinity = monthlyAffinity
     }
 }
 
@@ -110,5 +126,44 @@ extension CatalogPlant {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
             .replacingOccurrences(of: "'", with: "")
+    }
+}
+
+// MARK: - Locale Join
+
+extension CatalogPlant {
+    /// Normalized scientific name used to join external taxa (e.g. iNaturalist)
+    /// to this catalog entry when no provider ID is present.
+    var scientificNameKey: String {
+        Self.scientificNameKey(scientificName)
+    }
+
+    /// Normalizes a scientific name to a join key: lowercased, trimmed, and
+    /// reduced to genus + species so authorship and subspecies don't block a match.
+    /// "Taraxacum officinale F.H.Wigg." -> "taraxacum officinale"
+    static func scientificNameKey(_ value: String) -> String {
+        let cleaned = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "×", with: "")
+        let words = cleaned.split(separator: " ").map(String.init)
+        return words.prefix(2).joined(separator: " ")
+    }
+
+    /// Finds the catalog entry matching an external taxon, preferring the stable
+    /// iNaturalist ID and falling back to the normalized scientific-name key.
+    static func match(
+        inaturalistTaxonID taxonID: Int?,
+        scientificName: String,
+        in catalog: [CatalogPlant]
+    ) -> CatalogPlant? {
+        if let taxonID,
+           let byID = catalog.first(where: { $0.inaturalistTaxonID == taxonID }) {
+            return byID
+        }
+
+        let key = scientificNameKey(scientificName)
+        guard !key.isEmpty else { return nil }
+        return catalog.first { $0.scientificNameKey == key }
     }
 }

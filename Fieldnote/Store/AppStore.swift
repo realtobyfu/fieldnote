@@ -18,6 +18,16 @@ enum AppTab: Int {
     case profile
 }
 
+/// Which place the Explore catalog is ranked for. This is a *view* preference —
+/// it never touches the region stored on any observation. Defaults to following
+/// the device's current (coarse) location. See LocaleAwareCatalogImplementationPlan.md.
+enum ExploreRegion: Hashable {
+    /// Use the device's current location (coarse cell).
+    case currentLocation
+    /// A user-chosen city/region, carried as a coarse coordinate + display name.
+    case chosen(latitude: Double, longitude: Double, name: String)
+}
+
 @MainActor
 @Observable
 class AppStore {
@@ -35,6 +45,25 @@ class AppStore {
 
     // Static catalog (not persisted, bundled with app)
     let catalogPlants: [CatalogPlant] = CatalogPlant.catalog
+
+    // MARK: - Locale-aware catalog state (PR2 / Workstream B)
+
+    /// Coarse "where + when" the local catalog was last ranked for. `nil` until
+    /// the user opts into local discovery (location or a chosen region).
+    private(set) var localityProfile: LocalityProfile?
+    /// Catalog entries reported nearby, ranked by Stage-1 ecological score.
+    private(set) var localCatalogItems: [LocalCatalogItem] = []
+    /// When the underlying species counts were fetched, for "Updated N days ago".
+    private(set) var catalogFreshnessDate: Date?
+    /// True while a `refreshLocalCatalog()` pass is in flight (for spinners).
+    private(set) var isRefreshingLocalCatalog = false
+
+    /// Which place Explore ranks for. Changing this is a view preference and is
+    /// deliberately *not* persisted onto any observation.
+    var selectedRegionOverride: ExploreRegion = .currentLocation
+
+    /// Radius (km) used for the nearby query — kept in one place for copy + query.
+    let localCatalogRadiusKm = 25
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -239,6 +268,135 @@ class AppStore {
         // Small delay for visual feedback
         try? await Task.sleep(nanoseconds: 300_000_000)
         refreshTrigger += 1
+        await refreshLocalCatalog()
+    }
+
+    // MARK: - Locale-aware Catalog Refresh (PR2 / Workstream B)
+
+    /// Resolves the current Explore region into a `LocalityProfile`, fetches (or
+    /// reuses a cached) iNaturalist species count, and ranks the bundled catalog
+    /// against it. Resilient by design: on any failure the existing state is left
+    /// untouched so the screen never regresses to empty.
+    func refreshLocalCatalog() async {
+        guard !isRefreshingLocalCatalog else { return }
+        isRefreshingLocalCatalog = true
+        defer { isRefreshingLocalCatalog = false }
+
+        // 1. Resolve a coarse coordinate + display name for the chosen region.
+        guard let resolved = await resolveLocalityCoordinate() else {
+            // No location available yet (permission not granted, no chosen region).
+            // Leave any existing state in place.
+            return
+        }
+
+        let profile = LocalityProfile.make(
+            from: resolved.coordinate,
+            displayRegion: resolved.displayName
+        )
+
+        // 2. Reuse a fresh cache entry, else fetch from iNaturalist and store.
+        let counts: [INatSpeciesCount]
+        let fetchedAt: Date
+        if let cached = await LocalCatalogCache.shared.freshEntry(for: profile.cacheKey) {
+            counts = cached.counts
+            fetchedAt = cached.fetchedAt
+        } else {
+            do {
+                let fetched = try await INaturalistService.shared.speciesCounts(
+                    near: profile.coordinate,
+                    radiusKm: Double(localCatalogRadiusKm),
+                    month: profile.currentMonth
+                )
+                await LocalCatalogCache.shared.store(fetched, for: profile.cacheKey)
+                counts = fetched
+                fetchedAt = .now
+            } catch {
+                // Network/rate-limit failure: fall back to a stale cache if we
+                // have one, otherwise keep existing state.
+                if let stale = await LocalCatalogCache.shared.entry(for: profile.cacheKey) {
+                    counts = stale.counts
+                    fetchedAt = stale.fetchedAt
+                } else {
+                    print("refreshLocalCatalog: fetch failed and no cache: \(error)")
+                    return
+                }
+            }
+        }
+
+        // 3. Rank the bundled catalog against the counts (pure, synchronous).
+        let items = LocalRankingService().rank(
+            catalog: catalogPlants,
+            counts: counts,
+            month: profile.currentMonth,
+            radiusKm: localCatalogRadiusKm
+        )
+
+        // 4. Publish. Direct assignment is fine — these are stored properties.
+        localityProfile = profile
+        localCatalogItems = items
+        catalogFreshnessDate = fetchedAt
+    }
+
+    /// Resolves the chosen Explore region into a coarse coordinate + display name.
+    /// For `.currentLocation` we ask `LocationService` (one-shot, may return nil
+    /// when permission isn't granted yet); for `.chosen` we use the stored values.
+    private func resolveLocalityCoordinate() async
+        -> (coordinate: CLLocationCoordinate2D, displayName: String?)? {
+        switch selectedRegionOverride {
+        case .currentLocation:
+            guard let coordinate = await LocationService.shared.requestCurrentLocation() else {
+                return nil
+            }
+            // Reverse-geocode the coarse cell center (not the precise fix) for a
+            // friendly label; geocoding failure is non-fatal.
+            let cellProfile = LocalityProfile.make(from: coordinate)
+            let name = await LocationGeocoderService.shared.reverseGeocode(cellProfile.coordinate)
+            return (coordinate, name)
+        case .chosen(let latitude, let longitude, let name):
+            return (CLLocationCoordinate2D(latitude: latitude, longitude: longitude), name)
+        }
+    }
+
+    /// Convenience for the region picker: switch to a chosen city and refresh.
+    func selectRegion(_ region: ExploreRegion) async {
+        selectedRegionOverride = region
+        // Clear current items so the UI shows a loading state for the new region.
+        localCatalogItems = []
+        await refreshLocalCatalog()
+    }
+
+    // MARK: - Locale-aware Catalog Derived Views
+
+    /// Whether we have a locality + ranked items to drive the ecology-led sections.
+    var hasLocalCatalog: Bool {
+        localityProfile != nil && !localCatalogItems.isEmpty
+    }
+
+    /// Top items strongly reported nearby — the "Near You Now" section.
+    var nearYouNowItems: [LocalCatalogItem] {
+        localCatalogItems
+            .filter { $0.explanationCodes.contains { code in
+                if case .nearbyNow = code { return true } else { return false }
+            } }
+            .prefix(12)
+            .map { $0 }
+    }
+
+    /// Items reported this month that aren't already in "Near You Now".
+    var reportedThisMonthItems: [LocalCatalogItem] {
+        let nearIDs = Set(nearYouNowItems.map { $0.id })
+        return localCatalogItems
+            .filter { !nearIDs.contains($0.id) }
+            .prefix(12)
+            .map { $0 }
+    }
+
+    /// Human-readable "Updated 2 days ago" string for the freshness pill.
+    var catalogFreshnessLabel: String? {
+        guard let date = catalogFreshnessDate else { return nil }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return "Updated \(formatter.localizedString(for: date, relativeTo: .now))"
     }
 
     // MARK: - Computed Collections
