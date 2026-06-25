@@ -15,21 +15,25 @@ import Foundation
 /// Drives the user-facing "Why this plant?" copy. Wording avoids abundance
 /// claims — we say "reported nearby," not "abundant."
 enum ExplanationCode: Codable, Hashable {
-    case nearbyNow(radiusKm: Int)
-    case reportedThisMonth(monthName: String)
+    /// Strongly represented in the region's research-grade observations.
+    case commonlyReported
+    /// Present in the region, but less frequently reported.
+    case alsoReported
+    /// Seasonal affinity peaks around this month (only when we have that data).
     case seasonalPeak(monthName: String)
+    /// High occurrence + recognizable — a good first find.
     case easyFirstFind
 
     var label: String {
         switch self {
-        case .nearbyNow(let radiusKm):
-            return "Frequently reported within \(radiusKm) km"
-        case .reportedThisMonth(let monthName):
-            return "Reported nearby in \(monthName)"
+        case .commonlyReported:
+            return "Commonly reported in this region"
+        case .alsoReported:
+            return "Also reported in this region"
         case .seasonalPeak(let monthName):
             return "Often active around \(monthName)"
         case .easyFirstFind:
-            return "Commonly seen — a good first find"
+            return "A good first find"
         }
     }
 }
@@ -82,13 +86,11 @@ struct LocalRankingService {
     ///   - catalog: The bundled catalog entries.
     ///   - counts: iNaturalist species counts for the locality + month.
     ///   - month: Calendar month 1...12 used for seasonal copy.
-    ///   - radiusKm: Radius used in the query, for explanation copy.
     /// - Returns: Items with a local match, sorted by `rankScore` descending.
     func rank(
         catalog: [CatalogPlant],
         counts: [INatSpeciesCount],
-        month: Int,
-        radiusKm: Int
+        month: Int
     ) -> [LocalCatalogItem] {
         guard !counts.isEmpty else { return [] }
 
@@ -127,8 +129,7 @@ struct LocalRankingService {
                 plant: plant,
                 occurrenceScore: occurrenceScore,
                 month: month,
-                monthName: monthName,
-                radiusKm: radiusKm
+                monthName: monthName
             )
 
             items.append(LocalCatalogItem(
@@ -225,15 +226,14 @@ struct LocalRankingService {
         plant: CatalogPlant,
         occurrenceScore: Double,
         month: Int,
-        monthName: String,
-        radiusKm: Int
+        monthName: String
     ) -> [ExplanationCode] {
         var codes: [ExplanationCode] = []
 
         if occurrenceScore >= strongOccurrenceThreshold {
-            codes.append(.nearbyNow(radiusKm: radiusKm))
+            codes.append(.commonlyReported)
         } else {
-            codes.append(.reportedThisMonth(monthName: monthName))
+            codes.append(.alsoReported)
         }
 
         if let affinity = plant.monthlyAffinity,

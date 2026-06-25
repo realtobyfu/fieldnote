@@ -14,14 +14,14 @@ enum LocaleCatalogPreviewData {
     static let items: [LocalCatalogItem] = {
         let plants = Array(CatalogPlant.catalog.prefix(8))
         let codes: [[ExplanationCode]] = [
-            [.nearbyNow(radiusKm: 25), .easyFirstFind],
-            [.reportedThisMonth(monthName: "June"), .seasonalPeak(monthName: "June")],
-            [.nearbyNow(radiusKm: 25)],
-            [.reportedThisMonth(monthName: "June")],
+            [.commonlyReported, .easyFirstFind],
+            [.alsoReported, .seasonalPeak(monthName: "June")],
+            [.commonlyReported],
+            [.alsoReported],
             [.seasonalPeak(monthName: "June")],
             [.easyFirstFind],
-            [.nearbyNow(radiusKm: 25), .seasonalPeak(monthName: "June")],
-            [.reportedThisMonth(monthName: "June")]
+            [.commonlyReported, .seasonalPeak(monthName: "June")],
+            [.alsoReported]
         ]
         let counts = [1240, 360, 880, 45, 210, 670, 1530, 120]
         let maxCount = Double(counts.max() ?? 1)

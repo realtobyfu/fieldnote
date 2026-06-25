@@ -32,6 +32,9 @@ struct LocalityProfile: Codable, Hashable {
     let currentMonth: Int
     /// When this profile was created.
     let generatedAt: Date
+    /// iNaturalist place IDs when this profile represents a named region rather
+    /// than a coarse GPS cell. `nil` for current-location profiles.
+    var placeIDs: [Int]? = nil
 
     enum Hemisphere: String, Codable {
         case northern
@@ -69,6 +72,31 @@ extension LocalityProfile {
             hemisphere: lat >= 0 ? .northern : .southern,
             currentMonth: month,
             generatedAt: now
+        )
+    }
+
+    /// Builds a profile for a named region defined by iNaturalist place IDs
+    /// (e.g. a macro-region = the union of its states). No GPS coordinate is
+    /// involved; the cell ID is derived from the place IDs so it caches cleanly.
+    static func makeRegion(
+        name: String,
+        placeIDs: [Int],
+        hemisphere: Hemisphere = .northern,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> LocalityProfile {
+        let sorted = placeIDs.sorted()
+        let id = "place:" + sorted.map(String.init).joined(separator: ",")
+        return LocalityProfile(
+            coarseCellID: id,
+            latitude: 0,
+            longitude: 0,
+            displayRegion: name,
+            countryCode: nil,
+            hemisphere: hemisphere,
+            currentMonth: calendar.component(.month, from: now),
+            generatedAt: now,
+            placeIDs: sorted
         )
     }
 

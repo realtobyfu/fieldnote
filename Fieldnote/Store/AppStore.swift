@@ -24,8 +24,39 @@ enum AppTab: Int {
 enum ExploreRegion: Hashable {
     /// Use the device's current location (coarse cell).
     case currentLocation
-    /// A user-chosen city/region, carried as a coarse coordinate + display name.
-    case chosen(latitude: Double, longitude: Double, name: String)
+    /// A user-chosen named region, backed by one or more iNaturalist place IDs.
+    case region(CatalogRegion)
+}
+
+/// A named discovery region defined by iNaturalist place IDs. A macro-region
+/// (e.g. the Pacific Northwest) is the union of its states' place IDs, which
+/// iNaturalist aggregates server-side in a single query. Place IDs verified
+/// against the iNaturalist places API.
+struct CatalogRegion: Identifiable, Hashable {
+    let id: String
+    let name: String
+    /// Optional one-line context, e.g. "WA · OR".
+    let subtitle: String?
+    let placeIDs: [Int]
+
+    init(id: String, name: String, subtitle: String? = nil, placeIDs: [Int]) {
+        self.id = id
+        self.name = name
+        self.subtitle = subtitle
+        self.placeIDs = placeIDs
+    }
+
+    /// Curated US region set. Multi-state regions union their states' place IDs.
+    static let presets: [CatalogRegion] = [
+        CatalogRegion(id: "california", name: "California", placeIDs: [14]),
+        CatalogRegion(id: "pacific-northwest", name: "Pacific Northwest", subtitle: "WA · OR", placeIDs: [46, 10]),
+        CatalogRegion(id: "desert-southwest", name: "Desert Southwest", subtitle: "AZ · NV", placeIDs: [40, 50]),
+        CatalogRegion(id: "rocky-mountains", name: "Rocky Mountains", subtitle: "CO · UT", placeIDs: [34, 52]),
+        CatalogRegion(id: "texas", name: "Texas", placeIDs: [18]),
+        CatalogRegion(id: "florida", name: "Florida", placeIDs: [21]),
+        CatalogRegion(id: "northeast", name: "Northeast US", subtitle: "NY · MA · VT", placeIDs: [48, 2, 47]),
+        CatalogRegion(id: "hawaii", name: "Hawai\u{2018}i", placeIDs: [11])
+    ]
 }
 
 @MainActor
@@ -282,17 +313,12 @@ class AppStore {
         isRefreshingLocalCatalog = true
         defer { isRefreshingLocalCatalog = false }
 
-        // 1. Resolve a coarse coordinate + display name for the chosen region.
-        guard let resolved = await resolveLocalityCoordinate() else {
+        // 1. Build a locality profile for the chosen region.
+        guard let profile = await resolveLocalityProfile() else {
             // No location available yet (permission not granted, no chosen region).
             // Leave any existing state in place.
             return
         }
-
-        let profile = LocalityProfile.make(
-            from: resolved.coordinate,
-            displayRegion: resolved.displayName
-        )
 
         // 2. Reuse a fresh cache entry, else fetch from iNaturalist and store.
         let counts: [INatSpeciesCount]
@@ -302,11 +328,7 @@ class AppStore {
             fetchedAt = cached.fetchedAt
         } else {
             do {
-                let fetched = try await INaturalistService.shared.speciesCounts(
-                    near: profile.coordinate,
-                    radiusKm: Double(localCatalogRadiusKm),
-                    month: profile.currentMonth
-                )
+                let fetched = try await fetchSpeciesCounts(for: profile)
                 await LocalCatalogCache.shared.store(fetched, for: profile.cacheKey)
                 counts = fetched
                 fetchedAt = .now
@@ -327,8 +349,7 @@ class AppStore {
         let items = LocalRankingService().rank(
             catalog: catalogPlants,
             counts: counts,
-            month: profile.currentMonth,
-            radiusKm: localCatalogRadiusKm
+            month: profile.currentMonth
         )
 
         // 4. Publish. Direct assignment is fine — these are stored properties.
@@ -337,11 +358,10 @@ class AppStore {
         catalogFreshnessDate = fetchedAt
     }
 
-    /// Resolves the chosen Explore region into a coarse coordinate + display name.
-    /// For `.currentLocation` we ask `LocationService` (one-shot, may return nil
-    /// when permission isn't granted yet); for `.chosen` we use the stored values.
-    private func resolveLocalityCoordinate() async
-        -> (coordinate: CLLocationCoordinate2D, displayName: String?)? {
+    /// Builds a `LocalityProfile` for the chosen Explore region. For
+    /// `.currentLocation` we ask `LocationService` (one-shot, may return nil when
+    /// permission isn't granted yet); for `.region` we use its iNaturalist places.
+    private func resolveLocalityProfile() async -> LocalityProfile? {
         switch selectedRegionOverride {
         case .currentLocation:
             guard let coordinate = await LocationService.shared.requestCurrentLocation() else {
@@ -349,15 +369,31 @@ class AppStore {
             }
             // Reverse-geocode the coarse cell center (not the precise fix) for a
             // friendly label; geocoding failure is non-fatal.
-            let cellProfile = LocalityProfile.make(from: coordinate)
-            let name = await LocationGeocoderService.shared.reverseGeocode(cellProfile.coordinate)
-            return (coordinate, name)
-        case .chosen(let latitude, let longitude, let name):
-            return (CLLocationCoordinate2D(latitude: latitude, longitude: longitude), name)
+            let profile = LocalityProfile.make(from: coordinate)
+            let name = await LocationGeocoderService.shared.reverseGeocode(profile.coordinate)
+            return LocalityProfile.make(from: coordinate, displayRegion: name)
+        case .region(let region):
+            return LocalityProfile.makeRegion(name: region.name, placeIDs: region.placeIDs)
         }
     }
 
-    /// Convenience for the region picker: switch to a chosen city and refresh.
+    /// Fetches species counts for a profile: by place IDs for a named region,
+    /// else by the coarse coordinate + radius for current location.
+    private func fetchSpeciesCounts(for profile: LocalityProfile) async throws -> [INatSpeciesCount] {
+        if let placeIDs = profile.placeIDs, !placeIDs.isEmpty {
+            return try await INaturalistService.shared.speciesCounts(
+                placeIDs: placeIDs,
+                month: profile.currentMonth
+            )
+        }
+        return try await INaturalistService.shared.speciesCounts(
+            near: profile.coordinate,
+            radiusKm: Double(localCatalogRadiusKm),
+            month: profile.currentMonth
+        )
+    }
+
+    /// Convenience for the region picker: switch region and refresh.
     func selectRegion(_ region: ExploreRegion) async {
         selectedRegionOverride = region
         // Clear current items so the UI shows a loading state for the new region.
@@ -372,21 +408,24 @@ class AppStore {
         localityProfile != nil && !localCatalogItems.isEmpty
     }
 
-    /// Top items strongly reported nearby — the "Near You Now" section.
-    var nearYouNowItems: [LocalCatalogItem] {
+    /// Display name of the region currently driving Explore (e.g. "Hawai‘i").
+    var localeRegionName: String? {
+        localityProfile?.displayRegion
+    }
+
+    /// Catalog entries strongly reported in the region — the lead section.
+    var commonlyReportedItems: [LocalCatalogItem] {
         localCatalogItems
-            .filter { $0.explanationCodes.contains { code in
-                if case .nearbyNow = code { return true } else { return false }
-            } }
+            .filter { $0.explanationCodes.contains(.commonlyReported) }
             .prefix(12)
             .map { $0 }
     }
 
-    /// Items reported this month that aren't already in "Near You Now".
-    var reportedThisMonthItems: [LocalCatalogItem] {
-        let nearIDs = Set(nearYouNowItems.map { $0.id })
+    /// The longer tail — reported in the region but less frequently.
+    var moreToLookForItems: [LocalCatalogItem] {
+        let leadIDs = Set(commonlyReportedItems.map { $0.id })
         return localCatalogItems
-            .filter { !nearIDs.contains($0.id) }
+            .filter { !leadIDs.contains($0.id) }
             .prefix(12)
             .map { $0 }
     }

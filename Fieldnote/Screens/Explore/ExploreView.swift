@@ -94,26 +94,28 @@ struct ExploreView: View {
         }
     }
 
-    /// Ecology-led ordering when a locality exists: Near You Now → Reported This
-    /// Month → the existing Recently Encountered / custom / full catalog.
+    /// Ecology-led ordering when a locality exists: Commonly Reported → More to
+    /// Look For → the existing Recently Encountered / custom / full catalog.
     @ViewBuilder
     private func localCatalogSections(appStore: AppStore) -> some View {
         regionHeader(appStore: appStore)
 
-        let nearby = appStore.nearYouNowItems
-        if !nearby.isEmpty {
+        let region = regionName(appStore: appStore)
+
+        let common = appStore.commonlyReportedItems
+        if !common.isEmpty {
             LocalCatalogSection(
-                title: "Near You Now",
-                items: nearby,
+                title: "Commonly Reported in \(region)",
+                items: common,
                 isDiscovered: appStore.isDiscovered
             )
         }
 
-        let thisMonth = appStore.reportedThisMonthItems
-        if !thisMonth.isEmpty {
+        let more = appStore.moreToLookForItems
+        if !more.isEmpty {
             LocalCatalogSection(
-                title: "Reported This Month",
-                items: thisMonth,
+                title: "More to Look For in \(region)",
+                items: more,
                 isDiscovered: appStore.isDiscovered
             )
         }
@@ -178,8 +180,8 @@ struct ExploreView: View {
     }
 
     private func regionName(appStore: AppStore) -> String {
-        if case .chosen(_, _, let name) = appStore.selectedRegionOverride {
-            return name
+        if case .region(let region) = appStore.selectedRegionOverride {
+            return region.name
         }
         return appStore.localityProfile?.displayRegion ?? "Current Location"
     }

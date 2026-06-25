@@ -81,6 +81,52 @@ actor INaturalistService {
         locale: Locale = .current,
         limit: Int = 200
     ) async throws -> [INatSpeciesCount] {
+        try await speciesCounts(
+            scope: [
+                URLQueryItem(name: "lat", value: String(coordinate.latitude)),
+                URLQueryItem(name: "lng", value: String(coordinate.longitude)),
+                URLQueryItem(name: "radius", value: String(radiusKm))
+            ],
+            month: month,
+            locale: locale,
+            limit: limit
+        )
+    }
+
+    /// Fetches research-grade plant species counts reported across one or more
+    /// iNaturalist places, in a given month. A macro-region (e.g. the Pacific
+    /// Northwest) is the union of its states' place IDs — iNaturalist accepts a
+    /// comma-separated `place_id`, so the counts are aggregated server-side.
+    ///
+    /// - Parameters:
+    ///   - placeIDs: iNaturalist place IDs whose observations to union.
+    ///   - month: Calendar month 1...12 to constrain seasonality. `nil` = all year.
+    ///   - locale: Locale used for `preferred_common_name`.
+    ///   - limit: Max taxa to return (iNaturalist `per_page`, max 500).
+    func speciesCounts(
+        placeIDs: [Int],
+        month: Int? = nil,
+        locale: Locale = .current,
+        limit: Int = 200
+    ) async throws -> [INatSpeciesCount] {
+        guard !placeIDs.isEmpty else { throw INaturalistError.invalidRequest }
+        let joined = placeIDs.map(String.init).joined(separator: ",")
+        return try await speciesCounts(
+            scope: [URLQueryItem(name: "place_id", value: joined)],
+            month: month,
+            locale: locale,
+            limit: limit
+        )
+    }
+
+    /// Shared request/decode path. `scope` supplies the geographic constraint
+    /// (lat/lng/radius or place_id); everything else is common.
+    private func speciesCounts(
+        scope: [URLQueryItem],
+        month: Int?,
+        locale: Locale,
+        limit: Int
+    ) async throws -> [INatSpeciesCount] {
         guard var components = URLComponents(string: baseURL) else {
             throw INaturalistError.invalidRequest
         }
@@ -88,12 +134,10 @@ actor INaturalistService {
         var query: [URLQueryItem] = [
             URLQueryItem(name: "taxon_id", value: String(Self.plantaeTaxonID)),
             URLQueryItem(name: "quality_grade", value: "research"),
-            URLQueryItem(name: "lat", value: String(coordinate.latitude)),
-            URLQueryItem(name: "lng", value: String(coordinate.longitude)),
-            URLQueryItem(name: "radius", value: String(radiusKm)),
             URLQueryItem(name: "per_page", value: String(min(max(limit, 1), 500))),
             URLQueryItem(name: "locale", value: locale.identifier)
         ]
+        query.append(contentsOf: scope)
         if let month, (1...12).contains(month) {
             query.append(URLQueryItem(name: "month", value: String(month)))
         }

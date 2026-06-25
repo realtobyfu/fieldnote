@@ -54,7 +54,7 @@ struct LocalRankingServiceTests {
         // Different name spelling, but the taxon ID matches.
         let counts = [count(taxonID: 47602, scientific: "Taraxacum erythrospermum", count: 10)]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
 
         #expect(ranked.count == 1)
         #expect(ranked.first?.catalogPlant.commonName == "Dandelion")
@@ -67,7 +67,7 @@ struct LocalRankingServiceTests {
         // Authorship suffix should not block the join.
         let counts = [count(taxonID: 1, scientific: "Achillea millefolium L.", count: 5)]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
 
         #expect(ranked.count == 1)
         #expect(ranked.first?.catalogPlant.commonName == "Yarrow")
@@ -81,7 +81,7 @@ struct LocalRankingServiceTests {
         ]
         let counts = [count(taxonID: 1, scientific: "Achillea millefolium", count: 5)]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
 
         #expect(ranked.map(\.catalogPlant.commonName) == ["Yarrow"])
     }
@@ -89,7 +89,7 @@ struct LocalRankingServiceTests {
     @Test("Empty counts yields no items")
     func emptyCounts() {
         let catalog = [plant("Yarrow", scientific: "Achillea millefolium")]
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: [], month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: [], month: 6)
         #expect(ranked.isEmpty)
     }
 
@@ -106,7 +106,7 @@ struct LocalRankingServiceTests {
             count(taxonID: 2, scientific: "Bbb bbb", count: 2)
         ]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
 
         #expect(ranked.first?.catalogPlant.commonName == "Common")
         #expect(ranked.last?.catalogPlant.commonName == "Rare")
@@ -127,7 +127,7 @@ struct LocalRankingServiceTests {
             count(taxonID: 2, scientific: "Bbb bbb", count: 300)
         ]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
         let weed = try? #require(ranked.first { $0.catalogPlant.commonName == "Weed" })
         let bloom = try? #require(ranked.first { $0.catalogPlant.commonName == "JuneBloom" })
 
@@ -142,14 +142,14 @@ struct LocalRankingServiceTests {
     func scoresBounded() {
         let catalog = [plant("X", scientific: "Aaa aaa")]
         let counts = [count(taxonID: 1, scientific: "Aaa aaa", count: 50)]
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
         let score = ranked.first?.rankScore ?? -1
         #expect(score >= 0 && score <= 1)
     }
 
     // MARK: - Explanations
 
-    @Test("Strong occurrence yields nearbyNow + easyFirstFind copy")
+    @Test("Strong occurrence yields commonlyReported + easyFirstFind copy")
     func strongOccurrenceExplanations() {
         let catalog = [
             plant("Top", scientific: "Aaa aaa"),
@@ -160,16 +160,16 @@ struct LocalRankingServiceTests {
             count(taxonID: 2, scientific: "Bbb bbb", count: 1)
         ]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
         let top = try? #require(ranked.first { $0.catalogPlant.commonName == "Top" })
 
         if let top {
-            #expect(top.explanationCodes.contains(.nearbyNow(radiusKm: 25)))
+            #expect(top.explanationCodes.contains(.commonlyReported))
             #expect(top.explanationCodes.contains(.easyFirstFind))
         }
     }
 
-    @Test("Weak occurrence uses reportedThisMonth copy, not nearbyNow")
+    @Test("Weak occurrence uses alsoReported copy, not commonlyReported")
     func weakOccurrenceExplanations() {
         let catalog = [
             plant("Top", scientific: "Aaa aaa"),
@@ -180,12 +180,12 @@ struct LocalRankingServiceTests {
             count(taxonID: 2, scientific: "Bbb bbb", count: 1)
         ]
 
-        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
+        let ranked = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
         let low = try? #require(ranked.first { $0.catalogPlant.commonName == "Low" })
 
         if let low {
-            #expect(low.explanationCodes.contains(.reportedThisMonth(monthName: "June")))
-            #expect(!low.explanationCodes.contains(.nearbyNow(radiusKm: 25)))
+            #expect(low.explanationCodes.contains(.alsoReported))
+            #expect(!low.explanationCodes.contains(.commonlyReported))
         }
     }
 
@@ -197,8 +197,8 @@ struct LocalRankingServiceTests {
         let catalog = [plant("JuneBloom", scientific: "Aaa aaa", monthly: juneAffinity)]
         let counts = [count(taxonID: 1, scientific: "Aaa aaa", count: 50)]
 
-        let june = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6, radiusKm: 25)
-        let january = LocalRankingService().rank(catalog: catalog, counts: counts, month: 1, radiusKm: 25)
+        let june = LocalRankingService().rank(catalog: catalog, counts: counts, month: 6)
+        let january = LocalRankingService().rank(catalog: catalog, counts: counts, month: 1)
 
         #expect(june.first?.explanationCodes.contains(.seasonalPeak(monthName: "June")) == true)
         #expect(january.first?.explanationCodes.contains(.seasonalPeak(monthName: "January")) == false)
@@ -210,7 +210,7 @@ struct LocalRankingServiceTests {
     func rerankKeepsVisualDominant() {
         let local = plant("LocalCommon", scientific: "Bbb bbb")
         let counts = [count(taxonID: 1, scientific: "Bbb bbb", count: 1000)]
-        let localItems = LocalRankingService().rank(catalog: [local], counts: counts, month: 6, radiusKm: 25)
+        let localItems = LocalRankingService().rank(catalog: [local], counts: counts, month: 6)
 
         // Strong visual match with no local support vs. weak visual match that IS local.
         let strongVisual = PlantIdentificationCandidate(
@@ -239,7 +239,7 @@ struct LocalRankingServiceTests {
     func rerankBreaksTiesByLocal() {
         let local = plant("LocalCommon", scientific: "Bbb bbb")
         let counts = [count(taxonID: 1, scientific: "Bbb bbb", count: 1000)]
-        let localItems = LocalRankingService().rank(catalog: [local], counts: counts, month: 6, radiusKm: 25)
+        let localItems = LocalRankingService().rank(catalog: [local], counts: counts, month: 6)
 
         let noSupport = PlantIdentificationCandidate(
             commonName: "Elsewhere", scientificName: "Aaa aaa",

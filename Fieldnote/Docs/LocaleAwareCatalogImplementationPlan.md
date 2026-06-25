@@ -105,12 +105,15 @@ location; offer manual region as fallback.
 ### B3. Explore sections
 `Fieldnote/Screens/Explore/ExploreView.swift` + `Components/`
 - Replace `browseSections` with ecology-led order: **Near You Now**,
-  **Reported This Month**, then existing catalog as fallback. Reuse
+  **More to Look For**, then existing catalog as fallback. Reuse
   `NearMeSection`.
 - Per-card **"Why this plant?"** line from `explanationCodes`. Use
   **"reported nearby"** wording — no abundance claims.
-- Minimal **region picker**: current location vs. one chosen city (enough to
-  prove the travel case). Changing Explore region must NOT change the region
+- **Region picker**: current location vs. named regions backed by iNaturalist
+  place IDs. Macro-regions (e.g. Pacific Northwest, Northeast US) union their
+  states' place IDs in a single `species_counts` query (iNaturalist accepts a
+  comma-separated `place_id`), so the data is genuinely multi-state — not a
+  point + radius circle. Changing Explore region must NOT change the region
   stored on an observation.
 
 ### B4. Capture review alternatives
