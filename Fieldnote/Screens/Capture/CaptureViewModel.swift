@@ -172,8 +172,11 @@ class CaptureViewModel {
             // Record AI identification usage
             subscriptionStore.recordIdentification()
 
-            // Alternatives = the reranked tail, surfaced when scores are close.
-            let alternatives = Array(ranked.dropFirst())
+            // Only surface runner-ups that are genuinely close to the top match,
+            // so we show "did you mean…?" candidates, not a long tail of
+            // implausible ones. Keep those within 60% of the top combined score,
+            // drop near-zero visual noise, and cap the list.
+            let alternatives = Self.plausibleAlternatives(from: ranked)
             destination = .review(.mlIdentification(
                 result: top.candidate.asResult,
                 image: image,
@@ -204,6 +207,19 @@ class CaptureViewModel {
                 ))
             }
         }
+    }
+
+    /// Filters reranked runner-up candidates down to the plausible alternatives
+    /// worth offering. The first element of `ranked` is the chosen match.
+    static func plausibleAlternatives(from ranked: [RankedCandidate]) -> [RankedCandidate] {
+        guard let top = ranked.first else { return [] }
+        let minScore = top.combinedScore * 0.6   // within 60% of the top match
+        let maxCount = 3
+        return ranked
+            .dropFirst()
+            .filter { $0.combinedScore >= minScore && $0.candidate.visualConfidence >= 0.1 }
+            .prefix(maxCount)
+            .map { $0 }
     }
 
     /// Retry identification after subscription purchase
