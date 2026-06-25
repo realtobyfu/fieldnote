@@ -60,11 +60,21 @@ struct FieldnoteApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
+                #if DEBUG
+                if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "collection" {
+                    NavigationStack { LibraryView() }
+                } else if onboardingStore.shouldShowOnboarding {
+                    OnboardingContainerView()
+                } else {
+                    MainTabView()
+                }
+                #else
                 if onboardingStore.shouldShowOnboarding {
                     OnboardingContainerView()
                 } else {
                     MainTabView()
                 }
+                #endif
             }
             .environment(\.appStore, appStore)
             .environment(\.onboardingStore, onboardingStore)
@@ -74,6 +84,13 @@ struct FieldnoteApp: App {
             .animation(.easeInOut(duration: 0.4), value: onboardingStore.shouldShowOnboarding)
             .preferredColorScheme(.light)
             .task {
+                #if DEBUG
+                DebugSeed.seedIfRequested(appStore: appStore, gamification: gamificationService)
+                // Jump to Capture so the DEBUG review-sheet hook can present on launch.
+                if ProcessInfo.processInfo.environment["SEED_REVIEW"] != nil {
+                    appStore.selectedTab = .capture
+                }
+                #endif
                 // Check subscription status on launch
                 await subscriptionStore.checkAndUpdateStatus()
 

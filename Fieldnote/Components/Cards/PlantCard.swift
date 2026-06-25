@@ -22,53 +22,62 @@ struct PlantCard: View {
     }
 
     var body: some View {
-        VintageCard {
-            switch layout {
-            case .grid:
-                gridContent
-            case .list:
-                listContent
-            }
+        switch layout {
+        case .grid:
+            gridCard
+        case .list:
+            VintageCard { listContent }
         }
     }
 
     // MARK: - Grid Layout
 
-    private var gridContent: some View {
-        VStack(alignment: .leading, spacing: FieldSpace.sm) {
-            // Botanical illustration
-            PlantIllustrationView(plant: plant, size: .card)
-            .frame(height: 120)
-            .frame(maxWidth: .infinity)
-            .clipped()
+    /// A self-contained, uniform-height card: an edge-to-edge image plate over an
+    /// opaque surface, with a fixed 2-line name block so the grid columns stay aligned.
+    private var gridCard: some View {
+        VStack(spacing: 0) {
+            PlantIllustrationView(plant: plant, size: .card, fill: true)
+                .frame(height: 132)
+                .frame(maxWidth: .infinity)
+                .background(FieldColor.illustrationBg)
+                .clipped()
 
             VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                // Common name
+                // Common name — always reserves 2 lines so all cards match height.
                 Text(plant.commonName)
-                    .font(FieldType.bodyEmphasized)
+                    .font(FieldType.title3)
                     .foregroundColor(FieldColor.vintageInk)
-                    .lineLimit(2)
+                    .lineLimit(2, reservesSpace: true)
+                    .multilineTextAlignment(.leading)
 
                 // Scientific name
                 ScientificNameText(plant.scientificName, size: .footnote)
                     .lineLimit(1)
 
-                // Confidence and encounter count
-                HStack {
-                    ConfidencePill(confidence: plant.averageConfidence)
-
-                    Spacer()
-
-                    HStack(spacing: FieldSpace.xs) {
-                        Image(systemName: "eye.fill")
-                            .font(.caption2)
-                        Text("\(plant.encounterCount)")
-                            .font(FieldType.caption)
-                    }
-                    .foregroundColor(FieldColor.fadedInk)
+                // Calm metadata: color-coded confidence dot + sighting count.
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(FieldColor.confidence(for: plant.averageConfidence))
+                        .frame(width: 7, height: 7)
+                    Text("\(plant.encounterCount) \(plant.encounterCount == 1 ? "sighting" : "sightings")")
+                        .font(FieldType.caption)
+                        .foregroundColor(FieldColor.fadedInk)
+                    Spacer(minLength: 0)
                 }
+                .padding(.top, 2)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, FieldSpace.sm + FieldSpace.xs)
+            .padding(.top, FieldSpace.sm)
+            .padding(.bottom, FieldSpace.sm + FieldSpace.xs)
         }
+        .background(FieldColor.surface)
+        .clipShape(RoundedRectangle(cornerRadius: FieldRadius.card, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: FieldRadius.card, style: .continuous)
+                .stroke(FieldColor.bookBorder.opacity(0.35), lineWidth: 0.5)
+        )
+        .fieldShadow(FieldShadow.card)
     }
 
     // MARK: - List Layout

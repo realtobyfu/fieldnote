@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import CoreLocation
 import PhotosUI
 
@@ -32,6 +33,12 @@ struct CaptureReviewSheet: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var addedImage: UIImage?
 
+    /// Whether the identification fields are in edit mode. AI captures start in a
+    /// confirm-only state (tap "Edit details" to reveal the fields); manual entry edits directly.
+    @State private var isEditingID: Bool
+    /// Progressive disclosure for the optional Conditions + Notes sections.
+    @State private var showMoreDetails = false
+
     // Enrichment data for uncatalogued plants
     @State private var enrichedSummary: String = ""
     @State private var enrichedHabitat: String?
@@ -52,231 +59,47 @@ struct CaptureReviewSheet: View {
 
         if let result = captureMode.identificationResult {
             let matchedPlant = CatalogPlant.match(for: result, in: store.catalogPlants)
+            let prefilledName = matchedPlant?.commonName ?? result.commonName
             _selectedCatalogPlant = State(initialValue: matchedPlant)
-            _commonName = State(initialValue: matchedPlant?.commonName ?? result.commonName)
+            _commonName = State(initialValue: prefilledName)
             _scientificName = State(initialValue: matchedPlant?.scientificName ?? result.scientificName)
             _family = State(initialValue: matchedPlant?.family ?? result.family)
             _confidence = State(initialValue: result.confidence)
+            // Confirm-first when the AI actually returned a name; otherwise drop straight to editing.
+            _isEditingID = State(initialValue: prefilledName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         } else {
             _commonName = State(initialValue: "")
             _scientificName = State(initialValue: "")
             _family = State(initialValue: "")
             _confidence = State(initialValue: 0.75)
             _selectedCatalogPlant = State(initialValue: nil)
+            _isEditingID = State(initialValue: true)
         }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: FieldSpace.lg) {
-                    // Preview image with vintage frame
-                    photoPreview
-                        .padding(.horizontal, FieldSpace.md)
+                VStack(spacing: 0) {
+                    // Full-bleed hero photo
+                    photoHero
 
-                    // Form sections
                     VStack(spacing: FieldSpace.md) {
-                        // Plant identification
-                        VintageCard {
-                            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                HStack {
-                                    Text("Plant Identification")
-                                        .font(FieldType.bodyEmphasized)
-                                        .foregroundColor(FieldColor.vintageInk)
-
-                                    Spacer()
-
-                                    if captureMode.hasPrefilledData {
-                                        aiIdentifiedBadge
-                                    }
-
-//                                    if isEnriching {
-//                                        enrichingBadge
-//                                    } else if !enrichedSummary.isEmpty && selectedCatalogPlant == nil {
-//                                        enrichedBadge
-//                                    }
-                                }
-
-                                TextField("Common name", text: $commonName)
-                                    .vintageTextField()
-                                    .onChange(of: commonName) { _, _ in
-                                        clearCatalogSelectionIfNeeded()
-                                    }
-
-                                TextField("Scientific name (optional)", text: $scientificName)
-                                    .vintageTextField()
-                                    .italic()
-                                    .onChange(of: scientificName) { _, _ in
-                                        clearCatalogSelectionIfNeeded()
-                                    }
-
-                                TextField("Family", text: $family)
-                                    .vintageTextField()
-                                    .onChange(of: family) { _, _ in
-                                        clearCatalogSelectionIfNeeded()
-                                    }
-
-                                HStack(spacing: FieldSpace.xs) {
-                                    if let selectedCatalogPlant {
-                                        Text("Catalog: \(selectedCatalogPlant.commonName)")
-                                            .font(FieldType.caption)
-                                            .foregroundColor(FieldColor.mutedInk)
-                                    } else {
-                                        Text("Catalog: Unmatched")
-                                            .font(FieldType.caption)
-                                            .foregroundColor(FieldColor.fadedInk)
-                                    }
-
-                                    Spacer()
-
-                                    Button {
-                                        showCatalogPicker = true
-                                    } label: {
-                                        Label("Choose", systemImage: "leaf")
-                                            .font(FieldType.caption)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-
-                        // Confidence
-                        VintageCard {
-                            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                HStack {
-                                    Text("Confidence")
-                                        .font(FieldType.bodyEmphasized)
-                                        .foregroundColor(FieldColor.vintageInk)
-
-                                    Spacer()
-
-                                    ConfidencePill(confidence: confidence)
-                                }
-
-                                Slider(value: $confidence, in: 0.0...1.0)
-                                    .tint(FieldColor.accent)
-                            }
-                        }
-
-                        // Location
-                        VintageCard {
-                            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                Text("Location")
-                                    .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.vintageInk)
-
-                                Button {
-                                    showLocationPicker = true
-                                } label: {
-                                    HStack(spacing: FieldSpace.sm) {
-                                        Image(systemName: "mappin.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(selectedLocation != nil ? FieldColor.accent : FieldColor.fadedInk)
-
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(selectedLocation?.name ?? "Add Location")
-                                                .font(FieldType.body)
-                                                .foregroundColor(selectedLocation != nil ? FieldColor.ink : FieldColor.fadedInk)
-                                                .lineLimit(1)
-
-                                            if let subtitle = selectedLocation?.subtitle {
-                                                Text(subtitle)
-                                                    .font(FieldType.caption)
-                                                    .foregroundColor(FieldColor.fadedInk)
-                                                    .lineLimit(1)
-                                            }
-                                        }
-
-                                        Spacer()
-
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption)
-                                            .foregroundColor(FieldColor.fadedInk)
-                                    }
-                                    .padding(FieldSpace.sm)
-                                    .background(FieldColor.surface)
-                                    .cornerRadius(FieldRadius.sm)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                            .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-                                    )
-                                }
-                                .buttonStyle(.plain)
-
-                                if !locationLabel.isEmpty {
-                                    HStack(spacing: FieldSpace.xs) {
-                                        Text("Label: \(locationLabel)")
-                                            .font(FieldType.caption)
-                                            .foregroundColor(FieldColor.mutedInk)
-                                        Spacer()
-                                    }
-                                }
-                            }
-                        }
-
-                        // Conditions
-                        VintageCard {
-                            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                Text("Conditions")
-                                    .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.vintageInk)
-
-                                FlowLayout(spacing: FieldSpace.xs) {
-                                    ForEach(availableConditions, id: \.self) { condition in
-                                        TraitChip(
-                                            condition,
-                                            isSelected: selectedConditions.contains(condition)
-                                        ) {
-                                            if selectedConditions.contains(condition) {
-                                                selectedConditions.remove(condition)
-                                            } else {
-                                                selectedConditions.insert(condition)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Notes
-                        VintageCard {
-                            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                Text("Field Notes")
-                                    .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.vintageInk)
-
-                                TextEditor(text: $notes)
-                                    .font(FieldType.body)
-                                    .foregroundColor(FieldColor.ink)
-                                    .scrollContentBackground(.hidden)
-                                    .frame(height: 100)
-                                    .padding(FieldSpace.xs)
-                                    .background(FieldColor.surface)
-                                    .cornerRadius(FieldRadius.sm)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: FieldRadius.sm)
-                                            .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-                                    )
-                            }
-                        }
-
-                        // Save button
-                        PrimaryButton(
-                            isSaving ? "Saving..." : "Save Observation",
-                            isEnabled: !commonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
-                        ) {
-                            Task {
-                                await saveEncounter()
-                            }
-                        }
+                        identificationCard
+                        locationCard
+                        moreDetailsSection
                     }
                     .padding(.horizontal, FieldSpace.md)
+                    .padding(.top, FieldSpace.md)
                 }
-                .padding(.vertical, FieldSpace.md)
+                .padding(.bottom, FieldSpace.md)
             }
             .background(FieldColor.agedPaper)
             .navigationTitle("Review Capture")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                saveBar
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -304,6 +127,272 @@ struct CaptureReviewSheet: View {
         .task {
             await fetchEnrichmentDataIfNeeded()
         }
+    }
+
+    // MARK: - Identification Section
+
+    private var identificationCard: some View {
+        VintageCard {
+            VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                if captureMode.hasPrefilledData && !isEditingID {
+                    // Confirm-first: clean suggestion card with read-only AI confidence.
+                    HStack {
+                        Label("Looks like", systemImage: "sparkles")
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.accent)
+                        Spacer()
+                        aiConfidenceBadge
+                    }
+
+                    Text(commonName.isEmpty ? "Unknown plant" : commonName)
+                        .font(FieldType.title2)
+                        .foregroundColor(FieldColor.vintageInk)
+
+                    if !scientificName.isEmpty {
+                        Text(scientificName)
+                            .font(FieldType.scientificCallout)
+                            .italic()
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+
+                    if !family.isEmpty {
+                        Text(family)
+                            .font(FieldType.caption)
+                            .foregroundColor(FieldColor.mutedInk)
+                    }
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { isEditingID = true }
+                    } label: {
+                        Label("Not quite? Edit details", systemImage: "pencil")
+                            .font(FieldType.footnote.weight(.semibold))
+                            .foregroundColor(FieldColor.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, FieldSpace.xs)
+                } else {
+                    // Editable fields (manual entry, or AI correction).
+                    HStack {
+                        Text("Plant Identification")
+                            .font(FieldType.bodyEmphasized)
+                            .foregroundColor(FieldColor.vintageInk)
+                        Spacer()
+                        if captureMode.hasPrefilledData {
+                            aiIdentifiedBadge
+                        }
+                    }
+
+                    TextField("Common name", text: $commonName)
+                        .vintageTextField()
+                        .onChange(of: commonName) { _, _ in clearCatalogSelectionIfNeeded() }
+
+                    TextField("Scientific name (optional)", text: $scientificName)
+                        .vintageTextField()
+                        .italic()
+                        .onChange(of: scientificName) { _, _ in clearCatalogSelectionIfNeeded() }
+
+                    TextField("Family", text: $family)
+                        .vintageTextField()
+                        .onChange(of: family) { _, _ in clearCatalogSelectionIfNeeded() }
+
+                    HStack(spacing: FieldSpace.xs) {
+                        if let selectedCatalogPlant {
+                            Text("Catalog: \(selectedCatalogPlant.commonName)")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.mutedInk)
+                        } else {
+                            Text("Catalog: Unmatched")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.fadedInk)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            showCatalogPicker = true
+                        } label: {
+                            Label("Choose", systemImage: "leaf")
+                                .font(FieldType.caption)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Manual captures: humane certainty picker instead of a precise slider.
+                    if !captureMode.hasPrefilledData {
+                        VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                            Text("How sure are you?")
+                                .font(FieldType.caption)
+                                .foregroundColor(FieldColor.mutedInk)
+                            CertaintyPicker(confidence: $confidence)
+                        }
+                        .padding(.top, FieldSpace.xs)
+                    }
+                }
+            }
+        }
+    }
+
+    private var aiConfidenceBadge: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(FieldColor.confidence(for: confidence))
+                .frame(width: 7, height: 7)
+            Text("\(Int(confidence * 100))% match")
+                .font(FieldType.caption.weight(.semibold))
+                .foregroundColor(FieldColor.mutedInk)
+        }
+        .padding(.horizontal, FieldSpace.sm)
+        .padding(.vertical, 5)
+        .background(FieldColor.confidence(for: confidence).opacity(0.14), in: Capsule())
+    }
+
+    // MARK: - Location Section
+
+    private var locationCard: some View {
+        VintageCard {
+            VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                Text("Location")
+                    .font(FieldType.bodyEmphasized)
+                    .foregroundColor(FieldColor.vintageInk)
+
+                Button {
+                    showLocationPicker = true
+                } label: {
+                    HStack(spacing: FieldSpace.sm) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(selectedLocation != nil ? FieldColor.accent : FieldColor.fadedInk)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selectedLocation?.name ?? "Add Location")
+                                .font(FieldType.body)
+                                .foregroundColor(selectedLocation != nil ? FieldColor.ink : FieldColor.fadedInk)
+                                .lineLimit(1)
+
+                            if let subtitle = selectedLocation?.subtitle {
+                                Text(subtitle)
+                                    .font(FieldType.caption)
+                                    .foregroundColor(FieldColor.fadedInk)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(FieldColor.fadedInk)
+                    }
+                    .padding(FieldSpace.sm)
+                    .background(FieldColor.surface)
+                    .cornerRadius(FieldRadius.sm)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FieldRadius.sm)
+                            .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                if !locationLabel.isEmpty {
+                    Text("Label: \(locationLabel)")
+                        .font(FieldType.caption)
+                        .foregroundColor(FieldColor.mutedInk)
+                }
+            }
+        }
+    }
+
+    // MARK: - Optional Details (progressive disclosure)
+
+    private var moreDetailsSection: some View {
+        VStack(spacing: FieldSpace.md) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showMoreDetails.toggle() }
+            } label: {
+                HStack {
+                    Text(showMoreDetails ? "Hide extra details" : "Add conditions & notes")
+                        .font(FieldType.bodyEmphasized)
+                        .foregroundColor(FieldColor.accent)
+                    Spacer()
+                    Image(systemName: showMoreDetails ? "chevron.up" : "chevron.down")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(FieldColor.accent)
+                }
+                .padding(.horizontal, FieldSpace.xs)
+            }
+            .buttonStyle(.plain)
+
+            if showMoreDetails {
+                conditionsCard
+                notesCard
+            }
+        }
+    }
+
+    private var conditionsCard: some View {
+        VintageCard {
+            VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                Text("Conditions")
+                    .font(FieldType.bodyEmphasized)
+                    .foregroundColor(FieldColor.vintageInk)
+
+                FlowLayout(spacing: FieldSpace.xs) {
+                    ForEach(availableConditions, id: \.self) { condition in
+                        TraitChip(
+                            condition,
+                            isSelected: selectedConditions.contains(condition)
+                        ) {
+                            if selectedConditions.contains(condition) {
+                                selectedConditions.remove(condition)
+                            } else {
+                                selectedConditions.insert(condition)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var notesCard: some View {
+        VintageCard {
+            VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                Text("Field Notes")
+                    .font(FieldType.bodyEmphasized)
+                    .foregroundColor(FieldColor.vintageInk)
+
+                TextEditor(text: $notes)
+                    .font(FieldType.body)
+                    .foregroundColor(FieldColor.ink)
+                    .scrollContentBackground(.hidden)
+                    .frame(height: 100)
+                    .padding(FieldSpace.xs)
+                    .background(FieldColor.surface)
+                    .cornerRadius(FieldRadius.sm)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: FieldRadius.sm)
+                            .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                    )
+            }
+        }
+    }
+
+    // MARK: - Save Bar (pinned)
+
+    private var saveBar: some View {
+        PrimaryButton(
+            isSaving ? "Saving..." : "Save Observation",
+            isEnabled: !commonName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
+        ) {
+            Task { await saveEncounter() }
+        }
+        .padding(.horizontal, FieldSpace.md)
+        .padding(.top, FieldSpace.sm)
+        .padding(.bottom, FieldSpace.sm)
+        .background(
+            FieldColor.agedPaper
+                .overlay(alignment: .top) { RuledLine().opacity(0.5) }
+        )
     }
 
     // MARK: - Wikipedia Enrichment
@@ -383,47 +472,37 @@ struct CaptureReviewSheet: View {
 
     // MARK: - Photo Preview
 
-    private var photoPreview: some View {
+    private var photoHero: some View {
         Group {
             if let image = capturedImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: 200, height: 140)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 300)
                     .clipped()
                     .overlay(
-                        // Subtle sepia tint
-                        Rectangle()
-                            .fill(FieldColor.sepia.opacity(0.05))
-                    )
-                    .cornerRadius(FieldRadius.sm)
-                    .overlay(
-                        // Vintage frame
-                        RoundedRectangle(cornerRadius: FieldRadius.sm)
-                            .stroke(FieldColor.bookBorder.opacity(0.6), lineWidth: 0.8)
+                        // Subtle sepia tint to tie into the vintage aesthetic
+                        Rectangle().fill(FieldColor.sepia.opacity(0.05))
                     )
             } else {
-                // Tappable placeholder to add photo
+                // Tappable full-bleed placeholder to add a photo (manual entry path).
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: FieldRadius.sm)
-                            .fill(FieldColor.illustrationBg)
+                        Rectangle().fill(FieldColor.illustrationBg)
 
-                        VStack(spacing: FieldSpace.xs) {
+                        VStack(spacing: FieldSpace.sm) {
                             Image(systemName: "camera.fill")
-                                .font(.system(size: 32))
+                                .font(.system(size: 36))
                                 .foregroundColor(FieldColor.accent.opacity(0.6))
 
-                            Text("Tap to add photo")
-                                .font(FieldType.caption)
+                            Text("Tap to add a photo")
+                                .font(FieldType.callout)
                                 .foregroundColor(FieldColor.fadedInk)
                         }
                     }
-                    .frame(width: 200, height: 140)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: FieldRadius.sm)
-                            .stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
-                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 240)
                 }
             }
         }
@@ -542,7 +621,7 @@ struct CaptureReviewSheet: View {
             }
         }
 
-        // Update streak, XP, and badge unlocks from the new observation.
+        // Update gamification (streak, XP, badge unlocks) from the new observation.
         gamification?.recordObservation()
 
         isSaving = false
@@ -565,6 +644,44 @@ struct CaptureReviewSheet: View {
             scientificName != selectedCatalogPlant.scientificName ||
             family != selectedCatalogPlant.family {
             self.selectedCatalogPlant = nil
+        }
+    }
+}
+
+// MARK: - Certainty Picker
+
+/// A humane 3-step certainty control for manual entries — replaces the precise
+/// confidence slider, which conflated "the model's confidence" with "the user's".
+private struct CertaintyPicker: View {
+    @Binding var confidence: Double
+
+    private let options: [(label: String, value: Double)] = [
+        ("Not sure", 0.5),
+        ("Fairly sure", 0.75),
+        ("Certain", 0.95)
+    ]
+
+    var body: some View {
+        HStack(spacing: FieldSpace.xs) {
+            ForEach(options, id: \.label) { option in
+                let isSelected = abs(confidence - option.value) < 0.01
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { confidence = option.value }
+                } label: {
+                    Text(option.label)
+                        .font(FieldType.caption.weight(isSelected ? .semibold : .regular))
+                        .foregroundColor(isSelected ? .white : FieldColor.mutedInk)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, FieldSpace.sm)
+                        .background(isSelected ? FieldColor.accent : FieldColor.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: FieldRadius.sm)
+                                .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                        )
+                        .cornerRadius(FieldRadius.sm)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 }
@@ -633,7 +750,44 @@ private struct CatalogPlantPicker: View {
     }
 }
 
-// Previews disabled - require SwiftData ModelContainer setup
-//#Preview {
-//    CaptureReviewSheet(viewModel: CaptureViewModel(), captureMode: .manualEntry)
-//}
+#if DEBUG
+private struct CaptureReviewPreviewHost: View {
+    private let captureMode: CaptureMode
+    private let viewModel: CaptureViewModel
+    private let container: ModelContainer
+    @State private var store: AppStore
+
+    @MainActor
+    init(captureMode: CaptureMode) {
+        self.captureMode = captureMode
+        self.viewModel = CaptureViewModel()
+        let schema = Schema([Plant.self, Encounter.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        let container = try! ModelContainer(for: schema, configurations: [config])
+        self.container = container
+        _store = State(initialValue: AppStore(modelContext: container.mainContext))
+    }
+
+    var body: some View {
+        CaptureReviewSheet(viewModel: viewModel, store: store, captureMode: captureMode)
+            .environment(\.appStore, store)
+            .modelContainer(container)
+    }
+}
+
+#Preview("AI Confirm") {
+    CaptureReviewPreviewHost(captureMode: .mlIdentification(
+        result: PlantIdentificationResult(
+            commonName: "Red Maple",
+            scientificName: "Acer rubrum",
+            family: "Sapindaceae",
+            confidence: 0.92
+        ),
+        image: UIImage(systemName: "leaf.fill")!
+    ))
+}
+
+#Preview("Manual Entry") {
+    CaptureReviewPreviewHost(captureMode: .manualEntry)
+}
+#endif

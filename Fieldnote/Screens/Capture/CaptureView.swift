@@ -40,6 +40,9 @@ struct CaptureView: View {
             }
         }
         .navigationTitle("Capture")
+        #if DEBUG
+        .onAppear { presentDebugReviewIfRequested() }
+        #endif
         .onChange(of: viewModel.selectedItem) { _, _ in
             Task {
                 await viewModel.loadPhoto(subscriptionStore: subscriptionStore)
@@ -275,6 +278,53 @@ struct CaptureView: View {
     }
 
     // MARK: - Actions
+
+    #if DEBUG
+    /// DEBUG-only: auto-present the review sheet on launch for screenshots/design review.
+    /// Launch with env `SEED_REVIEW=ai` or `SEED_REVIEW=manual`.
+    private func presentDebugReviewIfRequested() {
+        guard viewModel.destination == nil,
+              let mode = ProcessInfo.processInfo.environment["SEED_REVIEW"] else { return }
+        switch mode {
+        case "ai":
+            viewModel.destination = .review(.mlIdentification(
+                result: PlantIdentificationResult(
+                    commonName: "Red Maple",
+                    scientificName: "Acer rubrum",
+                    family: "Sapindaceae",
+                    confidence: 0.92
+                ),
+                image: Self.debugSampleImage()
+            ))
+        case "manual":
+            viewModel.destination = .review(.manualEntry)
+        default:
+            break
+        }
+    }
+
+    /// A believable forest-gradient stand-in for a captured photo (DEBUG previews only).
+    private static func debugSampleImage() -> UIImage {
+        let size = CGSize(width: 800, height: 800)
+        return UIGraphicsImageRenderer(size: size).image { ctx in
+            let colors = [
+                UIColor(red: 0.30, green: 0.46, blue: 0.32, alpha: 1).cgColor,
+                UIColor(red: 0.12, green: 0.20, blue: 0.13, alpha: 1).cgColor
+            ]
+            guard let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                colors: colors as CFArray,
+                locations: [0, 1]
+            ) else { return }
+            ctx.cgContext.drawLinearGradient(
+                gradient,
+                start: .zero,
+                end: CGPoint(x: size.width, y: size.height),
+                options: []
+            )
+        }
+    }
+    #endif
 
     private func triggerShutter(geometry: GeometryProxy) {
         // Haptic feedback for camera shutter

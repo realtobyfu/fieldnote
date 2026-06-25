@@ -10,11 +10,11 @@ import SwiftUI
 import SwiftData
 import CoreLocation
 
-enum Tab: Int {
-    case library
-    case capture
+enum AppTab: Int {
+    case journal
     case explore
-    case settings
+    case capture
+    case map
     case profile
 }
 
@@ -28,7 +28,7 @@ class AppStore {
     private(set) var refreshTrigger: Int = 0
 
     // Navigation state
-    var selectedTab: Tab = .library
+    var selectedTab: AppTab = .journal
 
     // Last save error for UI feedback
     var lastError: Error?

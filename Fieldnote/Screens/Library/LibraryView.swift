@@ -10,7 +10,7 @@ import SwiftUI
 struct LibraryView: View {
     @Environment(\.appStore) private var store
     @State private var searchText = ""
-    @State private var selectedFamily = "All"
+    @State private var selectedType: PlantType?
     @State private var sortOrder: SortOrder = .recent
 
     enum SortOrder {
@@ -40,23 +40,10 @@ struct LibraryView: View {
             }
         }
         .background(FieldColor.paper)
-        .navigationTitle("Library")
-        .navigationDestination(for: Plant.self) { plant in
-            PlantDetailView(plant: plant)
-        }
+        .navigationTitle("Collection")
+        // Plant destination is provided by the enclosing stack (Journal / Map),
+        // which now pushes this view as the "Collection" screen.
         .searchable(text: $searchText, prompt: "Search plants...")
-        .toolbar {
-            if let appStore = store, appStore.hasLocationsWithCoordinates {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        LocationMapView()
-                    } label: {
-                        Image(systemName: "map")
-                            .foregroundColor(FieldColor.accent)
-                    }
-                }
-            }
-        }
     }
 
     @ViewBuilder
@@ -64,7 +51,7 @@ struct LibraryView: View {
         let plants = filteredAndSortedPlants(from: appStore)
 
         if plants.isEmpty {
-            if searchText.isEmpty && selectedFamily == "All" {
+            if searchText.isEmpty && selectedType == nil {
                 EmptyStateView(
                     icon: "leaf",
                     title: "No Plants Yet",
@@ -133,16 +120,21 @@ struct LibraryView: View {
 
     // MARK: - Filter Chips
 
+    /// Plant-type chips (only the types actually present in the collection), in a
+    /// stable canonical order — far friendlier than raw botanical family names.
     private func filterChips(appStore: AppStore) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        let present = Set(appStore.plants.map { $0.plantType })
+        let types = PlantType.allCases.filter { present.contains($0) }
+
+        return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FieldSpace.xs) {
-                FilterChip("All", isSelected: selectedFamily == "All") {
-                    selectedFamily = "All"
+                FilterChip("All", isSelected: selectedType == nil) {
+                    selectedType = nil
                 }
 
-                ForEach(appStore.uniqueFamilies, id: \.self) { family in
-                    FilterChip(family, isSelected: selectedFamily == family) {
-                        selectedFamily = family
+                ForEach(types) { type in
+                    FilterChip(type.label, isSelected: selectedType == type) {
+                        selectedType = type
                     }
                 }
             }
@@ -163,9 +155,9 @@ struct LibraryView: View {
             }
         }
 
-        // Apply family filter
-        if selectedFamily != "All" {
-            plants = plants.filter { $0.family == selectedFamily }
+        // Apply plant-type filter
+        if let selectedType {
+            plants = plants.filter { $0.plantType == selectedType }
         }
 
         // Apply sort

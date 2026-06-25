@@ -11,15 +11,19 @@ import UIKit
 struct PlantIllustrationView: View {
     let plant: Plant
     let size: BotanicalIllustrationView.IllustrationSize
+    /// When true, the image fills its parent edge-to-edge with no inner frame/border;
+    /// the enclosing card provides the framing and corner clipping.
+    var fill: Bool = false
 
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
     @State private var fallbackPhoto: UIImage?
     @State private var isLoadingFallback = false
 
-    init(plant: Plant, size: BotanicalIllustrationView.IllustrationSize = .card) {
+    init(plant: Plant, size: BotanicalIllustrationView.IllustrationSize = .card, fill: Bool = false) {
         self.plant = plant
         self.size = size
+        self.fill = fill
     }
 
     var body: some View {
@@ -29,7 +33,7 @@ struct PlantIllustrationView: View {
             } else if hasCustomIllustration {
                 loadingPlaceholder
             } else if hasBuiltInIllustration {
-                BotanicalIllustrationView(plant.commonName, family: plant.family, size: size)
+                BotanicalIllustrationView(plant.commonName, family: plant.family, size: size, fill: fill)
             } else if size != .hero, let photo = fallbackPhoto {
                 // Show encounter photo for card sizes only (not hero)
                 userPhotoView(photo)
@@ -37,11 +41,13 @@ struct PlantIllustrationView: View {
                 loadingPlaceholder
             } else {
                 // Hero size OR no fallback photo available
-                BotanicalIllustrationView(plant.commonName, family: plant.family, size: size)
+                BotanicalIllustrationView(plant.commonName, family: plant.family, size: size, fill: fill)
             }
         }
-        .frame(width: size.dimensions.width, height: size.dimensions.height)
-        .frame(maxWidth: size == .hero ? .infinity : nil)
+        .frame(width: fill ? nil : size.dimensions.width,
+               height: fill ? nil : size.dimensions.height)
+        .frame(maxWidth: (fill || size == .hero) ? .infinity : nil,
+               maxHeight: fill ? .infinity : nil)
         .task {
             await loadCustomIllustrationIfNeeded()
             await loadFallbackPhotoIfNeeded()
@@ -94,37 +100,40 @@ struct PlantIllustrationView: View {
     }
 
     private func customIllustration(_ image: UIImage) -> some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFill()
-            .background(FieldColor.illustrationBg)
-            .overlay(
-                Rectangle()
-                    .fill(FieldColor.sepia.opacity(0.03))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-            )
-            .clipped()
-            .cornerRadius(FieldRadius.sm)
+        framedImage(image)
     }
 
     private func userPhotoView(_ image: UIImage) -> some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFill()
-            .background(FieldColor.illustrationBg)
-            .overlay(
-                Rectangle()
-                    .fill(FieldColor.sepia.opacity(0.03))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-            )
-            .clipped()
-            .cornerRadius(FieldRadius.sm)
+        framedImage(image)
+    }
+
+    @ViewBuilder
+    private func framedImage(_ image: UIImage) -> some View {
+        if fill {
+            // Edge-to-edge fill; the enclosing card clips the corners.
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(FieldColor.illustrationBg)
+                .overlay(Rectangle().fill(FieldColor.sepia.opacity(0.03)))
+                .clipped()
+        } else {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .background(FieldColor.illustrationBg)
+                .overlay(
+                    Rectangle()
+                        .fill(FieldColor.sepia.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: FieldRadius.sm)
+                        .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                )
+                .clipped()
+                .cornerRadius(FieldRadius.sm)
+        }
     }
 
     private var loadingPlaceholder: some View {

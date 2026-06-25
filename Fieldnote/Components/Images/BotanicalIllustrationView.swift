@@ -11,6 +11,9 @@ struct BotanicalIllustrationView: View {
     let plantName: String
     let family: String?
     let size: IllustrationSize
+    /// When true, the illustration fills its parent edge-to-edge (no inner frame /
+    /// border / dashed placeholder) so the enclosing card provides the framing.
+    var fill: Bool = false
 
     enum IllustrationSize {
         case thumbnail  // 80x80 for list views
@@ -34,10 +37,11 @@ struct BotanicalIllustrationView: View {
         }
     }
 
-    init(_ plantName: String, family: String? = nil, size: IllustrationSize = .card) {
+    init(_ plantName: String, family: String? = nil, size: IllustrationSize = .card, fill: Bool = false) {
         self.plantName = plantName
         self.family = family
         self.size = size
+        self.fill = fill
     }
 
     var body: some View {
@@ -50,28 +54,42 @@ struct BotanicalIllustrationView: View {
                 fallbackPlaceholder
             }
         }
-        .frame(width: size.dimensions.width, height: size.dimensions.height)
-        .frame(maxWidth: size == .hero ? .infinity : nil)
+        .frame(width: fill ? nil : size.dimensions.width,
+               height: fill ? nil : size.dimensions.height)
+        .frame(maxWidth: (fill || size == .hero) ? .infinity : nil,
+               maxHeight: fill ? .infinity : nil)
     }
 
     // MARK: - Illustration Image
 
+    @ViewBuilder
     private func illustrationImage(_ assetName: String) -> some View {
-        Image(assetName)
-            .resizable()
-            .scaledToFit()
-            .background(FieldColor.illustrationBg)
-            .overlay(
-                // Subtle aged paper tint
-                Rectangle()
-                    .fill(FieldColor.sepia.opacity(0.03))
-            )
-            .overlay(
-                // Vintage frame border
-                RoundedRectangle(cornerRadius: FieldRadius.sm)
-                    .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
-            )
-            .cornerRadius(FieldRadius.sm)
+        if fill {
+            // Edge-to-edge: line-art fits on a cream plate; the parent card frames it.
+            Image(assetName)
+                .resizable()
+                .scaledToFit()
+                .padding(FieldSpace.sm)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(FieldColor.illustrationBg)
+                .overlay(Rectangle().fill(FieldColor.sepia.opacity(0.03)))
+        } else {
+            Image(assetName)
+                .resizable()
+                .scaledToFit()
+                .background(FieldColor.illustrationBg)
+                .overlay(
+                    // Subtle aged paper tint
+                    Rectangle()
+                        .fill(FieldColor.sepia.opacity(0.03))
+                )
+                .overlay(
+                    // Vintage frame border
+                    RoundedRectangle(cornerRadius: FieldRadius.sm)
+                        .stroke(FieldColor.bookBorder.opacity(0.5), lineWidth: 0.5)
+                )
+                .cornerRadius(FieldRadius.sm)
+        }
     }
 
     // MARK: - Fallback Placeholder
@@ -79,16 +97,18 @@ struct BotanicalIllustrationView: View {
     private var fallbackPlaceholder: some View {
         ZStack {
             // Aged paper background
-            RoundedRectangle(cornerRadius: FieldRadius.sm)
+            Rectangle()
                 .fill(FieldColor.illustrationBg)
 
-            // Decorative border pattern
-            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                .strokeBorder(
-                    FieldColor.bookBorder.opacity(0.3),
-                    style: StrokeStyle(lineWidth: 1, dash: [4, 4])
-                )
-                .padding(4)
+            // Decorative dashed border (framed style only)
+            if !fill {
+                RoundedRectangle(cornerRadius: FieldRadius.sm)
+                    .strokeBorder(
+                        FieldColor.bookBorder.opacity(0.3),
+                        style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                    )
+                    .padding(4)
+            }
 
             // Plant icon
             VStack(spacing: FieldSpace.xs) {
@@ -103,10 +123,14 @@ struct BotanicalIllustrationView: View {
                 }
             }
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: FieldRadius.sm)
-                .stroke(FieldColor.bookBorder.opacity(0.4), lineWidth: 0.5)
-        )
+        .frame(maxWidth: fill ? .infinity : nil, maxHeight: fill ? .infinity : nil)
+        .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : FieldRadius.sm))
+        .overlay {
+            if !fill {
+                RoundedRectangle(cornerRadius: FieldRadius.sm)
+                    .stroke(FieldColor.bookBorder.opacity(0.4), lineWidth: 0.5)
+            }
+        }
     }
 
     private var fallbackIcon: String {
