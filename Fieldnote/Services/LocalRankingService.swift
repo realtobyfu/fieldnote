@@ -27,9 +27,9 @@ enum ExplanationCode: Codable, Hashable {
     var label: String {
         switch self {
         case .commonlyReported:
-            return "Commonly reported in this region"
+            return "Commonly reported here"
         case .alsoReported:
-            return "Also reported in this region"
+            return "Also reported here"
         case .seasonalPeak(let monthName):
             return "Often active around \(monthName)"
         case .easyFirstFind:

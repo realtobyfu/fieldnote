@@ -100,12 +100,17 @@ struct ExploreView: View {
     private func localCatalogSections(appStore: AppStore) -> some View {
         regionHeader(appStore: appStore)
 
-        let region = regionName(appStore: appStore)
+        // For current location the data is a local radius, so say "Near You"
+        // rather than a reverse-geocoded state name over local data. A chosen
+        // region names the place: "Common in Hawai‘i".
+        let scope = appStore.selectedRegionOverride == .currentLocation
+            ? "Near You"
+            : "in \(regionName(appStore: appStore))"
 
         let common = appStore.commonlyReportedItems
         if !common.isEmpty {
             LocalCatalogSection(
-                title: "Commonly Reported in \(region)",
+                title: "Common \(scope)",
                 items: common,
                 isDiscovered: appStore.isDiscovered
             )
@@ -114,7 +119,7 @@ struct ExploreView: View {
         let more = appStore.moreToLookForItems
         if !more.isEmpty {
             LocalCatalogSection(
-                title: "More to Look For in \(region)",
+                title: "More to Look For \(scope)",
                 items: more,
                 isDiscovered: appStore.isDiscovered
             )
