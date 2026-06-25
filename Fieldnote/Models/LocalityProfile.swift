@@ -100,6 +100,7 @@ extension LocalityProfile {
         )
     }
 
-    /// Cache key combining cell + month, since seasonality is month-specific.
-    var cacheKey: String { "\(coarseCellID)@\(currentMonth)" }
+    /// Cache key for the region's annual species counts. Keyed by the cell/region
+    /// identity only — the counts are not month-filtered, so one entry per region.
+    var cacheKey: String { coarseCellID }
 }

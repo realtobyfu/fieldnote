@@ -379,17 +379,19 @@ class AppStore {
 
     /// Fetches species counts for a profile: by place IDs for a named region,
     /// else by the coarse coordinate + radius for current location.
+    ///
+    /// We fetch an **annual** baseline (no `month` filter) so "Commonly Reported
+    /// in {Region}" reflects the region's flora, not whatever happened to be
+    /// reported in the current calendar month. A truthful seasonal section would
+    /// need real phenology data, not iNaturalist's observation-month proxy (which
+    /// is biased by when people are outside).
     private func fetchSpeciesCounts(for profile: LocalityProfile) async throws -> [INatSpeciesCount] {
         if let placeIDs = profile.placeIDs, !placeIDs.isEmpty {
-            return try await INaturalistService.shared.speciesCounts(
-                placeIDs: placeIDs,
-                month: profile.currentMonth
-            )
+            return try await INaturalistService.shared.speciesCounts(placeIDs: placeIDs)
         }
         return try await INaturalistService.shared.speciesCounts(
             near: profile.coordinate,
-            radiusKm: Double(localCatalogRadiusKm),
-            month: profile.currentMonth
+            radiusKm: Double(localCatalogRadiusKm)
         )
     }
 

@@ -101,8 +101,8 @@ struct LocalityProfileTests {
         #expect(south.hemisphere == .southern)
     }
 
-    @Test("Cache key combines cell and month")
-    func cacheKeyCombinesCellAndMonth() {
+    @Test("Cache key is the cell/region identity (annual counts, not month-keyed)")
+    func cacheKeyIsCellIdentity() {
         var june = DateComponents()
         june.year = 2026; june.month = 6; june.day = 15
         let date = Calendar(identifier: .gregorian).date(from: june)!
@@ -113,7 +113,14 @@ struct LocalityProfileTests {
             calendar: Calendar(identifier: .gregorian)
         )
         #expect(profile.currentMonth == 6)
-        #expect(profile.cacheKey == "\(profile.coarseCellID)@6")
+        #expect(profile.cacheKey == profile.coarseCellID)
+    }
+
+    @Test("Region cache key derives from sorted place IDs")
+    func regionCacheKey() {
+        let profile = LocalityProfile.makeRegion(name: "Pacific Northwest", placeIDs: [46, 10])
+        #expect(profile.cacheKey == "place:10,46")
+        #expect(profile.placeIDs == [10, 46])
     }
 
     @Test("Nearby coordinates collapse to the same cell")
