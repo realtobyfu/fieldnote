@@ -49,6 +49,9 @@ struct FieldnoteApp: App {
             }
         }
 
+        // Restyle navigation bars to the serif "paper" design language app-wide.
+        FieldNavBar.applyAppearance()
+
         self.sharedModelContainer = container!
         let appStoreInstance = AppStore(modelContext: container!.mainContext)
         self._appStore = State(initialValue: appStoreInstance)
@@ -63,6 +66,10 @@ struct FieldnoteApp: App {
                 #if DEBUG
                 if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "collection" {
                     NavigationStack { LibraryView() }
+                } else if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "profile" {
+                    NavigationStack { ProfileView() }
+                } else if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "subscription" {
+                    NavigationStack { SubscriptionStatusView() }
                 } else if onboardingStore.shouldShowOnboarding {
                     OnboardingContainerView()
                 } else {
@@ -82,6 +89,7 @@ struct FieldnoteApp: App {
             .environment(\.syncStore, syncStore)
             .environment(\.gamificationService, gamificationService)
             .animation(.easeInOut(duration: 0.4), value: onboardingStore.shouldShowOnboarding)
+            .tint(FieldColor.accentDeep)
             .preferredColorScheme(.light)
             .task {
                 #if DEBUG

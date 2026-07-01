@@ -12,6 +12,7 @@ import SwiftData
 struct ProfileView: View {
     @Environment(\.gamificationService) private var gamification
     @State private var isBadgeGridExpanded = false
+    @State private var isSettingsExpanded = false
 
     var body: some View {
         ScrollView {
@@ -24,10 +25,18 @@ struct ProfileView: View {
                     statTiles(stats)
                     badgeGrid(gamification: gamification, stats: stats)
                 }
-                settingsLink
+
+                ProfileMembershipCard()
+
+                settingsPill
+                if isSettingsExpanded {
+                    ProfileSettingsSection()
+                        .transition(.opacity)
+                }
             }
             .padding(FieldSpace.md)
-            .padding(.bottom, 40)
+            .padding(.bottom, 100)
+            .animation(.smooth(duration: 0.3), value: isSettingsExpanded)
         }
         .background(
             LinearGradient(colors: [FieldColor.canvasTop, FieldColor.canvasBottom],
@@ -213,28 +222,33 @@ struct ProfileView: View {
         isBadgeGridExpanded.toggle()
     }
 
-    // MARK: - Settings link
+    // MARK: - Settings pill
 
-    private var settingsLink: some View {
-        NavigationLink {
-            SettingsView()
+    /// Collapsed-by-default pill that expands the settings cards inline (no push).
+    private var settingsPill: some View {
+        Button {
+            isSettingsExpanded.toggle()
         } label: {
             HStack(spacing: FieldSpace.sm) {
                 Image(systemName: "gearshape.fill")
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(FieldColor.mutedInk)
                 Text("Settings & Storage")
                     .font(FieldType.body)
                     .foregroundStyle(FieldColor.ink)
                 Spacer()
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.down")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(FieldColor.tertiaryInk)
+                    .rotationEffect(.degrees(isSettingsExpanded ? 180 : 0))
             }
             .padding(16)
             .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .fieldShadow(FieldShadow.card)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Settings & Storage")
+        .accessibilityHint(isSettingsExpanded ? "Collapses settings" : "Expands settings")
     }
 }
 

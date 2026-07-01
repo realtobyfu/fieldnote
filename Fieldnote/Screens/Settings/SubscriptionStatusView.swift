@@ -128,6 +128,7 @@ struct SubscriptionStatusView: View {
 
             }
         }
+        .fieldListBackground()
         .navigationTitle("Subscription")
         .sheet(isPresented: $showPaywall) {
             PaywallView()

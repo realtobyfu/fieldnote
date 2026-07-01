@@ -25,6 +25,7 @@ struct PlantManagementView: View {
                 )
             }
         }
+        .fieldListBackground()
         .navigationTitle("Plant Catalog")
         .confirmationDialog(
             "Remove Illustration?",

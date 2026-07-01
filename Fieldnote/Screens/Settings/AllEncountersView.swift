@@ -50,6 +50,7 @@ struct AllEncountersView: View {
                     }
                 }
                 .listStyle(.plain)
+                .fieldListBackground()
             }
         }
         .confirmationDialog(
