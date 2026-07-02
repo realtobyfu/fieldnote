@@ -30,6 +30,7 @@ struct CaptureReviewSheet: View {
     @State private var notes = ""
     @State private var selectedConditions: Set<String> = []
     @State private var isSaving = false
+    @State private var photoSaveFailed = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var addedImage: UIImage?
 
@@ -137,6 +138,14 @@ struct CaptureReviewSheet: View {
                 selectedLocation: $selectedLocation,
                 customLabel: $locationLabel
             )
+        }
+        .alert("Photo Couldn't Be Saved", isPresented: $photoSaveFailed) {
+            Button("Save Without Photo") {
+                Task { await saveEncounter(includePhoto: false) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The observation wasn't saved. You can save it without the photo, or cancel and try again.")
         }
         .task {
             await fetchEnrichmentDataIfNeeded()
@@ -503,16 +512,23 @@ struct CaptureReviewSheet: View {
     private var photoHero: some View {
         Group {
             if let image = capturedImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 300)
-                    .clipped()
-                    .overlay(
-                        // Subtle sepia tint to tie into the vintage aesthetic
-                        Rectangle().fill(FieldColor.sepia.opacity(0.05))
-                    )
+                // Whole hero re-opens the picker so a mis-picked photo can be swapped.
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 300)
+                        .clipped()
+                        .overlay(
+                            // Subtle sepia tint to tie into the vintage aesthetic
+                            Rectangle().fill(FieldColor.sepia.opacity(0.05))
+                        )
+                        .overlay(alignment: .bottomTrailing) {
+                            changePhotoChip
+                        }
+                }
+                .buttonStyle(.plain)
             } else {
                 // Tappable full-bleed placeholder to add a photo (manual entry path).
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
@@ -542,6 +558,16 @@ struct CaptureReviewSheet: View {
         }
     }
 
+    private var changePhotoChip: some View {
+        Label("Change", systemImage: "photo.on.rectangle")
+            .font(FieldType.caption)
+            .foregroundColor(.white)
+            .padding(.horizontal, FieldSpace.sm)
+            .padding(.vertical, FieldSpace.xs)
+            .background(FieldColor.photoScrim.opacity(0.6), in: Capsule())
+            .padding(FieldSpace.sm)
+    }
+
     private func loadSelectedPhoto(from item: PhotosPickerItem) async {
         do {
             if let data = try await item.loadTransferable(type: Data.self),
@@ -555,20 +581,22 @@ struct CaptureReviewSheet: View {
 
     // MARK: - Save Encounter
 
-    private func saveEncounter() async {
+    private func saveEncounter(includePhoto: Bool = true) async {
         isSaving = true
 
         // Generate encounter ID for photo filename
         let encounterId = UUID()
 
-        // Save photo if available
+        // Save photo if available. On failure, stop and let the user decide
+        // whether to save without it — never silently drop the photo.
         var photoFileName: String? = nil
-        if let image = capturedImage {
+        if includePhoto, let image = capturedImage {
             do {
                 photoFileName = try await PhotoStorageService.shared.savePhoto(image, for: encounterId)
             } catch {
-                print("Failed to save photo: \(error)")
-                // Continue without photo
+                isSaving = false
+                photoSaveFailed = true
+                return
             }
         }
 

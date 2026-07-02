@@ -35,7 +35,6 @@ struct ProfileView: View {
                 }
             }
             .padding(FieldSpace.md)
-            .padding(.bottom, 100)
             .animation(.smooth(duration: 0.3), value: isSettingsExpanded)
         }
         .background(

@@ -18,7 +18,15 @@ struct MainTabView: View {
     @State private var showCamera = false
     @State private var showLibrary = false
     @State private var capturedImage: UIImage?
+    @State private var postCameraAction: PostCameraAction?
     @State private var tabBar = TabBarVisibility()
+
+    /// Follow-up chosen inside the camera (library / manual entry) — run after
+    /// the full-screen cover finishes dismissing so the next presentation lands.
+    private enum PostCameraAction {
+        case library
+        case manualEntry
+    }
     @Namespace private var tabNamespace
 
     var body: some View {
@@ -52,8 +60,10 @@ struct MainTabView: View {
             )
             .padding(.horizontal, FieldSpace.md)
             .padding(.bottom, FieldSpace.sm)
+            // Keep the bar pinned under the keyboard without disabling keyboard
+            // avoidance for tab content (text fields still scroll into view).
+            .ignoresSafeArea(.keyboard)
         }
-        .ignoresSafeArea(.keyboard)
         .onChange(of: appStore.selectedTab) { _, newTab in
             if newTab == .capture { handleCaptureSelection(appStore) }
         }
@@ -65,12 +75,12 @@ struct MainTabView: View {
         .onChange(of: viewModel.selectedItem) { _, _ in
             Task { await viewModel.loadPhoto(subscriptionStore: subscriptionStore) }
         }
-        .fullScreenCover(isPresented: $showCamera) {
-            showCamera = false
-        } content: {
-            CameraView(capturedImage: $capturedImage)
-                .environment(\.appStore, store)
-                .ignoresSafeArea()
+        .fullScreenCover(isPresented: $showCamera, onDismiss: runPostCameraAction) {
+            FieldCameraView(
+                onUsePhoto: { capturedImage = $0 },
+                onPickLibrary: { postCameraAction = .library },
+                onManualEntry: { postCameraAction = .manualEntry }
+            )
         }
         .photosPicker(
             isPresented: $showLibrary,
@@ -105,7 +115,8 @@ struct MainTabView: View {
         ZStack {
             tabStack(appStore, .journal) { JournalView() }
             tabStack(appStore, .explore) { ExploreView() }
-            tabStack(appStore, .map) {
+            // The map stays full-bleed under the floating bar by design.
+            tabStack(appStore, .map, clearsTabBar: false) {
                 LocationMapView()
                     .navigationDestination(for: Plant.self) { PlantDetailView(plant: $0) }
             }
@@ -118,6 +129,7 @@ struct MainTabView: View {
     private func tabStack<C: View>(
         _ appStore: AppStore,
         _ tab: AppTab,
+        clearsTabBar: Bool = true,
         @ViewBuilder _ content: () -> C
     ) -> some View {
         // `.capture` is an action, not a rendered tab — keep Journal visible under it.
@@ -125,6 +137,9 @@ struct MainTabView: View {
             || (tab == .journal && appStore.selectedTab == .capture)
         NavigationStack { content() }
             .collapsesTabBarOnScroll()
+            // Reserve room for the floating bar as safe area so every screen —
+            // including pushed ones — clears it without per-screen padding.
+            .safeAreaPadding(.bottom, clearsTabBar ? FieldTabBar.clearance : 0)
             .opacity(active ? 1 : 0)
             .allowsHitTesting(active)
             .zIndex(active ? 1 : 0)
@@ -135,6 +150,17 @@ struct MainTabView: View {
     private func startCamera() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         showCamera = true
+    }
+
+    private func runPostCameraAction() {
+        guard let action = postCameraAction else { return }
+        postCameraAction = nil
+        switch action {
+        case .library:
+            showLibrary = true
+        case .manualEntry:
+            viewModel.startManualEntry()
+        }
     }
 
     /// Handles `selectedTab == .capture` set by empty-state buttons (and the

@@ -92,7 +92,7 @@ struct JournalView: View {
                         }
                     }
                     .padding(.horizontal, FieldSpace.md)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, FieldSpace.md)
                 }
                 .refreshable { await store.refresh() }
                 .collapsesTabBarOnScroll()

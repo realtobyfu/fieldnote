@@ -19,6 +19,11 @@ final class TabBarVisibility {
 }
 
 struct FieldTabBar: View {
+    /// Bottom safe-area clearance tab content needs so scrollable content and
+    /// bottom-anchored controls never end up hidden beneath the floating bar
+    /// (bar height + breathing room). Applied once in MainTabView.tabStack.
+    static let clearance: CGFloat = 92
+
     @Binding var selection: AppTab
     var collapsed: Bool
     var onCapture: () -> Void
