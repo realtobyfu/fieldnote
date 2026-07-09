@@ -189,6 +189,18 @@ struct PlantDetailView: View {
                 .padding(.top, FieldSpace.sm)
                 .padding(.horizontal, FieldSpace.lg)
 
+            // Attribution — renders only for real, human-authored plates, and
+            // only when the built-in illustration is what's on screen. A user's
+            // own custom illustration must never inherit the house plate's credit.
+            if !isShowingCustomIllustration {
+                IllustrationCreditLine(
+                    plantName: plant.commonName,
+                    family: plant.family
+                )
+                .padding(.top, FieldSpace.xs)
+                .padding(.horizontal, FieldSpace.lg)
+            }
+
             if let illustrationError {
                 Text(illustrationError)
                     .font(FieldType.caption)
@@ -209,6 +221,13 @@ extension PlantDetailView {
 
     private var shouldOfferCustomIllustration: Bool {
         !hasIllustration
+    }
+
+    /// True when a user-supplied illustration is being displayed instead of the
+    /// built-in plate. Attribution keys off the house asset, so it must be
+    /// suppressed here — the credit isn't for the user's image.
+    private var isShowingCustomIllustration: Bool {
+        plant.customIllustrationFileName?.isEmpty == false
     }
 
     private var encounterPhotoFilenames: [String] {

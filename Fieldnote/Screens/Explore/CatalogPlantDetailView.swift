@@ -156,6 +156,14 @@ struct CatalogPlantDetailView: View {
             ScientificNamePlate(name: catalogPlant.scientificName)
                 .padding(.top, FieldSpace.sm)
                 .padding(.horizontal, FieldSpace.lg)
+
+            // Attribution — renders only for real, human-authored plates.
+            IllustrationCreditLine(
+                plantName: catalogPlant.commonName,
+                family: catalogPlant.family
+            )
+            .padding(.top, FieldSpace.xs)
+            .padding(.horizontal, FieldSpace.lg)
         }
     }
 }
