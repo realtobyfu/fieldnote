@@ -18,8 +18,9 @@ Two concrete problems M1 left open:
    catalog is the bundled 50. This doesn't scale (rate limits, bias, no offline
    pack, no path past 50 taxa).
 
-Non-goals for M2: moving the *personal* (Stage-2) ranking server-side, generating
-illustrations (M3), climate enrichment (M4).
+Non-goals for M2: moving the *personal* (Stage-2) ranking server-side,
+illustration sourcing (now real public-domain plates + attribution — see
+`IllustrationSourcing.md`), climate enrichment (M4).
 
 ## Guiding decisions
 

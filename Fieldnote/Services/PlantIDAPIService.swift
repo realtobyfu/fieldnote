@@ -2,45 +2,31 @@
 //  PlantIDAPIService.swift
 //  Fieldnote
 //
-//  Pl@ntNet API client for plant identification
+//  Plant identification client. Talks to the Fieldnote backend proxy
+//  (`POST /v1/identify`), which holds the paid Pl@ntNet key server-side and
+//  returns a slimmed candidate list. The app ships only a low-trust bearer
+//  token — never the Pl@ntNet key. See Docs/BackendM2Spec.md.
 //
 
 import UIKit
 import CoreLocation
 
-// MARK: - Pl@ntNet Response Models
+// MARK: - Proxy Response Models
 
-/// Top-level response from Pl@ntNet identification endpoint
-struct PlantNetResponse: Codable {
-    let results: [PlantNetResult]
-    let remainingIdentificationRequests: Int?
+/// Slimmed identify response from the Fieldnote backend. Decouples the app from
+/// Pl@ntNet's raw schema — the Worker does the mapping.
+struct IdentifyProxyResponse: Codable {
+    let candidates: [IdentifyProxyCandidate]
+    let remainingRequests: Int?
 }
 
-/// Individual identification result
-struct PlantNetResult: Codable {
-    let score: Double
-    let species: PlantNetSpecies
-    let gbif: PlantNetGBIF?
-}
-
-/// GBIF cross-reference, when Pl@ntNet provides one.
-struct PlantNetGBIF: Codable {
-    let id: String?
-}
-
-/// Species information
-struct PlantNetSpecies: Codable {
-    let scientificNameWithoutAuthor: String
-    let scientificNameAuthorship: String?
-    let genus: PlantNetTaxon?
-    let family: PlantNetTaxon?
-    let commonNames: [String]?
-}
-
-/// Taxonomic unit (genus, family)
-struct PlantNetTaxon: Codable {
-    let scientificNameWithoutAuthor: String
-    let scientificNameAuthorship: String?
+/// One slimmed candidate, mapping 1:1 onto `PlantIdentificationCandidate`.
+struct IdentifyProxyCandidate: Codable {
+    let scientificName: String
+    let commonName: String
+    let family: String
+    let visualConfidence: Double
+    let gbifTaxonKey: Int?
 }
 
 // MARK: - Candidate
@@ -71,30 +57,14 @@ struct PlantIdentificationCandidate: Hashable {
 actor PlantIDAPIService {
     static let shared = PlantIDAPIService()
 
-    private let apiKey: String
-    private let baseURL = "https://my-api.plantnet.org/v2/identify/all"
+    /// Backend identify endpoint, e.g. "https://api.fieldnote.app/v1/identify".
+    private let identifyURL: URL?
+    /// Low-trust per-app bearer token sent to the proxy.
+    private let appToken: String?
 
     private init() {
-        // Load API key from Config.plist
-        if let path = Bundle.main.path(forResource: "Config", ofType: "plist") {
-            print("DEBUG: Found Config.plist at: \(path)")
-            if let config = NSDictionary(contentsOfFile: path) {
-                print("DEBUG: Config.plist contents: \(config)")
-                if let key = config["PLANT_ID_API_KEY"] as? String {
-                    print("DEBUG: Found API key (length: \(key.count))")
-                    self.apiKey = key
-                } else {
-                    print("DEBUG: PLANT_ID_API_KEY not found in plist")
-                    self.apiKey = ""
-                }
-            } else {
-                print("DEBUG: Could not read Config.plist contents")
-                self.apiKey = ""
-            }
-        } else {
-            print("DEBUG: Config.plist not found in bundle")
-            self.apiKey = ""
-        }
+        self.identifyURL = BackendConfig.baseURL?.appendingPathComponent("v1/identify")
+        self.appToken = BackendConfig.appToken
     }
 
     /// Identifies a plant from an image, returning the single best visual match.
@@ -115,8 +85,8 @@ actor PlantIDAPIService {
         location: CLLocationCoordinate2D? = nil,
         maxResults: Int = 5
     ) async throws -> [PlantIdentificationCandidate] {
-        // Validate API key is configured
-        guard !apiKey.isEmpty else {
+        // Backend must be configured (base URL + app token).
+        guard let identifyURL, let appToken, !appToken.isEmpty else {
             throw PlantIdentificationError.invalidAPIKey
         }
 
@@ -125,22 +95,12 @@ actor PlantIDAPIService {
             throw PlantIdentificationError.imageProcessingFailed
         }
 
-        // Build URL with API key as query parameter
-        guard var urlComponents = URLComponents(string: baseURL) else {
-            throw PlantIdentificationError.networkError
-        }
-        urlComponents.queryItems = [
-            URLQueryItem(name: "api-key", value: apiKey)
-        ]
-        guard let url = urlComponents.url else {
-            throw PlantIdentificationError.networkError
-        }
-
-        // Create multipart form data
+        // Create multipart form data — same fields the proxy forwards to Pl@ntNet.
         let boundary = UUID().uuidString
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: identifyURL)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(appToken)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 20
 
         var body = Data()
@@ -170,42 +130,30 @@ actor PlantIDAPIService {
             throw PlantIdentificationError.networkError
         }
 
-        print("DEBUG: Pl@ntNet Response Status: \(httpResponse.statusCode)")
-        if let responseString = String(data: data, encoding: .utf8) {
-            print("DEBUG: Pl@ntNet Response Body: \(responseString.prefix(500))")
-        }
-
         switch httpResponse.statusCode {
         case 200:
             break // Success
         case 401:
-            print("DEBUG: 401 Unauthorized - API key may be invalid")
+            // Bad/expired app token — configuration problem, not user error.
             throw PlantIdentificationError.invalidAPIKey
-        case 404:
-            // Pl@ntNet returns 404 when no plant is found
-            throw PlantIdentificationError.noResult
         case 429:
             throw PlantIdentificationError.rateLimited
         default:
-            print("DEBUG: Unexpected status code: \(httpResponse.statusCode)")
             throw PlantIdentificationError.networkError
         }
 
-        // Decode response
-        let decoded = try JSONDecoder().decode(PlantNetResponse.self, from: data)
+        // Decode the slimmed proxy response.
+        let decoded = try JSONDecoder().decode(IdentifyProxyResponse.self, from: data)
 
-        // Keep the top candidates above the minimum score threshold.
-        let candidates = decoded.results
-            .filter { $0.score >= 0.1 }
+        let candidates = decoded.candidates
             .prefix(maxResults)
-            .map { result in
+            .map { candidate in
                 PlantIdentificationCandidate(
-                    commonName: result.species.commonNames?.first
-                        ?? result.species.scientificNameWithoutAuthor,
-                    scientificName: result.species.scientificNameWithoutAuthor,
-                    family: result.species.family?.scientificNameWithoutAuthor ?? "",
-                    visualConfidence: result.score,
-                    gbifTaxonKey: result.gbif?.id.flatMap { Int($0) }
+                    commonName: candidate.commonName,
+                    scientificName: candidate.scientificName,
+                    family: candidate.family,
+                    visualConfidence: candidate.visualConfidence,
+                    gbifTaxonKey: candidate.gbifTaxonKey
                 )
             }
 

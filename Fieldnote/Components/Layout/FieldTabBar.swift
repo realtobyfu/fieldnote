@@ -2,11 +2,14 @@
 //  FieldTabBar.swift
 //  Fieldnote
 //
-//  Custom Liquid Glass tab bar built from THREE distinct glass elements:
-//  a leading tab capsule, a centered Capture FAB, and a trailing tab capsule.
-//  They share a GlassEffectContainer so they morph/merge as they approach.
-//  On scroll-down each side capsule collapses to a single most-important tab
-//  (the active one if it's on that side, else the primary); scroll-up re-expands.
+//  Custom tab bar: ONE glass capsule holding all four tabs with the Capture
+//  button embedded at its center as a solid accent circle. Glass is reserved
+//  for this floating chrome layer ("field paper, glass chrome").
+//
+//  On scroll-down the bar contracts to a compact icons-only capsule — labels
+//  slide away and the capture circle shrinks — but every tab stays visible in
+//  the same order, so targets never disappear or shift under the finger
+//  (unlike the old per-side collapse-to-one-tab behavior).
 //
 
 import SwiftUI
@@ -33,7 +36,6 @@ struct FieldTabBar: View {
 
     private typealias TabItem = (tab: AppTab, symbol: String, label: String)
 
-    // First entry on each side is the "primary" (most important) tab.
     private let leading: [TabItem] = [
         (.journal, "book.closed.fill", "Journal"),
         (.explore, "safari.fill", "Explore")
@@ -46,65 +48,43 @@ struct FieldTabBar: View {
     var body: some View {
         Group {
             if #available(iOS 26.0, *) {
-                GlassEffectContainer(spacing: 8) { glassBar }
+                bar.glassEffect(.regular, in: .capsule)
             } else {
-                fallbackBar
+                bar
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(FieldColor.separator, lineWidth: 0.5))
+                    .fieldShadow(FieldShadow.card)
             }
         }
         .animation(.snappy(duration: 0.34), value: collapsed)
     }
 
-    // MARK: - iOS 26 glass (always three distinct elements)
-
-    @available(iOS 26.0, *)
-    private var glassBar: some View {
-        HStack(spacing: 8) {
-            cluster(leading)
-                .glassEffect(.regular, in: .capsule)
-                .glassEffectID("leading", in: namespace)
-            captureButton
-                .glassEffect(.regular.tint(FieldColor.accent).interactive(), in: .circle)
-                .glassEffectID("capture", in: namespace)
-            cluster(trailing)
-                .glassEffect(.regular, in: .capsule)
-                .glassEffectID("trailing", in: namespace)
-        }
-    }
-
-    // MARK: - iOS 18 fallback
-
-    private var fallbackBar: some View {
-        HStack(spacing: 8) {
-            cluster(leading).modifier(GlassCapsuleFallback())
-            captureButton
-                .background(FieldColor.accent, in: Circle())
-                .fieldShadow(FieldShadow.cardHover)
-            cluster(trailing).modifier(GlassCapsuleFallback())
-        }
-    }
-
     // MARK: - Pieces
 
-    private func cluster(_ items: [TabItem]) -> some View {
-        let shown = collapsed ? [primaryItem(in: items)] : items
-        return HStack(spacing: 6) {
-            ForEach(shown, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
+    private var bar: some View {
+        HStack(spacing: 4) {
+            ForEach(leading, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
+            captureButton
+                .padding(.horizontal, 6)
+            ForEach(trailing, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
     }
 
-    /// When collapsed, keep the active tab if it's on this side; otherwise the primary.
-    private func primaryItem(in items: [TabItem]) -> TabItem {
-        items.first(where: { $0.tab == selection }) ?? items[0]
-    }
-
     private var captureButton: some View {
         Button(action: onCapture) {
             Image(systemName: "camera.fill")
-                .font(.system(size: 21, weight: .semibold))
+                .font(.system(size: collapsed ? 16 : 19, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
+                .frame(width: collapsed ? 40 : 50, height: collapsed ? 40 : 50)
+                .background(
+                    LinearGradient(
+                        colors: [FieldColor.accent, FieldColor.accentDeep],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    in: Circle()
+                )
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -127,11 +107,14 @@ struct FieldTabBar: View {
             VStack(spacing: 3) {
                 Image(systemName: symbol)
                     .font(.system(size: 18, weight: .semibold))
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold))
+                if !collapsed {
+                    Text(label)
+                        .font(.system(size: 10, weight: .semibold))
+                        .transition(.opacity.combined(with: .blurReplace))
+                }
             }
             .foregroundStyle(isSelected ? FieldColor.accentDeep : FieldColor.mutedInk)
-            .frame(minWidth: 56)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 7)
             .background {
                 if isSelected {
@@ -144,23 +127,12 @@ struct FieldTabBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
-        .transition(.opacity.combined(with: .blurReplace))
-    }
-}
-
-/// Opaque "modern paper" capsule used for the tab clusters below iOS 26.
-private struct GlassCapsuleFallback: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .background(.regularMaterial, in: Capsule())
-            .overlay(Capsule().stroke(FieldColor.separator, lineWidth: 0.5))
-            .fieldShadow(FieldShadow.card)
     }
 }
 
 // MARK: - Scroll-driven collapse
 
-/// Apply to a scroll view (or a container holding one) to collapse the custom
+/// Apply to a scroll view (or a container holding one) to contract the custom
 /// tab bar when scrolling down and expand it when scrolling up.
 struct CollapseTabBarOnScroll: ViewModifier {
     @Environment(TabBarVisibility.self) private var visibility: TabBarVisibility?

@@ -1,0 +1,770 @@
+[
+ {
+  "inaturalistTaxonID": 54999,
+  "scientificName": "Eriogonum fasciculatum",
+  "commonName": "California Buckwheat",
+  "family": "Polygonaceae"
+ },
+ {
+  "inaturalistTaxonID": 68205,
+  "scientificName": "Larrea tridentata",
+  "commonName": "Creosote Bush",
+  "family": "Zygophyllaceae"
+ },
+ {
+  "inaturalistTaxonID": 47850,
+  "scientificName": "Quercus agrifolia",
+  "commonName": "coast live oak",
+  "family": "Fagaceae"
+ },
+ {
+  "inaturalistTaxonID": 53359,
+  "scientificName": "Baccharis pilularis",
+  "commonName": "coyote brush",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 1095846,
+  "scientificName": "Bidens alba",
+  "commonName": "White beggarticks",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 53357,
+  "scientificName": "Artemisia californica",
+  "commonName": "California sagebrush",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 49918,
+  "scientificName": "Sisyrinchium bellum",
+  "commonName": "western blue-eyed grass",
+  "family": "Iridaceae"
+ },
+ {
+  "inaturalistTaxonID": 79137,
+  "scientificName": "Solanum elaeagnifolium",
+  "commonName": "silverleaf nightshade",
+  "family": "Solanaceae"
+ },
+ {
+  "inaturalistTaxonID": 84405,
+  "scientificName": "Calyptocarpus vialis",
+  "commonName": "straggler daisy",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 1493134,
+  "scientificName": "Neltuma glandulosa",
+  "commonName": "honey mesquite",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 125675,
+  "scientificName": "Glandularia bipinnatifida",
+  "commonName": "Dakota mock vervain",
+  "family": "Verbenaceae"
+ },
+ {
+  "inaturalistTaxonID": 64141,
+  "scientificName": "Encelia californica",
+  "commonName": "California brittlebush",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 47751,
+  "scientificName": "Polystichum munitum",
+  "commonName": "western sword fern",
+  "family": "Dryopteridaceae"
+ },
+ {
+  "inaturalistTaxonID": 50643,
+  "scientificName": "Salvia mellifera",
+  "commonName": "black sage",
+  "family": "Lamiaceae"
+ },
+ {
+  "inaturalistTaxonID": 58362,
+  "scientificName": "Hesperoyucca whipplei",
+  "commonName": "chaparral yucca",
+  "family": "Asparagaceae"
+ },
+ {
+  "inaturalistTaxonID": 143799,
+  "scientificName": "Sambucus cerulea",
+  "commonName": "blue elder",
+  "family": "Viburnaceae"
+ },
+ {
+  "inaturalistTaxonID": 55009,
+  "scientificName": "Rhus integrifolia",
+  "commonName": "lemonade berry",
+  "family": "Anacardiaceae"
+ },
+ {
+  "inaturalistTaxonID": 62298,
+  "scientificName": "Asclepias asperula",
+  "commonName": "Antelopehorn Milkweed",
+  "family": "Apocynaceae"
+ },
+ {
+  "inaturalistTaxonID": 49463,
+  "scientificName": "Trillium ovatum",
+  "commonName": "Pacific trillium",
+  "family": "Melanthiaceae"
+ },
+ {
+  "inaturalistTaxonID": 48807,
+  "scientificName": "Umbellularia californica",
+  "commonName": "California bay",
+  "family": "Lauraceae"
+ },
+ {
+  "inaturalistTaxonID": 76754,
+  "scientificName": "Echinocereus engelmannii",
+  "commonName": "Engelmann's Hedgehog Cactus",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 53134,
+  "scientificName": "Acmispon glaber",
+  "commonName": "deerweed",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 123956,
+  "scientificName": "Castilleja indivisa",
+  "commonName": "Texas Paintbrush",
+  "family": "Orobanchaceae"
+ },
+ {
+  "inaturalistTaxonID": 58732,
+  "scientificName": "Toxicodendron radicans",
+  "commonName": "eastern poison ivy",
+  "family": "Anacardiaceae"
+ },
+ {
+  "inaturalistTaxonID": 273862,
+  "scientificName": "Berberis trifoliolata",
+  "commonName": "Agarita",
+  "family": "Berberidaceae"
+ },
+ {
+  "inaturalistTaxonID": 47543,
+  "scientificName": "Rubus spectabilis",
+  "commonName": "Salmonberry",
+  "family": "Rosaceae"
+ },
+ {
+  "inaturalistTaxonID": 64540,
+  "scientificName": "Celastrus orbiculatus",
+  "commonName": "Asian bittersweet",
+  "family": "Celastraceae"
+ },
+ {
+  "inaturalistTaxonID": 49477,
+  "scientificName": "Monotropa uniflora",
+  "commonName": "Ghost Pipe",
+  "family": "Ericaceae"
+ },
+ {
+  "inaturalistTaxonID": 53034,
+  "scientificName": "Ambrosia trifida",
+  "commonName": "giant ragweed",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 135263,
+  "scientificName": "Ipomoea cordatotriloba",
+  "commonName": "Tievine",
+  "family": "Convolvulaceae"
+ },
+ {
+  "inaturalistTaxonID": 119955,
+  "scientificName": "Ilex vomitoria",
+  "commonName": "Yaupon Holly",
+  "family": "Aquifoliaceae"
+ },
+ {
+  "inaturalistTaxonID": 120505,
+  "scientificName": "Diospyros texana",
+  "commonName": "Texas Persimmon",
+  "family": "Ebenaceae"
+ },
+ {
+  "inaturalistTaxonID": 47888,
+  "scientificName": "Impatiens capensis",
+  "commonName": "common jewelweed",
+  "family": "Balsaminaceae"
+ },
+ {
+  "inaturalistTaxonID": 119982,
+  "scientificName": "Verbesina virginica",
+  "commonName": "frostweed",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 81792,
+  "scientificName": "Celtis laevigata",
+  "commonName": "sugar hackberry",
+  "family": "Cannabaceae"
+ },
+ {
+  "inaturalistTaxonID": 135927,
+  "scientificName": "Juniperus ashei",
+  "commonName": "Ashe juniper",
+  "family": "Cupressaceae"
+ },
+ {
+  "inaturalistTaxonID": 53478,
+  "scientificName": "Commelina erecta",
+  "commonName": "whitemouth dayflower",
+  "family": "Commelinaceae"
+ },
+ {
+  "inaturalistTaxonID": 141532,
+  "scientificName": "Anemone berlandieri",
+  "commonName": "Tenpetal Anemone",
+  "family": "Ranunculaceae"
+ },
+ {
+  "inaturalistTaxonID": 48240,
+  "scientificName": "Erythronium americanum",
+  "commonName": "yellow trout lily",
+  "family": "Liliaceae"
+ },
+ {
+  "inaturalistTaxonID": 54412,
+  "scientificName": "Polystichum acrostichoides",
+  "commonName": "Christmas fern",
+  "family": "Dryopteridaceae"
+ },
+ {
+  "inaturalistTaxonID": 55620,
+  "scientificName": "Solanum dulcamara",
+  "commonName": "bittersweet nightshade",
+  "family": "Solanaceae"
+ },
+ {
+  "inaturalistTaxonID": 47588,
+  "scientificName": "Cypripedium acaule",
+  "commonName": "pink lady's slipper",
+  "family": "Orchidaceae"
+ },
+ {
+  "inaturalistTaxonID": 698726,
+  "scientificName": "Pleopeltis michauxiana",
+  "commonName": "resurrection fern",
+  "family": "Polypodiaceae"
+ },
+ {
+  "inaturalistTaxonID": 75756,
+  "scientificName": "Berberis nervosa",
+  "commonName": "Cascade Oregon-grape",
+  "family": "Berberidaceae"
+ },
+ {
+  "inaturalistTaxonID": 49339,
+  "scientificName": "Encelia farinosa",
+  "commonName": "Brittlebush",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 55830,
+  "scientificName": "Glechoma hederacea",
+  "commonName": "ground-ivy",
+  "family": "Lamiaceae"
+ },
+ {
+  "inaturalistTaxonID": 83799,
+  "scientificName": "Mitchella repens",
+  "commonName": "partridgeberry",
+  "family": "Rubiaceae"
+ },
+ {
+  "inaturalistTaxonID": 54453,
+  "scientificName": "Ferocactus cylindraceus",
+  "commonName": "California Barrel Cactus",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 204321,
+  "scientificName": "Ficaria verna",
+  "commonName": "lesser celandine",
+  "family": "Ranunculaceae"
+ },
+ {
+  "inaturalistTaxonID": 53983,
+  "scientificName": "Digitalis purpurea",
+  "commonName": "purple foxglove",
+  "family": "Plantaginaceae"
+ },
+ {
+  "inaturalistTaxonID": 51048,
+  "scientificName": "Dicentra formosa",
+  "commonName": "Pacific Bleeding Heart",
+  "family": "Papaveraceae"
+ },
+ {
+  "inaturalistTaxonID": 83102,
+  "scientificName": "Serenoa repens",
+  "commonName": "saw palmetto",
+  "family": "Arecaceae"
+ },
+ {
+  "inaturalistTaxonID": 82529,
+  "scientificName": "Vitis rotundifolia",
+  "commonName": "muscadine",
+  "family": "Vitaceae"
+ },
+ {
+  "inaturalistTaxonID": 49354,
+  "scientificName": "Cylindropuntia acanthocarpa",
+  "commonName": "Buckhorn Cholla",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 53414,
+  "scientificName": "Holodiscus discolor",
+  "commonName": "Ocean spray",
+  "family": "Rosaceae"
+ },
+ {
+  "inaturalistTaxonID": 51655,
+  "scientificName": "Tellima grandiflora",
+  "commonName": "fringe cups",
+  "family": "Saxifragaceae"
+ },
+ {
+  "inaturalistTaxonID": 53445,
+  "scientificName": "Rubus ursinus",
+  "commonName": "trailing blackberry",
+  "family": "Rosaceae"
+ },
+ {
+  "inaturalistTaxonID": 62292,
+  "scientificName": "Asclepias speciosa",
+  "commonName": "showy milkweed",
+  "family": "Apocynaceae"
+ },
+ {
+  "inaturalistTaxonID": 130872,
+  "scientificName": "Schinus terebinthifolia",
+  "commonName": "Brazilian pepper",
+  "family": "Anacardiaceae"
+ },
+ {
+  "inaturalistTaxonID": 52681,
+  "scientificName": "Pteridium aquilinum",
+  "commonName": "common bracken",
+  "family": "Dennstaedtiaceae"
+ },
+ {
+  "inaturalistTaxonID": 1550566,
+  "scientificName": "Cochemiea grahamii",
+  "commonName": "Graham's nipple cactus",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 57030,
+  "scientificName": "Equisetum telmateia",
+  "commonName": "great horsetail",
+  "family": "Equisetaceae"
+ },
+ {
+  "inaturalistTaxonID": 55104,
+  "scientificName": "Polypodium glycyrrhiza",
+  "commonName": "licorice fern",
+  "family": "Polypodiaceae"
+ },
+ {
+  "inaturalistTaxonID": 48538,
+  "scientificName": "Cytisus scoparius",
+  "commonName": "Scotch Broom",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 133104,
+  "scientificName": "Berberis repens",
+  "commonName": "creeping mahonia",
+  "family": "Berberidaceae"
+ },
+ {
+  "inaturalistTaxonID": 60335,
+  "scientificName": "Rhizophora mangle",
+  "commonName": "red mangrove",
+  "family": "Rhizophoraceae"
+ },
+ {
+  "inaturalistTaxonID": 55767,
+  "scientificName": "Claytonia sibirica",
+  "commonName": "Candy Flower",
+  "family": "Montiaceae"
+ },
+ {
+  "inaturalistTaxonID": 57824,
+  "scientificName": "Sambucus racemosa",
+  "commonName": "red-berried elder",
+  "family": "Viburnaceae"
+ },
+ {
+  "inaturalistTaxonID": 48523,
+  "scientificName": "Symphoricarpos albus",
+  "commonName": "Common Snowberry",
+  "family": "Caprifoliaceae"
+ },
+ {
+  "inaturalistTaxonID": 52764,
+  "scientificName": "Prunella vulgaris",
+  "commonName": "common selfheal",
+  "family": "Lamiaceae"
+ },
+ {
+  "inaturalistTaxonID": 57934,
+  "scientificName": "Ericameria nauseosa",
+  "commonName": "Rubber Rabbitbrush",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 160765,
+  "scientificName": "Cnidoscolus stimulosus",
+  "commonName": "spurge nettle",
+  "family": "Euphorbiaceae"
+ },
+ {
+  "inaturalistTaxonID": 127638,
+  "scientificName": "Urena lobata",
+  "commonName": "Caesar weed",
+  "family": "Malvaceae"
+ },
+ {
+  "inaturalistTaxonID": 1595253,
+  "scientificName": "Yucca jaegeriana",
+  "commonName": "Eastern Joshua tree",
+  "family": "Asparagaceae"
+ },
+ {
+  "inaturalistTaxonID": 128717,
+  "scientificName": "Erythrina herbacea",
+  "commonName": "Eastern Coral Bean",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 82276,
+  "scientificName": "Echinocereus triglochidiatus",
+  "commonName": "Kingcup Cactus",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 126698,
+  "scientificName": "Rhus copallina",
+  "commonName": "shining sumac",
+  "family": "Anacardiaceae"
+ },
+ {
+  "inaturalistTaxonID": 162094,
+  "scientificName": "Drosera capillaris",
+  "commonName": "Pink Sundew",
+  "family": "Droseraceae"
+ },
+ {
+  "inaturalistTaxonID": 68400,
+  "scientificName": "Yucca schidigera",
+  "commonName": "Mojave Yucca",
+  "family": "Asparagaceae"
+ },
+ {
+  "inaturalistTaxonID": 53021,
+  "scientificName": "Convolvulus arvensis",
+  "commonName": "field bindweed",
+  "family": "Convolvulaceae"
+ },
+ {
+  "inaturalistTaxonID": 127269,
+  "scientificName": "Cirsium horridulum",
+  "commonName": "bristle thistle",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 69985,
+  "scientificName": "Pinus elliottii",
+  "commonName": "slash pine",
+  "family": "Pinaceae"
+ },
+ {
+  "inaturalistTaxonID": 79026,
+  "scientificName": "Sedum lanceolatum",
+  "commonName": "Lanceleaf Stonecrop",
+  "family": "Crassulaceae"
+ },
+ {
+  "inaturalistTaxonID": 49351,
+  "scientificName": "Cylindropuntia bigelovii",
+  "commonName": "Teddybear Cholla",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 78349,
+  "scientificName": "Parkinsonia microphylla",
+  "commonName": "little-leaved palo verde",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 129433,
+  "scientificName": "Lyonia lucida",
+  "commonName": "fetterbush lyonia",
+  "family": "Ericaceae"
+ },
+ {
+  "inaturalistTaxonID": 1592837,
+  "scientificName": "Pinus brachyptera",
+  "commonName": "Southwestern Ponderosa Pine",
+  "family": "Pinaceae"
+ },
+ {
+  "inaturalistTaxonID": 47788,
+  "scientificName": "Yucca baccata",
+  "commonName": "Banana Yucca",
+  "family": "Asparagaceae"
+ },
+ {
+  "inaturalistTaxonID": 77040,
+  "scientificName": "Eriogonum umbellatum",
+  "commonName": "sulfur buckwheat",
+  "family": "Polygonaceae"
+ },
+ {
+  "inaturalistTaxonID": 61369,
+  "scientificName": "Momordica charantia",
+  "commonName": "Bitter Melon",
+  "family": "Cucurbitaceae"
+ },
+ {
+  "inaturalistTaxonID": 84300,
+  "scientificName": "Sambucus canadensis",
+  "commonName": "American black elderberry",
+  "family": "Viburnaceae"
+ },
+ {
+  "inaturalistTaxonID": 119956,
+  "scientificName": "Morella cerifera",
+  "commonName": "wax myrtle",
+  "family": "Myricaceae"
+ },
+ {
+  "inaturalistTaxonID": 52763,
+  "scientificName": "Cephalanthus occidentalis",
+  "commonName": "buttonbush",
+  "family": "Rubiaceae"
+ },
+ {
+  "inaturalistTaxonID": 126671,
+  "scientificName": "Sphaeralcea coccinea",
+  "commonName": "Scarlet Globemallow",
+  "family": "Malvaceae"
+ },
+ {
+  "inaturalistTaxonID": 48225,
+  "scientificName": "Eschscholzia californica",
+  "commonName": "California poppy",
+  "family": "Papaveraceae"
+ },
+ {
+  "inaturalistTaxonID": 58331,
+  "scientificName": "Datura wrightii",
+  "commonName": "Sacred Datura",
+  "family": "Solanaceae"
+ },
+ {
+  "inaturalistTaxonID": 881504,
+  "scientificName": "Pulsatilla nuttalliana",
+  "commonName": "prairie pasqueflower",
+  "family": "Ranunculaceae"
+ },
+ {
+  "inaturalistTaxonID": 118526,
+  "scientificName": "Penstemon whippleanus",
+  "commonName": "Whipple's penstemon",
+  "family": "Plantaginaceae"
+ },
+ {
+  "inaturalistTaxonID": 56352,
+  "scientificName": "Frasera speciosa",
+  "commonName": "monument plant",
+  "family": "Gentianaceae"
+ },
+ {
+  "inaturalistTaxonID": 83061,
+  "scientificName": "Calochortus gunnisonii",
+  "commonName": "Gunnison's Mariposa Lily",
+  "family": "Liliaceae"
+ },
+ {
+  "inaturalistTaxonID": 49357,
+  "scientificName": "Cylindropuntia echinocarpa",
+  "commonName": "Silver Cholla",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 77600,
+  "scientificName": "Juniperus osteosperma",
+  "commonName": "Utah Juniper",
+  "family": "Cupressaceae"
+ },
+ {
+  "inaturalistTaxonID": 47726,
+  "scientificName": "Acer negundo",
+  "commonName": "box elder",
+  "family": "Sapindaceae"
+ },
+ {
+  "inaturalistTaxonID": 76007,
+  "scientificName": "Carduus nutans",
+  "commonName": "musk thistle",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 158267,
+  "scientificName": "Ambrosia deltoidea",
+  "commonName": "triangle-leaf bursage",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 273618,
+  "scientificName": "Cylindropuntia imbricata",
+  "commonName": "tree cholla",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 58892,
+  "scientificName": "Arctostaphylos pungens",
+  "commonName": "pointleaf manzanita",
+  "family": "Ericaceae"
+ },
+ {
+  "inaturalistTaxonID": 78269,
+  "scientificName": "Opuntia polyacantha",
+  "commonName": "Plains Pricklypear",
+  "family": "Cactaceae"
+ },
+ {
+  "inaturalistTaxonID": 1493168,
+  "scientificName": "Neltuma velutina",
+  "commonName": "velvet mesquite",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 1196784,
+  "scientificName": "Dipterostemon capitatus",
+  "commonName": "blue dicks",
+  "family": "Asparagaceae"
+ },
+ {
+  "inaturalistTaxonID": 47447,
+  "scientificName": "Leucaena leucocephala",
+  "commonName": "White leadtree",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 122662,
+  "scientificName": "Leptecophylla tameiameiae",
+  "commonName": "P\u016bkiawe",
+  "family": "Ericaceae"
+ },
+ {
+  "inaturalistTaxonID": 52492,
+  "scientificName": "Dicranopteris linearis",
+  "commonName": "false staghorn fern",
+  "family": "Gleicheniaceae"
+ },
+ {
+  "inaturalistTaxonID": 1293231,
+  "scientificName": "Miconia crenata",
+  "commonName": "Koster's curse",
+  "family": "Melastomataceae"
+ },
+ {
+  "inaturalistTaxonID": 54995,
+  "scientificName": "Sida fallax",
+  "commonName": "yellow \u02bbilima",
+  "family": "Malvaceae"
+ },
+ {
+  "inaturalistTaxonID": 369881,
+  "scientificName": "Microsorum grossum",
+  "commonName": "Musk Fern",
+  "family": "Polypodiaceae"
+ },
+ {
+  "inaturalistTaxonID": 52495,
+  "scientificName": "Hedychium gardnerianum",
+  "commonName": "Kahili ginger",
+  "family": "Zingiberaceae"
+ },
+ {
+  "inaturalistTaxonID": 70030,
+  "scientificName": "Vaccinium reticulatum",
+  "commonName": "'ohelo 'ai",
+  "family": "Ericaceae"
+ },
+ {
+  "inaturalistTaxonID": 1064938,
+  "scientificName": "Megathyrsus maximus",
+  "commonName": "Guinea Grass",
+  "family": "Poaceae"
+ },
+ {
+  "inaturalistTaxonID": 246102,
+  "scientificName": "Sphagneticola trilobata",
+  "commonName": "Trailing Daisy",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 68283,
+  "scientificName": "Argyroxiphium sandwicense",
+  "commonName": "'\u0100hinahina",
+  "family": "Asteraceae"
+ },
+ {
+  "inaturalistTaxonID": 126566,
+  "scientificName": "Spathodea campanulata",
+  "commonName": "African tulip tree",
+  "family": "Bignoniaceae"
+ },
+ {
+  "inaturalistTaxonID": 1268642,
+  "scientificName": "Heptapleurum actinophyllum",
+  "commonName": "Australian Umbrella Tree",
+  "family": "Araliaceae"
+ },
+ {
+  "inaturalistTaxonID": 769957,
+  "scientificName": "Heliotropium arboreum",
+  "commonName": "tree heliotrope",
+  "family": "Heliotropiaceae"
+ },
+ {
+  "inaturalistTaxonID": 122711,
+  "scientificName": "Dodonaea viscosa",
+  "commonName": "Akeake",
+  "family": "Sapindaceae"
+ },
+ {
+  "inaturalistTaxonID": 160760,
+  "scientificName": "Clusia rosea",
+  "commonName": "autograph tree",
+  "family": "Clusiaceae"
+ },
+ {
+  "inaturalistTaxonID": 51921,
+  "scientificName": "Mimosa pudica",
+  "commonName": "Sensitive Plant",
+  "family": "Fabaceae"
+ },
+ {
+  "inaturalistTaxonID": 84359,
+  "scientificName": "Cibotium glaucum",
+  "commonName": "h\u0101pu\u2018u pulu",
+  "family": "Cibotiaceae"
+ }
+]

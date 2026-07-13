@@ -2,7 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>PLANT_ID_API_KEY</key>
-	<string>2b10yx21E9eet1K7dytQmJmNvO</string>
+	<!-- Fieldnote backend (Milestone 2). The Pl@ntNet key now lives on the
+	     Worker as a secret and never ships in the app. See Docs/BackendM2Spec.md. -->
+	<key>BACKEND_BASE_URL</key>
+	<string>https://REPLACE_WITH_WORKER_HOST</string>
+	<!-- Low-trust per-app bearer token; must match one of the Worker's APP_TOKENS. -->
+	<key>BACKEND_APP_TOKEN</key>
+	<string>REPLACE_WITH_APP_TOKEN</string>
 </dict>
 </plist>

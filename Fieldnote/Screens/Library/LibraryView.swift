@@ -49,6 +49,7 @@ struct LibraryView: View {
     @ViewBuilder
     private func libraryContent(appStore: AppStore) -> some View {
         let plants = filteredAndSortedPlants(from: appStore)
+        let accessionNumbers = accessionNumbers(from: appStore)
 
         if plants.isEmpty {
             if searchText.isEmpty && selectedType == nil {
@@ -104,7 +105,11 @@ struct LibraryView: View {
                     ], spacing: FieldSpace.md) {
                         ForEach(plants) { plant in
                             NavigationLink(value: plant) {
-                                PlantCard(plant: plant, layout: .grid)
+                                PlantCard(
+                                    plant: plant,
+                                    layout: .grid,
+                                    collectionNumber: accessionNumbers[plant.id]
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -139,6 +144,15 @@ struct LibraryView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Accession Numbers
+
+    /// Stable specimen numbers: position in the collection by date added,
+    /// independent of the current search/filter/sort.
+    private func accessionNumbers(from appStore: AppStore) -> [UUID: Int] {
+        let ordered = appStore.plants.sorted { $0.createdAt < $1.createdAt }
+        return Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1.id, $0 + 1) })
     }
 
     // MARK: - Filtered and Sorted Plants
@@ -192,14 +206,15 @@ private struct FilterChip: View {
             Text(text)
                 .font(FieldType.chipLabel)
                 .foregroundColor(isSelected ? .white : FieldColor.ink)
-                .padding(.horizontal, FieldSpace.sm)
-                .padding(.vertical, FieldSpace.xs)
+                .padding(.horizontal, FieldSpace.md)
+                .frame(minHeight: 44)
                 .background(isSelected ? FieldColor.accent : FieldColor.surface)
                 .cornerRadius(FieldRadius.chip)
                 .overlay(
                     RoundedRectangle(cornerRadius: FieldRadius.chip)
                         .stroke(isSelected ? FieldColor.accent : FieldColor.separator, lineWidth: 1)
                 )
+                .contentShape(RoundedRectangle(cornerRadius: FieldRadius.chip))
         }
         .buttonStyle(.plain)
     }

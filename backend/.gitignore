@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+dist/
+*.log
+
+# Raw plate-sourcing scratch (downloaded JPEGs, per-batch manifests). The kept
+# plates live as HEIC imagesets in the app; these staging files are not shipped.
+fixtures/plate_staging/

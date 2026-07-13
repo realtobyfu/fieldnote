@@ -25,7 +25,7 @@ struct IllustrationService {
 
     // MARK: - Public API
 
-    static func illustrationName(for commonName: String, family: String? = nil) -> String? {
+    static func illustrationName(for commonName: String, scientificName: String? = nil, family: String? = nil) -> String? {
         let normalized = commonName
             .lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -41,11 +41,27 @@ struct IllustrationService {
             return alias
         }
 
+        // Regional public-domain plates are keyed by scientific name (stable
+        // across the messy common names iNaturalist reports). See
+        // IllustrationService+RegionalPlates.swift (generated).
+        if let scientificName, let key = regionalPlateAsset(forScientificName: scientificName) {
+            return key
+        }
+
         return nil
     }
 
-    static func hasIllustration(for commonName: String, family: String? = nil) -> Bool {
-        illustrationName(for: commonName, family: family) != nil
+    static func hasIllustration(for commonName: String, scientificName: String? = nil, family: String? = nil) -> Bool {
+        illustrationName(for: commonName, scientificName: scientificName, family: family) != nil
+    }
+
+    /// The regional-plate asset for a scientific name (genus + species), or nil.
+    static func regionalPlateAsset(forScientificName scientificName: String) -> String? {
+        let key = scientificName
+            .lowercased()
+            .split(separator: " ").prefix(2).joined(separator: "_")
+            .replacingOccurrences(of: "×", with: "")
+        return regionalPlateAssets.contains(key) ? key : nil
     }
 
     // MARK: - Attribution
@@ -54,11 +70,11 @@ struct IllustrationService {
     /// illustration is an original Fieldnote (AI-generated) plate — which is
     /// intentionally left uncredited. Keyed by resolved asset name so the credit
     /// tracks the image, not the plant.
-    static func credit(for commonName: String, family: String? = nil) -> IllustrationCredit? {
-        guard let assetName = illustrationName(for: commonName, family: family) else {
+    static func credit(for commonName: String, scientificName: String? = nil, family: String? = nil) -> IllustrationCredit? {
+        guard let assetName = illustrationName(for: commonName, scientificName: scientificName, family: family) else {
             return nil
         }
-        return illustrationCredits[assetName]
+        return illustrationCredits[assetName] ?? regionalPlateCredits[assetName]
     }
 
     /// Credits for reproductions of real, human-authored public-domain plates,

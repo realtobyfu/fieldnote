@@ -10,6 +10,9 @@ import SwiftUI
 struct BotanicalIllustrationView: View {
     let plantName: String
     let family: String?
+    /// Scientific name, used to resolve regional public-domain plates keyed by
+    /// species when the common name doesn't match a bundled asset.
+    var scientificName: String? = nil
     let size: IllustrationSize
     /// When true, the illustration fills its parent edge-to-edge (no inner frame /
     /// border / dashed placeholder) so the enclosing card provides the framing.
@@ -37,9 +40,10 @@ struct BotanicalIllustrationView: View {
         }
     }
 
-    init(_ plantName: String, family: String? = nil, size: IllustrationSize = .card, fill: Bool = false) {
+    init(_ plantName: String, family: String? = nil, scientificName: String? = nil, size: IllustrationSize = .card, fill: Bool = false) {
         self.plantName = plantName
         self.family = family
+        self.scientificName = scientificName
         self.size = size
         self.fill = fill
     }
@@ -47,7 +51,7 @@ struct BotanicalIllustrationView: View {
     var body: some View {
         Group {
             if let assetName = IllustrationService.illustrationName(
-                for: plantName, family: family
+                for: plantName, scientificName: scientificName, family: family
             ) {
                 illustrationImage(assetName)
             } else {
@@ -153,16 +157,18 @@ struct BotanicalIllustrationView: View {
 struct UndiscoveredIllustrationView: View {
     let plantName: String
     let family: String?
+    var scientificName: String? = nil
     let size: BotanicalIllustrationView.IllustrationSize
 
-    init(_ plantName: String, family: String? = nil, size: BotanicalIllustrationView.IllustrationSize = .card) {
+    init(_ plantName: String, family: String? = nil, scientificName: String? = nil, size: BotanicalIllustrationView.IllustrationSize = .card) {
         self.plantName = plantName
         self.family = family
+        self.scientificName = scientificName
         self.size = size
     }
 
     var body: some View {
-        BotanicalIllustrationView(plantName, family: family, size: size)
+        BotanicalIllustrationView(plantName, family: family, scientificName: scientificName, size: size)
             .saturation(0)      // Desaturate to grayscale
             .opacity(0.5)       // Fade out
             .overlay(

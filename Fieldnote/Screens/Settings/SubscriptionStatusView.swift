@@ -18,7 +18,7 @@ struct SubscriptionStatusView: View {
     private func suggestFeature() {
         let email = "3tobiasfu@gmail.com"
         let subject = "Fieldnote Feature Suggestion"
-        let body = "I'd love to see this feature in Fieldnote:\n\n\n\n---\nFieldnote v1.0.0 (Premium)"
+        let body = "I'd love to see this feature in Fieldnote:\n\n\n\n---\n"
 
         let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
@@ -111,21 +111,18 @@ struct SubscriptionStatusView: View {
                 }
                 .padding(.vertical, FieldSpace.xs)
                 
-                // Suggest Feature button (Premium only)
-                if subscriptionStore.isPremium {
-                    Button {
-                        suggestFeature()
-                    } label: {
-                        HStack {
-                            Label("Suggest a Feature", systemImage: "lightbulb")
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundColor(FieldColor.mutedInk)
-                        }
+                // Suggest Feature button
+                Button {
+                    suggestFeature()
+                } label: {
+                    HStack {
+                        Label("Suggest a Feature", systemImage: "lightbulb")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundColor(FieldColor.mutedInk)
                     }
                 }
-
             }
         }
         .fieldListBackground()

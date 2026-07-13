@@ -83,4 +83,7 @@ struct FieldType {
 
     /// Chapter label: 11pt medium for meta labels
     static let chapterLabel = Font.system(size: 11, weight: .medium, design: .default)
+
+    /// Plate label: 10pt serif medium - specimen-sheet marginalia (pair with tracking + uppercase)
+    static let plateLabel = Font.system(size: 10, weight: .medium, design: .serif)
 }

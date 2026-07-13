@@ -133,7 +133,8 @@ location; offer manual region as fallback.
 
 Canonical taxon IDs as primary identity, backend scheduler + versioned region
 manifests, offline region packs, saved/travel regions, curated collections,
-key-proxying off-device, illustration factory, WeatherKit/ecoregion enrichment.
+key-proxying off-device, illustration sourcing (real public-domain plates +
+attribution — see `IllustrationSourcing.md`), WeatherKit/ecoregion enrichment.
 
 ## Risks / safeguards (carried from research)
 

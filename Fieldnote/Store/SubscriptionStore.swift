@@ -20,7 +20,7 @@ enum SubscriptionType: String, Codable {
 class SubscriptionStore {
     // MARK: - Constants
 
-    static let freeIdentificationLimit = 5
+    static let freeIdentificationLimit = 10
 
     // MARK: - Keys
 

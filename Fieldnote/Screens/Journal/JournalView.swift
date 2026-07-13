@@ -13,6 +13,11 @@
 import SwiftUI
 import SwiftData
 
+/// Value route for the pushed Collection screen. The Journal stack must stay
+/// purely value-based: mixing closure-destination NavigationLinks with
+/// value links on one stack double-pushes (Collection re-pushed over detail).
+struct CollectionRoute: Hashable {}
+
 struct JournalView: View {
     @Environment(\.appStore) private var store
     @State private var headerHeight: CGFloat = 120
@@ -32,6 +37,30 @@ struct JournalView: View {
         .navigationDestination(for: Plant.self) { plant in
             PlantDetailView(plant: plant)
         }
+        .navigationDestination(for: CollectionRoute.self) { _ in
+            LibraryView()
+        }
+        .navigationDestination(for: CatalogPlant.self) { catalogPlant in
+            CatalogPlantDetailView(catalogPlant: catalogPlant)
+        }
+    }
+
+    /// Nearby species for the empty state. Uses the ranked local catalog when
+    /// the region pack has loaded; otherwise falls back to a MOCK sample of
+    /// the built-in catalog. TODO(backend): once RegionPackService reliably
+    /// populates localCatalogItems on first launch, drop the fallback.
+    private func nearbyPreviewItems(_ store: AppStore) -> [LocalCatalogItem] {
+        if store.hasLocalCatalog {
+            return Array(store.localCatalogItems.prefix(4))
+        }
+        return CatalogPlant.catalog.prefix(4).map {
+            LocalCatalogItem(
+                catalogPlant: $0,
+                nearbyObservationCount: 0,
+                rankScore: 0,
+                explanationCodes: []
+            )
+        }
     }
 
     @ViewBuilder
@@ -46,12 +75,15 @@ struct JournalView: View {
             .ignoresSafeArea()
 
             if store.plants.isEmpty {
-                EmptyStateView(
-                    icon: "leaf",
-                    title: "Your journal awaits",
-                    message: "Capture your first plant to begin your field journal.",
-                    actionLabel: "Capture a Plant",
-                    action: { store.selectedTab = .capture }
+                // First run: no status card (streak and challenge are all zeros
+                // before the first entry) — the empty state carries the greeting
+                // as plain type instead.
+                JournalEmptyState(
+                    nearbyItems: nearbyPreviewItems(store),
+                    greeting: greeting,
+                    dateLine: dateLine,
+                    onCapture: { store.selectedTab = .capture },
+                    onExplore: { store.selectedTab = .explore }
                 )
             } else {
                 ScrollView {
@@ -66,22 +98,31 @@ struct JournalView: View {
 
                         sectionLabel
 
+                        // One hero per screen: the latest find keeps the immersive
+                        // photo card; older finds are compact paper rows.
                         ForEach(Array(finds.enumerated()), id: \.element.encounter.id) { index, find in
                             NavigationLink(value: find.plant) {
-                                JournalFindCard(
-                                    encounter: find.encounter,
-                                    plant: find.plant,
-                                    isNewSpecies: isDiscovery(find.encounter),
-                                    height: index == 0 ? 330 : 240,
-                                    palette: palette(for: index)
-                                )
+                                if index == 0 {
+                                    JournalFindCard(
+                                        encounter: find.encounter,
+                                        plant: find.plant,
+                                        isNewSpecies: isDiscovery(find.encounter),
+                                        height: 280,
+                                        palette: palette(for: index)
+                                    )
+                                } else {
+                                    JournalFindRow(
+                                        encounter: find.encounter,
+                                        plant: find.plant,
+                                        isNewSpecies: isDiscovery(find.encounter),
+                                        palette: palette(for: index)
+                                    )
+                                }
                             }
                             .buttonStyle(.plain)
 
                             if index == 0 {
-                                NavigationLink {
-                                    LibraryView()
-                                } label: {
+                                NavigationLink(value: CollectionRoute()) {
                                     CollectionProgressRow(
                                         discovered: store.discoveredCatalogPlants.count,
                                         total: store.catalogPlants.count
@@ -98,12 +139,14 @@ struct JournalView: View {
                 .collapsesTabBarOnScroll()
             }
 
-            header(store)
-                .padding(.horizontal, 14)
-                .padding(.top, FieldSpace.sm)
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.height
-                } action: { headerHeight = $0 }
+            if !store.plants.isEmpty {
+                header(store)
+                    .padding(.horizontal, 14)
+                    .padding(.top, FieldSpace.sm)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { headerHeight = $0 }
+            }
         }
     }
 
@@ -126,9 +169,7 @@ struct JournalView: View {
                 .font(FieldType.title3)
                 .foregroundStyle(FieldColor.ink)
             Spacer()
-            NavigationLink {
-                LibraryView()
-            } label: {
+            NavigationLink(value: CollectionRoute()) {
                 Text("All collection ›")
                     .font(FieldType.footnote.weight(.semibold))
                     .foregroundStyle(FieldColor.accentDeep)
@@ -247,6 +288,33 @@ private struct JournalFindCard: View {
     }
 }
 
+/// A compact recent-find row that loads the encounter's real photo (small
+/// thumbnail) async, falling back to a themed gradient swatch.
+private struct JournalFindRow: View {
+    let encounter: Encounter
+    let plant: Plant
+    let isNewSpecies: Bool
+    var palette: FindPalette = .forest
+
+    @State private var image: UIImage?
+
+    var body: some View {
+        RecentFindRow(
+            commonName: plant.commonName,
+            scientificName: plant.scientificName,
+            locationName: encounter.displayLocationName ?? "Location unknown",
+            relativeDate: encounter.date.formatted(.relative(presentation: .named)),
+            isNewSpecies: isNewSpecies,
+            image: image.map { Image(uiImage: $0) },
+            palette: palette
+        )
+        .task(id: encounter.id) {
+            guard let filename = encounter.allPhotoFileNames.first else { return }
+            image = await PhotoStorageService.shared.loadThumbnail(filename: filename, maxSize: 240)
+        }
+    }
+}
+
 // MARK: - Preview
 
 #if DEBUG
@@ -257,14 +325,16 @@ private struct JournalPreviewHost: View {
     @State private var store: AppStore
     private let container: ModelContainer
 
-    init() {
+    init(empty: Bool = false) {
         let schema = Schema([Plant.self, Encounter.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try! ModelContainer(for: schema, configurations: [config])
         self.container = container
         let context = container.mainContext
-        for plant in Self.samplePlants() {
-            context.insert(plant)
+        if !empty {
+            for plant in Self.samplePlants() {
+                context.insert(plant)
+            }
         }
         _store = State(initialValue: AppStore(modelContext: context))
     }
@@ -312,5 +382,9 @@ private struct JournalPreviewHost: View {
 
 #Preview("Populated") {
     JournalPreviewHost()
+}
+
+#Preview("Empty") {
+    JournalPreviewHost(empty: true)
 }
 #endif

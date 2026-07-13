@@ -2,7 +2,8 @@
 //  OnboardingCameraPage.swift
 //  Fieldnote
 //
-//  "Ready Your Lens" - Camera and location permission requests
+//  Camera and location permission requests, presented as a field-kit
+//  checklist that ticks off as each permission is granted
 //
 
 import SwiftUI
@@ -31,27 +32,10 @@ struct OnboardingCameraPage: View {
         VStack(spacing: FieldSpace.xl) {
             Spacer()
 
-            // Illustration/icon
-            permissionIllustration
+            header
 
-            // Request text
-            VStack(spacing: FieldSpace.md) {
-                Text(showLocationStep ? "One More Thing" : "Ready Your Lens")
-                    .font(FieldType.displayTitle)
-                    .foregroundColor(FieldColor.vintageInk)
-                    .multilineTextAlignment(.center)
+            fieldKitCard
 
-                Text(permissionDescription)
-                    .font(FieldType.body)
-                    .foregroundColor(FieldColor.fadedInk)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .padding(.horizontal, FieldSpace.md)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-            }
-
-            // Permission buttons
             permissionButtons
 
             Spacer()
@@ -59,6 +43,7 @@ struct OnboardingCameraPage: View {
         }
         .padding(.horizontal, FieldSpace.xl)
         .opacity(contentVisible ? 1 : 0)
+        .offset(y: contentVisible ? 0 : 8)
         .onAppear {
             checkCameraPermission()
             checkLocationPermission()
@@ -71,57 +56,129 @@ struct OnboardingCameraPage: View {
         }
     }
 
-    private var permissionDescription: String {
-        if showLocationStep {
-            return "Enable location to discover plants commonly found near you. This helps personalize your exploration experience."
-        } else {
-            return "To document your botanical discoveries, Fieldnote needs access to your camera. Your photos stay private on your device."
+    // MARK: - Header
+
+    private var header: some View {
+        VStack(spacing: FieldSpace.sm) {
+            Text("BEFORE YOU SET OUT")
+                .font(FieldType.plateLabel)
+                .tracking(2.0)
+                .foregroundColor(FieldColor.sepia.opacity(0.7))
+
+            Text(permissionTitle)
+                .font(FieldType.displayTitle)
+                .foregroundColor(FieldColor.vintageInk)
+                .multilineTextAlignment(.center)
+
+            Text(permissionDescription)
+                .font(FieldType.body)
+                .foregroundColor(FieldColor.fadedInk)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .padding(.horizontal, FieldSpace.md)
+                .padding(.top, FieldSpace.xs)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    // MARK: - Permission Illustration
-
-    private var permissionIllustration: some View {
-        ZStack {
-            // Vintage frame background - larger size
-            RoundedRectangle(cornerRadius: FieldRadius.lg)
-                .fill(FieldColor.illustrationBg)
-                .frame(width: 180, height: 180)
-
-            // Decorative outer border
-            RoundedRectangle(cornerRadius: FieldRadius.lg)
-                .stroke(FieldColor.bookBorder, lineWidth: 2)
-                .frame(width: 180, height: 180)
-
-            // Inner decorative border
-            RoundedRectangle(cornerRadius: FieldRadius.md)
-                .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 1)
-                .frame(width: 166, height: 166)
-
-            // Icon based on current step
-            if showBeginButton {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 72, weight: .light))
-                    .foregroundColor(FieldColor.successGreen)
-            } else if showLocationStep {
-                Image(systemName: "location.viewfinder")
-                    .font(.system(size: 72, weight: .light))
-                    .foregroundColor(FieldColor.accent)
-            } else if cameraAuthorized {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 72, weight: .light))
-                    .foregroundColor(FieldColor.successGreen)
-            } else {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 72, weight: .light))
-                    .foregroundColor(FieldColor.accent)
-            }
+    private var permissionTitle: String {
+        if showBeginButton {
+            return "The journal is ready"
+        } else if showLocationStep {
+            return "And your location"
+        } else {
+            return "First, the camera"
         }
+    }
+
+    private var permissionDescription: String {
+        if showBeginButton {
+            return "Everything is in place. Add your first entry whenever you find something worth noting."
+        } else if showLocationStep {
+            return "Location marks where each entry was made and suggests plants that grow nearby. This step is optional."
+        } else {
+            return "Fieldnote photographs plants to identify them. Your photos stay on your device."
+        }
+    }
+
+    // MARK: - Field Kit Checklist
+
+    /// The two permissions as a checklist on parchment — rows tick off
+    /// as they are granted, like preparing a kit before going out.
+    private var fieldKitCard: some View {
+        VStack(spacing: 0) {
+            kitRow(
+                title: "Camera",
+                detail: "For photographing the plants you find.",
+                granted: cameraAuthorized,
+                declined: cameraDenied,
+                optional: false
+            )
+
+            RuledLine(color: FieldColor.bookBorder.opacity(0.35))
+
+            kitRow(
+                title: "Location",
+                detail: "Marks where each entry was made.",
+                granted: locationAuthorized,
+                declined: locationDenied,
+                optional: true
+            )
+        }
+        .padding(.horizontal, FieldSpace.md)
+        .background(FieldColor.parchment)
+        .clipShape(RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous)
+                .stroke(FieldColor.bookBorder.opacity(0.4), lineWidth: 0.5)
+        )
         .fieldShadow(FieldShadow.card)
-        .scaleEffect(contentVisible ? 1 : 0.85)
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: contentVisible)
-        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showLocationStep)
-        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showBeginButton)
+        .animation(.easeInOut(duration: 0.3), value: cameraAuthorized)
+        .animation(.easeInOut(duration: 0.3), value: locationAuthorized)
+        .animation(.easeInOut(duration: 0.3), value: locationDenied)
+    }
+
+    private func kitRow(title: String, detail: String, granted: Bool, declined: Bool, optional: Bool) -> some View {
+        HStack(spacing: FieldSpace.md) {
+            ZStack {
+                Circle()
+                    .stroke(granted ? FieldColor.accent : FieldColor.bookBorder, lineWidth: 1)
+                    .frame(width: 26, height: 26)
+
+                if granted {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(FieldColor.accent)
+                } else if declined {
+                    Image(systemName: "minus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(FieldColor.mutedInk)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: FieldSpace.sm) {
+                    Text(title)
+                        .font(FieldType.title3)
+                        .foregroundColor(FieldColor.vintageInk)
+
+                    if optional {
+                        Text("OPTIONAL")
+                            .font(FieldType.plateLabel)
+                            .tracking(1.2)
+                            .foregroundColor(FieldColor.sepia.opacity(0.7))
+                    }
+                }
+
+                Text(detail)
+                    .font(FieldType.callout)
+                    .foregroundColor(FieldColor.fadedInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, FieldSpace.md)
     }
 
     // MARK: - Permission Buttons
@@ -130,7 +187,7 @@ struct OnboardingCameraPage: View {
         VStack(spacing: FieldSpace.sm) {
             if showBeginButton {
                 // All permissions handled - show begin button
-                PrimaryButton("Begin Your Journal") {
+                PrimaryButton("Open the journal") {
                     onboardingStore.completeOnboarding()
                 }
                 .frame(maxWidth: 280)
@@ -152,7 +209,7 @@ struct OnboardingCameraPage: View {
                     }
                     .frame(maxWidth: 200)
 
-                    Button("Continue Without Camera") {
+                    Button("Continue without camera") {
                         onboardingStore.completeOnboarding()
                     }
                     .font(FieldType.callout)

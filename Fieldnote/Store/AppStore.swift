@@ -74,8 +74,17 @@ class AppStore {
     // Last save error for UI feedback
     var lastError: Error?
 
-    // Static catalog (not persisted, bundled with app)
-    let catalogPlants: [CatalogPlant] = CatalogPlant.catalog
+    // The active catalog. Defaults to the bundled 50; when a region pack is
+    // loaded, `refreshLocalCatalog()` replaces it with the region-scoped catalog
+    // (bundled 50 + that region's pack-only taxa). Everything downstream —
+    // discovery, journal progress, capture matching, Explore — reads
+    // `catalogPlants`, so region scoping (including the "N / region total"
+    // denominator) propagates from this one property.
+    private(set) var regionCatalog: [CatalogPlant]?
+
+    /// The catalog to display and rank: the region-scoped catalog when a pack is
+    /// active, else the bundled 50.
+    var catalogPlants: [CatalogPlant] { regionCatalog ?? CatalogPlant.catalog }
 
     // MARK: - Locale-aware catalog state (PR2 / Workstream B)
 
@@ -320,42 +329,111 @@ class AppStore {
             return
         }
 
-        // 2. Reuse a fresh cache entry, else fetch from iNaturalist and store.
-        let counts: [INatSpeciesCount]
-        let fetchedAt: Date
-        if let cached = await LocalCatalogCache.shared.freshEntry(for: profile.cacheKey) {
-            counts = cached.counts
-            fetchedAt = cached.fetchedAt
-        } else {
-            do {
-                let fetched = try await fetchSpeciesCounts(for: profile)
-                await LocalCatalogCache.shared.store(fetched, for: profile.cacheKey)
-                counts = fetched
-                fetchedAt = .now
-            } catch {
-                // Network/rate-limit failure: fall back to a stale cache if we
-                // have one, otherwise keep existing state.
-                if let stale = await LocalCatalogCache.shared.entry(for: profile.cacheKey) {
-                    counts = stale.counts
-                    fetchedAt = stale.fetchedAt
-                } else {
-                    print("refreshLocalCatalog: fetch failed and no cache: \(error)")
-                    return
-                }
-            }
+        // 2. Resolve the ranking inputs: a precomputed region pack (2B) for named
+        //    regions, else the live iNaturalist species-count path.
+        guard let inputs = await resolveRankingInputs(for: profile) else {
+            // No usable data (no cache, network down): keep existing state.
+            return
         }
 
-        // 3. Rank the bundled catalog against the counts (pure, synchronous).
+        // 3. Rank the catalog against the counts (pure, synchronous).
         let items = LocalRankingService().rank(
-            catalog: catalogPlants,
-            counts: counts,
+            catalog: inputs.catalog,
+            counts: inputs.counts,
             month: profile.currentMonth
         )
 
         // 4. Publish. Direct assignment is fine — these are stored properties.
+        //    `regionCatalog` becomes the ranked catalog: the region-scoped set on
+        //    the pack path, the bundled 50 on the live path. This drives the
+        //    discovery denominator and every `catalogPlants` reader.
         localityProfile = profile
         localCatalogItems = items
-        catalogFreshnessDate = fetchedAt
+        catalogFreshnessDate = inputs.fetchedAt
+        regionCatalog = inputs.catalog
+    }
+
+    /// The pieces `LocalRankingService.rank` needs, sourced from whichever path
+    /// applies to the current region.
+    private struct RankingInputs {
+        let counts: [INatSpeciesCount]
+        /// The catalog to rank — bundled, with pack-refreshed affinity folded in
+        /// on the region-pack path.
+        let catalog: [CatalogPlant]
+        let fetchedAt: Date
+    }
+
+    /// Chooses the data source for the chosen region. Named regions use the
+    /// precomputed backend pack when the backend is configured, falling back to
+    /// the live iNaturalist path when no pack is available. `.currentLocation`
+    /// always uses the live path (2B Phase 1).
+    private func resolveRankingInputs(for profile: LocalityProfile) async -> RankingInputs? {
+        if case .region(let region) = selectedRegionOverride {
+            if let packInputs = await regionPackInputs(regionID: region.id) {
+                return packInputs
+            }
+            // No pack at any layer (no backend, no cache, no bundled fixture):
+            // fall through to the live iNaturalist path.
+        }
+        return await liveSpeciesCountInputs(for: profile)
+    }
+
+    /// Region-pack inputs, most-fresh first: a live backend pack (when configured),
+    /// then the last cached pack, then the bundled fixture pack. Returns nil only
+    /// when no pack exists at any layer, so the caller can fall back to live iNat.
+    private func regionPackInputs(regionID: String) async -> RankingInputs? {
+        let pack: RegionPack
+        if BackendConfig.baseURL != nil {
+            do {
+                switch try await RegionPackService.shared.fetchPack(regionID: regionID) {
+                case .updated(let fetched): pack = fetched
+                case .notModified(let cached): pack = cached
+                }
+            } catch {
+                guard let fallback = await LocalCatalogCache.shared.regionPack(for: regionID)
+                    ?? BundledRegionPacks.pack(for: regionID) else {
+                    return nil
+                }
+                pack = fallback
+            }
+        } else {
+            // No backend: use the last cached pack, else the shipped fixture.
+            guard let fallback = await LocalCatalogCache.shared.regionPack(for: regionID)
+                ?? BundledRegionPacks.pack(for: regionID) else {
+                return nil
+            }
+            pack = fallback
+        }
+
+        // Merge against the bundled base (never the current region's catalog) so
+        // switching regions doesn't accumulate taxa from a previously loaded pack.
+        return RankingInputs(
+            counts: pack.speciesCounts,
+            catalog: pack.catalogPlants(mergedWith: CatalogPlant.catalog),
+            fetchedAt: pack.generatedAt
+        )
+    }
+
+    /// Live iNaturalist path: reuse a fresh cache entry, else fetch and store,
+    /// else fall back to a stale cache. Returns nil when nothing is available.
+    private func liveSpeciesCountInputs(for profile: LocalityProfile) async -> RankingInputs? {
+        // The live path (current location, Phase 1) ranks the bundled 50 — no pack,
+        // so no catalog expansion. Always merge/rank against the bundled base.
+        let base = CatalogPlant.catalog
+        if let cached = await LocalCatalogCache.shared.freshEntry(for: profile.cacheKey) {
+            return RankingInputs(counts: cached.counts, catalog: base, fetchedAt: cached.fetchedAt)
+        }
+        do {
+            let fetched = try await fetchSpeciesCounts(for: profile)
+            await LocalCatalogCache.shared.store(fetched, for: profile.cacheKey)
+            return RankingInputs(counts: fetched, catalog: base, fetchedAt: .now)
+        } catch {
+            if let stale = await LocalCatalogCache.shared.entry(for: profile.cacheKey) {
+                return RankingInputs(counts: stale.counts, catalog: base, fetchedAt: stale.fetchedAt)
+            }
+            print("refreshLocalCatalog: fetch failed and no cache: \(error)")
+            return nil
+        }
     }
 
     /// Builds a `LocalityProfile` for the chosen Explore region. For

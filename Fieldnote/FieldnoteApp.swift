@@ -98,6 +98,13 @@ struct FieldnoteApp: App {
                 if ProcessInfo.processInfo.environment["SEED_REVIEW"] != nil {
                     appStore.selectedTab = .capture
                 }
+                // Open Explore on a named region so the regional catalog (bundled
+                // pack fallback) renders on launch. e.g. SEED_REGION=florida.
+                if let regionID = ProcessInfo.processInfo.environment["SEED_REGION"],
+                   let region = CatalogRegion.presets.first(where: { $0.id == regionID }) {
+                    appStore.selectedTab = .explore
+                    await appStore.selectRegion(.region(region))
+                }
                 #endif
                 // Check subscription status on launch
                 await subscriptionStore.checkAndUpdateStatus()
@@ -136,7 +143,7 @@ struct FieldnoteApp: App {
                 // Mark as seen when dismissed
                 subscriptionStore.markPromoAsSeen()
             } content: {
-                PremiumPromoSheet()
+                PaywallView()
                     .environment(\.subscriptionStore, subscriptionStore)
             }
         }
