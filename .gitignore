@@ -1,0 +1,35 @@
+# ── Junk that should never be committed ───────────────────────────────
+# macOS / Xcode
+.DS_Store
+**/xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Node
+**/node_modules/
+**/dist/
+
+# Android / Gradle build outputs
+**/.gradle/
+**/build/
+*.apk
+*.aab
+local.properties
+
+# Tooling scratch
+.playwright-mcp/
+
+# ── Parked: real work not being committed yet ─────────────────────────
+# Remove the relevant line to start tracking one of these in its own PR.
+/android/
+/vue-project/
+/ver-1/
+/docs/
+/AGENTS.md
+/swift-testing.skill
+/.mcp.json
+/journal-sketch-v1.png
+/journal-sketch-v2.png
+
+# Contains a token-like string; left untracked on purpose (see chat).
+/File.txt
