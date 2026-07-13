@@ -21,8 +21,35 @@ struct FieldCameraView: View {
     var onManualEntry: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var model = FieldCameraModel()
+    @State private var model: FieldCameraModel
     @State private var focusIndicator: FocusIndicator?
+
+    init(
+        onUsePhoto: @escaping (UIImage) -> Void,
+        onPickLibrary: @escaping () -> Void,
+        onManualEntry: @escaping () -> Void
+    ) {
+        self.onUsePhoto = onUsePhoto
+        self.onPickLibrary = onPickLibrary
+        self.onManualEntry = onManualEntry
+        _model = State(initialValue: FieldCameraModel())
+    }
+
+    #if DEBUG
+    /// Preview-only entry point: skips real camera setup by injecting a
+    /// pre-pinned model (see `FieldCameraModel.preview`).
+    init(
+        previewModel: FieldCameraModel,
+        onUsePhoto: @escaping (UIImage) -> Void = { _ in },
+        onPickLibrary: @escaping () -> Void = {},
+        onManualEntry: @escaping () -> Void = {}
+    ) {
+        self.onUsePhoto = onUsePhoto
+        self.onPickLibrary = onPickLibrary
+        self.onManualEntry = onManualEntry
+        _model = State(initialValue: previewModel)
+    }
+    #endif
 
     private struct FocusIndicator: Equatable {
         let point: CGPoint
@@ -463,3 +490,44 @@ private struct CameraPreview: UIViewRepresentable {
         }
     }
 }
+
+// MARK: - Previews
+
+#if DEBUG
+private func previewSampleImage() -> UIImage {
+    let size = CGSize(width: 800, height: 800)
+    return UIGraphicsImageRenderer(size: size).image { ctx in
+        let colors = [
+            UIColor(red: 0.30, green: 0.46, blue: 0.32, alpha: 1).cgColor,
+            UIColor(red: 0.12, green: 0.20, blue: 0.13, alpha: 1).cgColor
+        ]
+        guard let gradient = CGGradient(
+            colorsSpace: CGColorSpaceCreateDeviceRGB(),
+            colors: colors as CFArray, locations: [0, 1]
+        ) else { return }
+        ctx.cgContext.drawLinearGradient(
+            gradient, start: .zero,
+            end: CGPoint(x: size.width, y: size.height), options: []
+        )
+    }
+}
+
+// Real hardware isn't reachable in canvas/simulator previews, so this shows
+// the chrome over a blank feed — useful for checking control layout and
+// safe-area placement across device sizes, not the live video itself.
+#Preview("Live Chrome") {
+    FieldCameraView(previewModel: .preview(.ready))
+}
+
+#Preview("Confirm Capture") {
+    FieldCameraView(previewModel: .preview(.ready, capturedImage: previewSampleImage()))
+}
+
+#Preview("Permission Denied") {
+    FieldCameraView(previewModel: .preview(.denied))
+}
+
+#Preview("Camera Unavailable") {
+    FieldCameraView(previewModel: .preview(.unavailable))
+}
+#endif

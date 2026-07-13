@@ -9,7 +9,19 @@ import SwiftUI
 
 struct OnboardingContainerView: View {
     @Environment(\.onboardingStore) private var onboardingStore
-    @State private var currentPage = 0
+    @State private var currentPage: Int
+
+    init() {
+        var initialPage = 0
+        #if DEBUG
+        // Screenshot hook: SEED_ONBOARDING_PAGE=0|1|2 opens a specific page.
+        if let raw = ProcessInfo.processInfo.environment["SEED_ONBOARDING_PAGE"],
+           let page = Int(raw), (0...2).contains(page) {
+            initialPage = page
+        }
+        #endif
+        self._currentPage = State(initialValue: initialPage)
+    }
 
     var body: some View {
         ZStack {

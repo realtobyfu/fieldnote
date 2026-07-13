@@ -20,6 +20,7 @@ struct ProfileSettingsSection: View {
         VStack(alignment: .leading, spacing: FieldSpace.lg) {
             storageSection
             if let store { dataSection(store) }
+            dataSourcesSection
             aboutSection
             #if DEBUG
             developerSection
@@ -102,6 +103,27 @@ struct ProfileSettingsSection: View {
         }
     }
 
+    // MARK: - Data Sources & Attribution
+
+    /// Credits the open datasets behind local discovery. Regional occurrence and
+    /// seasonality come from iNaturalist research-grade observations with names
+    /// normalized via GBIF; visual identification is powered by Pl@ntNet.
+    private var dataSourcesSection: some View {
+        SettingsGroup(title: "Data Sources") {
+            VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                Text("Where discovery data comes from")
+                    .font(FieldType.bodyEmphasized)
+                    .foregroundStyle(FieldColor.ink)
+                Text("Which plants are common near you, and when they're active, is drawn from iNaturalist research-grade observations, with scientific names normalized through GBIF.")
+                    .settingsBodyText()
+                Text("Photo identification is powered by Pl@ntNet.")
+                    .settingsBodyText()
+                    .padding(.top, 2)
+            }
+            .padding(FieldSpace.md)
+        }
+    }
+
     // MARK: - About
 
     private var aboutSection: some View {
@@ -116,13 +138,6 @@ struct ProfileSettingsSection: View {
                     Text("We never over-claim certainty. Every identification carries a confidence level: low-confidence finds are invitations to learn, not failures.")
                         .settingsBodyText()
                         .padding(.top, 2)
-                    HStack(spacing: FieldSpace.xs) {
-                        Text("Version")
-                        Text("1.0.0").foregroundStyle(FieldColor.mutedInk)
-                    }
-                    .font(FieldType.caption)
-                    .foregroundStyle(FieldColor.tertiaryInk)
-                    .padding(.top, 2)
                 }
                 .padding(FieldSpace.md)
 

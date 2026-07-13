@@ -66,6 +66,29 @@ actor LocalCatalogCache {
         guard let data = try? JSONEncoder.iso.encode(entry) else { return }
         try? data.write(to: fileURL(for: cacheKey))
     }
+
+    // MARK: - Region Packs (2B)
+
+    /// Region packs are cached under their own key namespace so they don't
+    /// collide with the raw species-count entries. The pack carries its own
+    /// `version` + `generatedAt`, so freshness lives in the pack, not here.
+    private func packCacheKey(for regionID: String) -> String { "pack-\(regionID)" }
+
+    /// The last cached pack for a region, regardless of age. Used both to serve
+    /// offline and to supply the `If-None-Match` version on the next fetch.
+    func regionPack(for regionID: String) -> RegionPack? {
+        let url = fileURL(for: packCacheKey(for: regionID))
+        guard let data = try? Data(contentsOf: url),
+              let pack = try? JSONDecoder.iso.decode(RegionPack.self, from: data) else {
+            return nil
+        }
+        return pack
+    }
+
+    func storeRegionPack(_ pack: RegionPack) {
+        guard let data = try? JSONEncoder.iso.encode(pack) else { return }
+        try? data.write(to: fileURL(for: packCacheKey(for: pack.regionID)))
+    }
 }
 
 private extension JSONDecoder {

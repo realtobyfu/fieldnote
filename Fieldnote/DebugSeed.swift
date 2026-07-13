@@ -34,9 +34,14 @@ enum DebugSeed {
         ]
 
         for s in seeds {
+            // Use the curated catalog summary when the species has one, so seeded
+            // screenshots show real copy instead of placeholder text.
+            let catalogMatch = CatalogPlant.catalog.first {
+                $0.scientificName.caseInsensitiveCompare(s.sci) == .orderedSame
+            }
             let plant = Plant(
                 commonName: s.common, scientificName: s.sci, family: s.family,
-                summary: "A lovely \(s.common.lowercased()) observed in the field.",
+                summary: catalogMatch?.summary ?? "A lovely \(s.common.lowercased()) observed in the field.",
                 traits: [], habitat: nil, nativeRange: nil
             )
             appStore.addPlant(plant)

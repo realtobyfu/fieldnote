@@ -18,7 +18,6 @@ struct EncounterDetailView: View {
 
     @State private var notes: String
     @State private var showDeleteConfirmation = false
-    @State private var showDiscardConfirmation = false
     @State private var isSaving = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isSavingPhoto = false
@@ -26,13 +25,6 @@ struct EncounterDetailView: View {
     @State private var selectedLocation: SelectedLocation?
     @State private var locationLabel: String
     @State private var selectedConditions: Set<String>
-
-    // Snapshot of the editable fields at load time, so Close can warn on unsaved edits.
-    private let initialNotes: String
-    private let initialLocationLabel: String
-    private let initialConditions: Set<String>
-    private let initialLocationName: String?
-    private let initialHasCoordinate: Bool
 
     private let availableConditions = ["sun", "shade", "wet", "dry", "snow", "windy", "hot", "cold"]
 
@@ -50,20 +42,6 @@ struct EncounterDetailView: View {
                 coordinate: encounter.coordinates
             ))
         }
-
-        initialNotes = encounter.notes ?? ""
-        initialLocationLabel = encounter.locationLabel ?? ""
-        initialConditions = Set(encounter.conditions)
-        initialLocationName = encounter.displayLocationName
-        initialHasCoordinate = encounter.coordinates != nil
-    }
-
-    private var hasUnsavedChanges: Bool {
-        notes != initialNotes ||
-        locationLabel != initialLocationLabel ||
-        selectedConditions != initialConditions ||
-        selectedLocation?.name != initialLocationName ||
-        (selectedLocation?.coordinate != nil) != initialHasCoordinate
     }
 
     var body: some View {
@@ -194,21 +172,12 @@ struct EncounterDetailView: View {
             .padding(FieldSpace.md)
         }
         .background(FieldColor.agedPaper)
-        .safeAreaInset(edge: .bottom) {
+        .bottomActionBar {
             saveBar
         }
         .navigationTitle("Edit Observation")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Close") {
-                    if hasUnsavedChanges {
-                        showDiscardConfirmation = true
-                    } else {
-                        dismiss()
-                    }
-                }
-            }
             ToolbarItem(placement: .destructiveAction) {
                 Button("Delete") {
                     showDeleteConfirmation = true
@@ -227,16 +196,6 @@ struct EncounterDetailView: View {
         } message: {
             Text("This removes the observation permanently.")
         }
-        .confirmationDialog(
-            "Discard Changes?",
-            isPresented: $showDiscardConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Discard Changes", role: .destructive) {
-                dismiss()
-            }
-            Button("Keep Editing", role: .cancel) {}
-        }
         .onChange(of: selectedPhotoItem) { _, newItem in
             guard let newItem else { return }
             Task {
@@ -253,16 +212,12 @@ struct EncounterDetailView: View {
 
     // MARK: - Save Bar (pinned)
 
+    // Padding + edge treatment come from bottomActionBar (blurred scroll-under
+    // on iOS 26, opaque paper below).
     private var saveBar: some View {
         PrimaryButton(isSaving ? "Saving..." : "Save Changes", isEnabled: !isSaving) {
             saveChanges()
         }
-        .padding(.horizontal, FieldSpace.md)
-        .padding(.vertical, FieldSpace.sm)
-        .background(
-            FieldColor.agedPaper
-                .overlay(alignment: .top) { RuledLine().opacity(0.5) }
-        )
     }
 
     private func saveEncounterPhoto(from item: PhotosPickerItem) async {
@@ -330,3 +285,37 @@ struct EncounterDetailView: View {
         }
     }
 }
+
+#if DEBUG
+private struct EncounterDetailPreviewHost: View {
+    let encounter: Encounter
+    let plant: Plant
+    private let container: ModelContainer
+
+    @MainActor
+    init(plant: Plant, encounter: Encounter) {
+        self.plant = plant
+        self.encounter = encounter
+        let schema = Schema([Plant.self, Encounter.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        let container = try! ModelContainer(for: schema, configurations: [config])
+        container.mainContext.insert(plant)
+        self.container = container
+    }
+
+    var body: some View {
+        NavigationStack {
+            EncounterDetailView(encounter: encounter, plant: plant)
+        }
+        .modelContainer(container)
+    }
+}
+
+#Preview("With Notes") {
+    EncounterDetailPreviewHost(plant: .mockMaple, encounter: .mockMaple1)
+}
+
+#Preview("No Notes") {
+    EncounterDetailPreviewHost(plant: .mockMaple, encounter: .mockMaple2)
+}
+#endif

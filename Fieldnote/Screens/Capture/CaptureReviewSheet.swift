@@ -112,7 +112,7 @@ struct CaptureReviewSheet: View {
             .background(FieldColor.agedPaper)
             .navigationTitle("Review Capture")
             .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) {
+            .bottomActionBar {
                 saveBar
             }
             .toolbar {
@@ -402,6 +402,8 @@ struct CaptureReviewSheet: View {
 
     // MARK: - Save Bar (pinned)
 
+    // Padding + edge treatment come from bottomActionBar (blurred scroll-under
+    // on iOS 26, opaque paper below).
     private var saveBar: some View {
         PrimaryButton(
             isSaving ? "Saving..." : "Save Observation",
@@ -409,13 +411,6 @@ struct CaptureReviewSheet: View {
         ) {
             Task { await saveEncounter() }
         }
-        .padding(.horizontal, FieldSpace.md)
-        .padding(.top, FieldSpace.sm)
-        .padding(.bottom, FieldSpace.sm)
-        .background(
-            FieldColor.agedPaper
-                .overlay(alignment: .top) { RuledLine().opacity(0.5) }
-        )
     }
 
     // MARK: - Wikipedia Enrichment

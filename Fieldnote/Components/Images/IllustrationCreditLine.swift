@@ -15,14 +15,16 @@ import SwiftUI
 struct IllustrationCreditLine: View {
     let plantName: String
     let family: String?
+    var scientificName: String? = nil
 
-    init(plantName: String, family: String? = nil) {
+    init(plantName: String, family: String? = nil, scientificName: String? = nil) {
         self.plantName = plantName
         self.family = family
+        self.scientificName = scientificName
     }
 
     private var credit: IllustrationCredit? {
-        IllustrationService.credit(for: plantName, family: family)
+        IllustrationService.credit(for: plantName, scientificName: scientificName, family: family)
     }
 
     var body: some View {

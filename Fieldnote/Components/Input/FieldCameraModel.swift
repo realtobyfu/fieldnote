@@ -234,6 +234,22 @@ final class FieldCameraModel {
     }
 }
 
+// MARK: - Preview support
+
+#if DEBUG
+extension FieldCameraModel {
+    /// Builds a model pinned to a given state without touching AVFoundation,
+    /// so SwiftUI previews can render the chrome for states real hardware
+    /// makes hard to reach on demand (denied, unavailable, confirm-capture).
+    static func preview(_ availability: Availability, capturedImage: UIImage? = nil) -> FieldCameraModel {
+        let model = FieldCameraModel()
+        model.availability = availability
+        model.capturedImage = capturedImage
+        return model
+    }
+}
+#endif
+
 // MARK: - Photo capture delegate
 
 /// Bridges AVCapturePhotoOutput's queue-bound callback to a Sendable completion.

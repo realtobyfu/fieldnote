@@ -78,6 +78,9 @@ struct FieldColor {
     /// Illustration background - cream tint
     static let illustrationBg = Color(red: 0.98, green: 0.96, blue: 0.92) // #FAF5EB
 
+    /// Specimen-sheet card stock - warm near-white, sits between surface and agedPaper
+    static let parchment = Color(red: 0.992, green: 0.984, blue: 0.965) // #FDFBF6
+
     // MARK: - Dividers & Borders
 
     /// Very subtle separator line

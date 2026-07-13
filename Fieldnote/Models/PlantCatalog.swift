@@ -28,6 +28,17 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
     /// `nil` when no seasonal data has been computed for this taxon yet.
     let monthlyAffinity: [Double]?
 
+    // MARK: Regional-catalog rendering (2C; see RegionalizedCatalogPlan.md)
+
+    /// Where this record came from: the bundled 50 (hand-authored, illustrated) or
+    /// a region pack (rendered from enriched iNaturalist/GBIF fields).
+    let source: CatalogSource
+    /// Remote photo URL for pack-only taxa (bundled taxa use local illustrations).
+    /// Only set when the source license permits reuse.
+    let photoURL: String?
+    /// Attribution string to render alongside `photoURL`.
+    let photoAttribution: String?
+
     init(
         id: UUID = UUID(),
         commonName: String,
@@ -40,7 +51,10 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
         defaultPlaceholder: String = "leaf.fill",
         gbifTaxonKey: Int? = nil,
         inaturalistTaxonID: Int? = nil,
-        monthlyAffinity: [Double]? = nil
+        monthlyAffinity: [Double]? = nil,
+        source: CatalogSource = .bundled,
+        photoURL: String? = nil,
+        photoAttribution: String? = nil
     ) {
         self.id = id
         self.commonName = commonName
@@ -54,7 +68,18 @@ struct CatalogPlant: Identifiable, Codable, Hashable {
         self.gbifTaxonKey = gbifTaxonKey
         self.inaturalistTaxonID = inaturalistTaxonID
         self.monthlyAffinity = monthlyAffinity
+        self.source = source
+        self.photoURL = photoURL
+        self.photoAttribution = photoAttribution
     }
+}
+
+/// Provenance of a catalog record.
+enum CatalogSource: String, Codable, Hashable {
+    /// One of the hand-authored, illustrated bundled 50.
+    case bundled
+    /// Surfaced from a region pack's enriched taxon data.
+    case regional
 }
 
 // MARK: - Hashable
@@ -127,6 +152,37 @@ extension CatalogPlant {
             .lowercased()
             .replacingOccurrences(of: "'", with: "")
     }
+}
+
+// MARK: - Placeholder Icon (regional taxa)
+
+extension CatalogPlant {
+    /// SF Symbol for a pack-only taxon with no illustration, chosen from its
+    /// family. iNaturalist's iconic taxon is just "Plantae" for all plants, so
+    /// family is the only signal for tree-vs-herb. Defaults to `leaf.fill`.
+    /// Expanded from the families that actually appear in the region fixtures.
+    static func placeholderSymbol(forFamily family: String?) -> String {
+        guard let family, !family.isEmpty else { return "leaf.fill" }
+        if treeFamilies.contains(family) { return "tree.fill" }
+        if flowerFamilies.contains(family) { return "sun.max.fill" }
+        return "leaf.fill"
+    }
+
+    /// Families whose members are predominantly trees/large woody plants.
+    /// Drawn from the families present across the region fixtures.
+    private static let treeFamilies: Set<String> = [
+        "Fagaceae", "Pinaceae", "Betulaceae", "Sapindaceae", "Salicaceae",
+        "Platanaceae", "Cupressaceae", "Juglandaceae", "Oleaceae", "Aceraceae",
+        "Ulmaceae", "Moraceae", "Magnoliaceae", "Arecaceae", "Altingiaceae",
+        "Cornaceae", "Ebenaceae", "Lauraceae", "Taxodiaceae",
+    ]
+
+    /// Families of predominantly showy-flowered herbs — matches the bundled
+    /// catalog's `sun.max.fill` idiom for wildflowers.
+    private static let flowerFamilies: Set<String> = [
+        "Asteraceae", "Papaveraceae", "Ranunculaceae", "Malvaceae", "Onagraceae",
+        "Iridaceae", "Liliaceae", "Orchidaceae", "Geraniaceae", "Boraginaceae",
+    ]
 }
 
 // MARK: - Locale Join

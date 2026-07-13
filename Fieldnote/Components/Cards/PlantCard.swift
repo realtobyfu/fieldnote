@@ -10,15 +10,19 @@ import SwiftUI
 struct PlantCard: View {
     let plant: Plant
     let layout: Layout
+    /// Accession number: the plant's position in the collection by date added.
+    /// Shown as specimen-sheet marginalia ("№ 4") on the grid card.
+    let collectionNumber: Int?
 
     enum Layout {
         case grid
         case list
     }
 
-    init(plant: Plant, layout: Layout = .grid) {
+    init(plant: Plant, layout: Layout = .grid, collectionNumber: Int? = nil) {
         self.plant = plant
         self.layout = layout
+        self.collectionNumber = collectionNumber
     }
 
     var body: some View {
@@ -32,8 +36,11 @@ struct PlantCard: View {
 
     // MARK: - Grid Layout
 
-    /// A self-contained, uniform-height card: an edge-to-edge image plate over an
-    /// opaque surface, with a fixed 2-line name block so the grid columns stay aligned.
+    /// A catalog-plate card: edge-to-edge illustration up top (separated from the
+    /// caption by a hairline rule, like a plate in a botanical book), then a
+    /// left-aligned caption block on warm parchment — accession № + family as a
+    /// small-caps eyebrow, the serif name (2 lines reserved for uniform height),
+    /// the Latin name, and a quiet small-caps sightings line.
     private var gridCard: some View {
         VStack(spacing: 0) {
             PlantIllustrationView(plant: plant, size: .card, fill: true)
@@ -42,7 +49,24 @@ struct PlantCard: View {
                 .background(FieldColor.illustrationBg)
                 .clipped()
 
+            Rectangle()
+                .fill(FieldColor.bookBorder.opacity(0.5))
+                .frame(height: 0.5)
+
             VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                // Eyebrow: accession number + family, tracked serif caps.
+                HStack(spacing: FieldSpace.xs) {
+                    Text(accessionLabel)
+                        .layoutPriority(1)
+                    Text("·")
+                    Text(plant.family.uppercased())
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .font(FieldType.plateLabel)
+                .tracking(1.2)
+                .foregroundColor(FieldColor.sepia.opacity(0.7))
+
                 // Common name — always reserves 2 lines so all cards match height.
                 Text(plant.commonName)
                     .font(FieldType.title3)
@@ -54,30 +78,36 @@ struct PlantCard: View {
                 ScientificNameText(plant.scientificName, size: .footnote)
                     .lineLimit(1)
 
-                // Calm metadata: color-coded confidence dot + sighting count.
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(FieldColor.confidence(for: plant.averageConfidence))
-                        .frame(width: 7, height: 7)
-                    Text("\(plant.encounterCount) \(plant.encounterCount == 1 ? "sighting" : "sightings")")
-                        .font(FieldType.caption)
-                        .foregroundColor(FieldColor.fadedInk)
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 2)
+                Text(sightingsLabel)
+                    .font(FieldType.plateLabel)
+                    .tracking(1.4)
+                    .foregroundColor(FieldColor.fadedInk)
+                    .padding(.top, 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, FieldSpace.sm + FieldSpace.xs)
             .padding(.top, FieldSpace.sm)
             .padding(.bottom, FieldSpace.sm + FieldSpace.xs)
         }
-        .background(FieldColor.surface)
-        .clipShape(RoundedRectangle(cornerRadius: FieldRadius.card, style: .continuous))
+        .background(FieldColor.parchment)
+        .clipShape(RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: FieldRadius.card, style: .continuous)
-                .stroke(FieldColor.bookBorder.opacity(0.35), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous)
+                .stroke(FieldColor.bookBorder.opacity(0.4), lineWidth: 0.5)
         )
         .fieldShadow(FieldShadow.card)
+    }
+
+    private var accessionLabel: String {
+        if let collectionNumber {
+            return "№ \(collectionNumber)"
+        }
+        return "№ —"
+    }
+
+    private var sightingsLabel: String {
+        let count = plant.encounterCount
+        return "\(count) \(count == 1 ? "SIGHTING" : "SIGHTINGS")"
     }
 
     // MARK: - List Layout

@@ -1,0 +1,39 @@
+name = "fieldnote-backend"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ---------------------------------------------------------------------------
+# Secrets (set with `wrangler secret put`, never committed):
+#   PLANTNET_API_KEY  — the paid Pl@ntNet key the proxy holds server-side (2A).
+#   APP_TOKENS        — comma-separated list of accepted app bearer tokens (2A).
+# ---------------------------------------------------------------------------
+
+[vars]
+# Non-secret tunables. Override per-environment below if needed.
+PLANTNET_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all"
+# Per-token rolling daily cap on identify calls (protects the paid quota).
+IDENTIFY_DAILY_CAP = "500"
+# Max candidates returned to the app.
+IDENTIFY_MAX_RESULTS = "5"
+
+# R2 bucket holding the versioned region-pack manifests (2B).
+[[r2_buckets]]
+binding = "PACKS"
+bucket_name = "fieldnote-region-packs"
+
+# KV namespace: pack versions (freshness) + per-token daily counters (2A).
+[[kv_namespaces]]
+binding = "META"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Cloudflare native rate limiting (per-IP), layered under the token cap.
+[[unsafe.bindings]]
+name = "IDENTIFY_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
+
+# Weekly region-pack rebuild — Monday 09:00 UTC.
+[triggers]
+crons = ["0 9 * * 1"]

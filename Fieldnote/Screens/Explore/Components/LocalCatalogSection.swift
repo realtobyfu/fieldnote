@@ -68,22 +68,15 @@ struct LocalCatalogCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FieldSpace.xs) {
             ZStack(alignment: .topTrailing) {
-                if isDiscovered {
-                    BotanicalIllustrationView(
-                        item.catalogPlant.commonName,
-                        family: item.catalogPlant.family,
-                        size: .card
-                    )
-                } else {
-                    UndiscoveredIllustrationView(
-                        item.catalogPlant.commonName,
-                        family: item.catalogPlant.family,
-                        size: .card
-                    )
-                }
+                CatalogThumbnail(
+                    catalogPlant: item.catalogPlant,
+                    isDiscovered: isDiscovered,
+                    size: .card
+                )
             }
             .frame(width: 140, height: 100)
             .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: FieldRadius.sm))
             .overlay(alignment: .topTrailing) {
                 if isDiscovered {
                     Image(systemName: "checkmark.circle.fill")

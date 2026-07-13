@@ -13,24 +13,13 @@ struct CatalogGridCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FieldSpace.xs) {
-            // Illustration with discovery badge
+            // Illustration (bundled) or licensed photo (regional), with badge.
             ZStack(alignment: .topTrailing) {
-                if isDiscovered {
-                    BotanicalIllustrationView(
-                        catalogPlant.commonName,
-                        family: catalogPlant.family,
-                        size: .card
-                    )
-                } else {
-                    UndiscoveredIllustrationView(
-                        catalogPlant.commonName,
-                        family: catalogPlant.family,
-                        size: .card
-                    )
-                }
+                CatalogThumbnail(catalogPlant: catalogPlant, isDiscovered: isDiscovered, size: .card)
             }
             .frame(height: 100)
             .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: FieldRadius.sm))
             .overlay(alignment: .topTrailing) {
                 if isDiscovered {
                     Image(systemName: "checkmark.circle.fill")

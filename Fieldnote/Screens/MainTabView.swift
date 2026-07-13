@@ -2,7 +2,7 @@
 //  MainTabView.swift
 //  Fieldnote
 //
-//  Root shell with a custom Liquid Glass tab bar (FieldTabBar). The Capture FAB
+//  Root shell with a custom glass-capsule tab bar (FieldTabBar). The Capture FAB
 //  jumps straight to the camera — the old take-photo/choose-library chooser screen
 //  is retired; library + manual entry live in the FAB's long-press menu.
 //
@@ -116,9 +116,9 @@ struct MainTabView: View {
             tabStack(appStore, .journal) { JournalView() }
             tabStack(appStore, .explore) { ExploreView() }
             // The map stays full-bleed under the floating bar by design.
+            // (Plant destination is registered inside LocationMapView itself.)
             tabStack(appStore, .map, clearsTabBar: false) {
                 LocationMapView()
-                    .navigationDestination(for: Plant.self) { PlantDetailView(plant: $0) }
             }
             tabStack(appStore, .profile) { ProfileView() }
         }

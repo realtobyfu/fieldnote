@@ -2,119 +2,91 @@
 //  OnboardingWelcomePage.swift
 //  Fieldnote
 //
-//  "Your Botanical Journal Awaits" - welcome page with botanical illustration
+//  Frontispiece: a full specimen plate and a quiet introduction
 //
 
 import SwiftUI
-import Combine
 
 struct OnboardingWelcomePage: View {
-    @State private var illustrationVisible = false
-    @State private var textVisible = false
-    @State private var currentIllustrationIndex = 0
-
-    // Diverse plant illustrations for carousel
-    private let illustrations = [
-        "white_pine",
-        "red_maple",
-        "virginia_bluebells",
-        "common_milkweed",
-        "eastern_redbud"
-    ]
-
-    // Timer for auto-advance
-    private let timer = Timer.publish(every: 3.5, on: .main, in: .common).autoconnect()
+    @State private var settled = false
 
     var body: some View {
         VStack(spacing: FieldSpace.xl) {
             Spacer()
 
-            // Botanical illustration with vintage frame
-            illustrationSection
+            specimenPlate
 
-            // Welcome text
-            welcomeText
+            introText
 
             Spacer()
             Spacer()
         }
         .padding(.horizontal, FieldSpace.xl)
+        .opacity(settled ? 1 : 0)
+        .offset(y: settled ? 0 : 8)
         .onAppear {
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.8)) {
-                illustrationVisible = true
-            }
-            withAnimation(.easeOut(duration: 0.6).delay(0.4)) {
-                textVisible = true
-            }
-        }
-        .onReceive(timer) { _ in
-            withAnimation(.easeInOut(duration: 0.8)) {
-                currentIllustrationIndex = (currentIllustrationIndex + 1) % illustrations.count
+            withAnimation(.easeOut(duration: 0.8)) {
+                settled = true
             }
         }
     }
 
-    // MARK: - Illustration Section
+    // MARK: - Specimen Plate
 
-    private var illustrationSection: some View {
-        VStack(spacing: FieldSpace.md) {
-            // Botanical illustration carousel with vintage frame
-            ZStack {
-                ForEach(Array(illustrations.enumerated()), id: \.offset) { index, imageName in
-                    Image(imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 220)
-                        .opacity(index == currentIllustrationIndex ? 1 : 0)
-                        .scaleEffect(index == currentIllustrationIndex ? 1 : 0.95)
+    /// The elm plate presented the way plants appear everywhere else in the
+    /// app: illustration over a hairline rule, then a parchment caption block
+    /// with a tracked plate-label eyebrow, the common name, and the Latin name.
+    private var specimenPlate: some View {
+        VStack(spacing: 0) {
+            Image("american_elm")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .padding(FieldSpace.md)
+                .background(FieldColor.illustrationBg)
+
+            Rectangle()
+                .fill(FieldColor.bookBorder.opacity(0.5))
+                .frame(height: 0.5)
+
+            VStack(spacing: FieldSpace.xs) {
+                HStack(spacing: FieldSpace.xs) {
+                    Text("PLATE I")
+                    Text("·")
+                    Text("ULMACEAE")
                 }
-            }
-            .padding(FieldSpace.lg)
-            .background(FieldColor.illustrationBg)
-            .overlay(
-                RoundedRectangle(cornerRadius: FieldRadius.lg)
-                    .stroke(FieldColor.bookBorder, lineWidth: 2)
-            )
-            .overlay(
-                // Inner decorative border
-                RoundedRectangle(cornerRadius: FieldRadius.md)
-                    .stroke(FieldColor.bookBorder.opacity(0.3), lineWidth: 1)
-                    .padding(6)
-            )
-            .cornerRadius(FieldRadius.lg)
-            .fieldShadow(FieldShadow.card)
+                .font(FieldType.plateLabel)
+                .tracking(1.2)
+                .foregroundColor(FieldColor.sepia.opacity(0.7))
 
-            // Page dots indicator
-            HStack(spacing: 6) {
-                ForEach(0..<illustrations.count, id: \.self) { index in
-                    Circle()
-                        .fill(index == currentIllustrationIndex ? FieldColor.accent : FieldColor.bookBorder.opacity(0.5))
-                        .frame(width: index == currentIllustrationIndex ? 8 : 6,
-                               height: index == currentIllustrationIndex ? 8 : 6)
-                        .animation(.easeInOut(duration: 0.3), value: currentIllustrationIndex)
-                }
-            }
-            .padding(.top, FieldSpace.xs)
+                Text("American Elm")
+                    .font(FieldType.title3)
+                    .foregroundColor(FieldColor.vintageInk)
 
-            // Decorative divider below illustration
-            OrnamentalDivider(symbol: "leaf.fill")
-                .padding(.horizontal, FieldSpace.lg)
+                ScientificNameText("Ulmus americana", size: .footnote)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, FieldSpace.md)
+            .background(FieldColor.parchment)
         }
-        .scaleEffect(illustrationVisible ? 1 : 0.85)
-        .opacity(illustrationVisible ? 1 : 0)
+        .clipShape(RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous)
+                .stroke(FieldColor.bookBorder.opacity(0.4), lineWidth: 0.5)
+        )
+        .fieldShadow(FieldShadow.card)
     }
 
-    // MARK: - Welcome Text
+    // MARK: - Introduction
 
-    private var welcomeText: some View {
+    private var introText: some View {
         VStack(spacing: FieldSpace.md) {
-            Text("Your Botanical Journal Awaits")
+            Text("A field journal for the plants you find")
                 .font(FieldType.displayTitle)
                 .foregroundColor(FieldColor.vintageInk)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
 
-            Text("Welcome, fellow naturalist. Begin your journey of discovery through the botanical world around you.")
+            Text("Photograph, identify, and keep a record of what grows around you.")
                 .font(FieldType.body)
                 .foregroundColor(FieldColor.fadedInk)
                 .multilineTextAlignment(.center)
@@ -122,8 +94,6 @@ struct OnboardingWelcomePage: View {
                 .padding(.horizontal, FieldSpace.md)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .offset(y: textVisible ? 0 : 15)
-        .opacity(textVisible ? 1 : 0)
     }
 }
 

@@ -232,7 +232,7 @@ struct ProfileView: View {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(FieldColor.mutedInk)
-                Text("Settings & Storage")
+                Text("Settings & Info")
                     .font(FieldType.body)
                     .foregroundStyle(FieldColor.ink)
                 Spacer()
@@ -246,7 +246,7 @@ struct ProfileView: View {
             .fieldShadow(FieldShadow.card)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Settings & Storage")
+        .accessibilityLabel("Settings & Info")
         .accessibilityHint(isSettingsExpanded ? "Collapses settings" : "Expands settings")
     }
 }
@@ -327,9 +327,24 @@ private struct BadgeCell: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            // Same progress-ring treatment as FeaturedBadgeTile — the ring is
+            // the app's single progress shape for goals.
             ZStack {
                 Circle()
                     .fill(isUnlocked ? FieldColor.accent.opacity(0.16) : FieldColor.separator.opacity(0.6))
+
+                if !isUnlocked {
+                    Circle()
+                        .stroke(FieldColor.separator, lineWidth: 3)
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(
+                            FieldColor.accent.opacity(0.8),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                }
+
                 Image(systemName: badge.symbol)
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(isUnlocked ? FieldColor.accentDeep : FieldColor.tertiaryInk)
@@ -342,18 +357,6 @@ private struct BadgeCell: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .frame(height: 30, alignment: .top)
-
-            if !isUnlocked {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(FieldColor.separator)
-                        Capsule().fill(FieldColor.accent.opacity(0.7))
-                            .frame(width: max(0, geo.size.width * progress))
-                    }
-                }
-                .frame(height: 4)
-                .padding(.horizontal, 6)
-            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
