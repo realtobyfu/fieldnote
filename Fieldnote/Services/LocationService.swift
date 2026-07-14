@@ -30,22 +30,36 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         if status == .denied || status == .restricted {
             return nil
         }
-        if status == .notDetermined {
-            manager.requestWhenInUseAuthorization()
-            return nil
-        }
 
         return await withCheckedContinuation { continuation in
             pendingContinuations.append(continuation)
-            // Only request location if this is the first pending request
-            if pendingContinuations.count == 1 {
+
+            // Keep the request alive across the system permission prompt. The
+            // authorization delegate continues the same request once the user
+            // responds instead of making the caller tap a second time.
+            guard pendingContinuations.count == 1 else { return }
+            if status == .notDetermined {
+                manager.requestWhenInUseAuthorization()
+            } else {
                 manager.requestLocation()
             }
         }
     }
 
+    var hasAuthorizedAccess: Bool {
+        guard CLLocationManager.locationServicesEnabled() else { return false }
+        return manager.authorizationStatus == .authorizedWhenInUse
+            || manager.authorizationStatus == .authorizedAlways
+    }
+
+    var requiresSettings: Bool {
+        guard CLLocationManager.locationServicesEnabled() else { return true }
+        return manager.authorizationStatus == .denied
+            || manager.authorizationStatus == .restricted
+    }
+
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        let coordinate = locations.first?.coordinate
+        let coordinate = locations.last?.coordinate
         let continuations = pendingContinuations
         pendingContinuations.removeAll()
         continuations.forEach { $0.resume(returning: coordinate) }
@@ -59,7 +73,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
-        if status == .denied || status == .restricted {
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            guard !pendingContinuations.isEmpty else { return }
+            manager.requestLocation()
+        } else if status == .denied || status == .restricted {
             let continuations = pendingContinuations
             pendingContinuations.removeAll()
             continuations.forEach { $0.resume(returning: nil) }

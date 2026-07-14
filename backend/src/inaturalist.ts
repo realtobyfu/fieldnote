@@ -128,12 +128,11 @@ export async function taxaDetail(ids: number[]): Promise<Map<number, TaxonDetail
   return out;
 }
 
-/// Strips HTML and truncates a Wikipedia summary to ~300 chars.
+/// Strips HTML from a Wikipedia summary while preserving the complete source text.
 function cleanSummary(s: string | undefined): string | null {
   if (!s) return null;
   const text = s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-  if (!text) return null;
-  return text.length > 300 ? text.slice(0, 297).trimEnd() + "…" : text;
+  return text || null;
 }
 
 async function getJSON<T>(url: URL): Promise<T> {

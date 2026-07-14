@@ -13,6 +13,27 @@
 import Foundation
 
 enum BundledRegionPacks {
+    private static let regionIDs = [
+        "california",
+        "pacific-northwest",
+        "desert-southwest",
+        "rocky-mountains",
+        "texas",
+        "florida",
+        "northeast",
+        "hawaii"
+    ]
+
+    private static let completeSummariesByScientificName: [String: String] = {
+        regionIDs.reduce(into: [:]) { summaries, regionID in
+            guard let pack = pack(for: regionID) else { return }
+            for taxon in pack.taxa {
+                guard let summary = taxon.summary, !summary.isEmpty else { continue }
+                summaries[CatalogPlant.scientificNameKey(taxon.acceptedScientificName)] = summary
+            }
+        }
+    }()
+
     /// Loads the shipped pack for a region ID, or `nil` if none is bundled.
     static func pack(for regionID: String) -> RegionPack? {
         guard let url = Bundle.main.url(
@@ -24,5 +45,11 @@ enum BundledRegionPacks {
         }
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder.regionPack.decode(RegionPack.self, from: data)
+    }
+
+    /// Replaces only legacy, pipeline-truncated prose. User-authored summaries
+    /// and already-complete catalog text are returned unchanged by the caller.
+    static func completeSummary(forScientificName scientificName: String) -> String? {
+        completeSummariesByScientificName[CatalogPlant.scientificNameKey(scientificName)]
     }
 }

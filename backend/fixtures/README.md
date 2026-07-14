@@ -14,3 +14,10 @@ Each `regions/{regionID}.json` matches the enriched `RegionPack` schema in
 top ~40 taxa per region by observation count to keep fixtures small.
 
 Regenerate by re-running the pipeline; these are committed snapshots, not live.
+
+Refresh only the complete Wikipedia summaries in both backend fixtures and the
+app's bundled region packs without changing observation counts or photos:
+
+```sh
+python3 refresh_region_summaries.py
+```

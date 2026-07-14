@@ -14,7 +14,6 @@ struct RecentFindRow: View {
     var scientificName: String
     var locationName: String
     var relativeDate: String
-    var isNewSpecies: Bool = false
     /// Optional real photo; falls back to a themed gradient thumbnail.
     var image: Image? = nil
     var palette: FindPalette = .forest
@@ -24,18 +23,10 @@ struct RecentFindRow: View {
             thumbnail
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(commonName)
-                        .font(FieldType.bodyEmphasized)
-                        .foregroundStyle(FieldColor.ink)
-                        .lineLimit(1)
-                    if isNewSpecies {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(FieldColor.accentDeep)
-                            .accessibilityLabel("New species")
-                    }
-                }
+                Text(commonName)
+                    .font(FieldType.bodyEmphasized)
+                    .foregroundStyle(FieldColor.ink)
+                    .lineLimit(1)
                 Text(scientificName)
                     .font(FieldType.scientificFootnote)
                     .italic()
@@ -72,11 +63,11 @@ struct RecentFindRow: View {
     }
 }
 
-#Preview {
+#Preview("Recent find row · Standard") {
     VStack(spacing: 12) {
         RecentFindRow(commonName: "Goldenrod", scientificName: "Solidago canadensis",
                       locationName: "Lakeside Trail", relativeDate: "4 days ago",
-                      isNewSpecies: true, palette: .golden)
+                      palette: .golden)
         RecentFindRow(commonName: "New England Aster", scientificName: "Symphyotrichum novae-angliae",
                       locationName: "Meadow Loop", relativeDate: "1 week ago",
                       palette: .aster)

@@ -130,3 +130,42 @@ struct LocalityProfileTests {
         #expect(a.coarseCellID == b.coarseCellID)
     }
 }
+
+@Suite("Explore preference persistence")
+struct ExplorePreferenceTests {
+
+    private func preferences() -> ExplorePreferences {
+        let defaults = UserDefaults(suiteName: "ExplorePreferenceTests-\(UUID().uuidString)")!
+        return ExplorePreferences(defaults: defaults)
+    }
+
+    @Test("Current location is the default")
+    func currentLocationDefault() {
+        #expect(preferences().loadRegion() == .currentLocation)
+    }
+
+    @Test("A selected named region is restored")
+    func restoresNamedRegion() throws {
+        let preferences = preferences()
+        let region = try #require(CatalogRegion.presets.first { $0.id == "florida" })
+
+        preferences.save(region: .region(region))
+
+        #expect(preferences.loadRegion() == .region(region))
+    }
+
+    @Test("Only the coarse current-location profile is restored")
+    func restoresCoarseProfile() throws {
+        let preferences = preferences()
+        let precise = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
+        let profile = LocalityProfile.make(from: precise, displayRegion: "San Francisco Bay")
+
+        preferences.save(currentLocationProfile: profile)
+        let restored = try #require(preferences.loadCurrentLocationProfile())
+
+        #expect(restored.coarseCellID == "37.8,-122.4")
+        #expect(restored.latitude != precise.latitude)
+        #expect(restored.longitude != precise.longitude)
+        #expect(restored.displayRegion == "San Francisco Bay")
+    }
+}

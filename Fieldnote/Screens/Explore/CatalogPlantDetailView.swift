@@ -52,24 +52,17 @@ struct CatalogPlantDetailView: View {
             VStack(alignment: .leading, spacing: FieldSpace.lg) {
                 // Hero: illustration when we have a plate, else the photo.
                 // Tap to see it full-screen (especially nice for a good plate).
-                heroIllustration
-                    .contentShape(Rectangle())
-                    .onTapGesture { presentHero() }
-                    .overlay(alignment: .bottomTrailing) {
-                        // Subtle hint that the plate opens full-screen.
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(FieldColor.fadedInk)
-                            .padding(6)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .padding(FieldSpace.md)
-                    }
+                expandableHero
 
                 // When a plate leads, the licensed photo sits below it.
-                if hasIllustration {
-                    regionalPhotoBelow
-                        .contentShape(Rectangle())
-                        .onTapGesture { if let url = photoURL { fullScreen = .photo(url) } }
+                if hasIllustration, let url = photoURL {
+                    Button {
+                        fullScreen = .photo(url)
+                    } label: {
+                        regionalPhotoBelow
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("View \(catalogPlant.commonName) photo full screen")
                 }
 
                 // Curated photo gallery
@@ -159,9 +152,7 @@ struct CatalogPlantDetailView: View {
                         if !catalogPlant.summary.isEmpty {
                             RuledLine()
 
-                            Text(catalogPlant.summary)
-                                .font(FieldType.callout)
-                                .foregroundColor(FieldColor.ink)
+                            ExpandablePlantSummary(text: catalogPlant.summary)
                         }
                     }
                 }
@@ -224,6 +215,19 @@ struct CatalogPlantDetailView: View {
     }
 
     // MARK: - Hero Illustration
+
+    @ViewBuilder
+    private var expandableHero: some View {
+        if illustrationAssetName != nil || photoURL != nil {
+            Button(action: presentHero) {
+                heroIllustration
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("View \(catalogPlant.commonName) image full screen")
+        } else {
+            heroIllustration
+        }
+    }
 
     private var heroIllustration: some View {
         VStack(spacing: 0) {
@@ -329,7 +333,7 @@ struct CatalogPlantDetailView: View {
     }
 }
 
-#Preview {
+#Preview("Plant detail · Illustration") {
     NavigationStack {
         CatalogPlantDetailView(catalogPlant: CatalogPlant.catalog.first!)
     }

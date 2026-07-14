@@ -59,10 +59,57 @@ struct CatalogRegion: Identifiable, Hashable {
     ]
 }
 
+/// On-device Explore preference storage. Current-location profiles contain only
+/// the rounded grid cell used by the catalog, never the device's precise fix.
+struct ExplorePreferences {
+    private enum Keys {
+        static let selectedRegionID = "explore.selectedRegionID"
+        static let currentLocationProfile = "explore.currentLocationProfile"
+    }
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func loadRegion() -> ExploreRegion {
+        guard let regionID = defaults.string(forKey: Keys.selectedRegionID),
+              regionID != "current-location",
+              let region = CatalogRegion.presets.first(where: { $0.id == regionID }) else {
+            return .currentLocation
+        }
+        return .region(region)
+    }
+
+    func save(region: ExploreRegion) {
+        let regionID: String
+        switch region {
+        case .currentLocation:
+            regionID = "current-location"
+        case .region(let region):
+            regionID = region.id
+        }
+        defaults.set(regionID, forKey: Keys.selectedRegionID)
+    }
+
+    func loadCurrentLocationProfile() -> LocalityProfile? {
+        guard let data = defaults.data(forKey: Keys.currentLocationProfile) else { return nil }
+        return try? JSONDecoder().decode(LocalityProfile.self, from: data)
+    }
+
+    func save(currentLocationProfile profile: LocalityProfile) {
+        guard profile.placeIDs == nil,
+              let data = try? JSONEncoder().encode(profile) else { return }
+        defaults.set(data, forKey: Keys.currentLocationProfile)
+    }
+}
+
 @MainActor
 @Observable
 class AppStore {
     private var modelContext: ModelContext
+    private let explorePreferences: ExplorePreferences
 
     // Trigger to force SwiftUI to re-evaluate computed properties
     // @Observable only tracks direct property assignments, not computed property changes
@@ -100,13 +147,16 @@ class AppStore {
 
     /// Which place Explore ranks for. Changing this is a view preference and is
     /// deliberately *not* persisted onto any observation.
-    var selectedRegionOverride: ExploreRegion = .currentLocation
+    var selectedRegionOverride: ExploreRegion
 
     /// Radius (km) used for the nearby query — kept in one place for copy + query.
     let localCatalogRadiusKm = 25
 
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext, userDefaults: UserDefaults = .standard) {
         self.modelContext = modelContext
+        let explorePreferences = ExplorePreferences(defaults: userDefaults)
+        self.explorePreferences = explorePreferences
+        self.selectedRegionOverride = explorePreferences.loadRegion()
     }
 
     // MARK: - Plants (from SwiftData)
@@ -442,14 +492,28 @@ class AppStore {
     private func resolveLocalityProfile() async -> LocalityProfile? {
         switch selectedRegionOverride {
         case .currentLocation:
-            guard let coordinate = await LocationService.shared.requestCurrentLocation() else {
+            let locationService = LocationService.shared
+            if let coordinate = await locationService.requestCurrentLocation() {
+                // Reverse-geocode the coarse cell center (not the precise fix) for a
+                // friendly label; geocoding failure is non-fatal.
+                let profile = LocalityProfile.make(from: coordinate)
+                let name = await LocationGeocoderService.shared.reverseGeocode(profile.coordinate)
+                let resolvedProfile = LocalityProfile.make(from: coordinate, displayRegion: name)
+                explorePreferences.save(currentLocationProfile: resolvedProfile)
+                return resolvedProfile
+            }
+
+            // A transient location failure should not make returning users pick
+            // their region again. Only reuse the coarse saved cell while system
+            // location access is still authorized; revoking access disables it.
+            guard locationService.hasAuthorizedAccess,
+                  let savedProfile = explorePreferences.loadCurrentLocationProfile() else {
                 return nil
             }
-            // Reverse-geocode the coarse cell center (not the precise fix) for a
-            // friendly label; geocoding failure is non-fatal.
-            let profile = LocalityProfile.make(from: coordinate)
-            let name = await LocationGeocoderService.shared.reverseGeocode(profile.coordinate)
-            return LocalityProfile.make(from: coordinate, displayRegion: name)
+            return LocalityProfile.make(
+                from: savedProfile.coordinate,
+                displayRegion: savedProfile.displayRegion
+            )
         case .region(let region):
             return LocalityProfile.makeRegion(name: region.name, placeIDs: region.placeIDs)
         }
@@ -476,6 +540,7 @@ class AppStore {
     /// Convenience for the region picker: switch region and refresh.
     func selectRegion(_ region: ExploreRegion) async {
         selectedRegionOverride = region
+        explorePreferences.save(region: region)
         // Clear current items so the UI shows a loading state for the new region.
         localCatalogItems = []
         await refreshLocalCatalog()

@@ -2,16 +2,34 @@
 //  LocalDiscoveryPrompt.swift
 //  Fieldnote
 //
-//  Pre-permission explainer that sells the value of local discovery before we
-//  ask for location. Offers "Use Approximate Location" (triggers the system
-//  prompt via a refresh) and "Choose a City/Region" (no permission needed).
+//  Fallback shown when automatic local discovery could not resolve a location.
+//  It offers a retry/settings route and a named region that needs no permission.
 //  See LocaleAwareCatalogImplementationPlan.md (B2).
 //
 
 import SwiftUI
-import CoreLocation
+
+enum LocalDiscoveryLocationAction {
+    case retry
+    case openSettings
+
+    var title: String {
+        switch self {
+        case .retry: "Try Approximate Location Again"
+        case .openSettings: "Open Location Settings"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .retry: "location.fill"
+        case .openSettings: "gear"
+        }
+    }
+}
 
 struct LocalDiscoveryPrompt: View {
+    let locationAction: LocalDiscoveryLocationAction
     /// Called when the user opts into using their (approximate) current location.
     let onUseLocation: () -> Void
     /// Called when the user picks a city, with that city's coarse coordinate.
@@ -47,13 +65,14 @@ struct LocalDiscoveryPrompt: View {
                         Button {
                             onUseLocation()
                         } label: {
-                            Label("Use Approximate Location", systemImage: "location.fill")
+                            Label(locationAction.title, systemImage: locationAction.systemImage)
                                 .font(FieldType.buttonLabel)
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, FieldSpace.sm)
+                                .frame(minHeight: 44)
                                 .background(FieldColor.accent)
-                                .cornerRadius(FieldRadius.button)
+                                .clipShape(.rect(cornerRadius: FieldRadius.button))
                         }
                         .buttonStyle(.plain)
 
@@ -62,9 +81,10 @@ struct LocalDiscoveryPrompt: View {
                         } label: {
                             Label("Choose a City / Region", systemImage: "map")
                                 .font(FieldType.buttonLabel)
-                                .foregroundColor(FieldColor.accent)
+                                .foregroundStyle(FieldColor.accent)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, FieldSpace.sm)
+                                .frame(minHeight: 44)
                                 .background(
                                     RoundedRectangle(cornerRadius: FieldRadius.button)
                                         .stroke(FieldColor.accent, lineWidth: 1.5)
@@ -85,9 +105,22 @@ struct LocalDiscoveryPrompt: View {
 }
 
 #if DEBUG
-#Preview("Local Discovery Prompt") {
+#Preview("Local discovery · Retry") {
     ScrollView {
         LocalDiscoveryPrompt(
+            locationAction: .retry,
+            onUseLocation: {},
+            onChooseRegion: { _ in }
+        )
+        .padding(.vertical, FieldSpace.md)
+    }
+    .background(FieldColor.paper)
+}
+
+#Preview("Local discovery · Settings required") {
+    ScrollView {
+        LocalDiscoveryPrompt(
+            locationAction: .openSettings,
             onUseLocation: {},
             onChooseRegion: { _ in }
         )

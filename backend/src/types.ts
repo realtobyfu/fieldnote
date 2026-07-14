@@ -61,7 +61,7 @@ export interface RegionPackTaxon {
   family?: string | null;
   /// iNaturalist iconic taxon name (e.g. "Plantae"). Currently coarse for plants.
   iconicTaxon?: string | null;
-  /// Short prose summary (iNaturalist wikipedia_summary, HTML-stripped, ~300 chars).
+  /// Prose summary (iNaturalist wikipedia_summary, HTML-stripped and complete).
   summary?: string | null;
   wikipediaURL?: string | null;
   /// Medium photo URL — only set when the license permits reuse.

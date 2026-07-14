@@ -110,10 +110,8 @@ struct PlantDetailView: View {
                         }
                         RuledLine()
 
-                        if !plant.summary.isEmpty {
-                            Text(plant.summary)
-                                .font(FieldType.callout)
-                                .foregroundColor(FieldColor.ink)
+                        if !displaySummary.isEmpty {
+                            ExpandablePlantSummary(text: displaySummary)
                         }
 
 
@@ -212,6 +210,20 @@ struct PlantDetailView: View {
 }
 
 extension PlantDetailView {
+    /// Existing SwiftData records may still contain the old 300-character
+    /// pipeline truncation. Resolve only those records against the corrected
+    /// bundled packs so user-authored summaries remain untouched.
+    private var displaySummary: String {
+        guard plant.summary.hasSuffix("…"),
+              let completeSummary = BundledRegionPacks.completeSummary(
+                forScientificName: plant.scientificName
+              ),
+              completeSummary.count > plant.summary.count else {
+            return plant.summary
+        }
+        return completeSummary
+    }
+
     /// Check if the plant has any illustration (custom or built-in)
     private var hasIllustration: Bool {
         let hasCustom = (plant.customIllustrationFileName?.isEmpty == false)

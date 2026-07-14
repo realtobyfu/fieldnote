@@ -2,9 +2,8 @@
 //  LocationMapView.swift
 //  Fieldnote
 //
-//  Map tab — locations where plants were observed. Phase 2 polish: a real
-//  detail sheet with presentation detents + glass background, a floating glass
-//  recenter control, and modern (non-vintage) styling.
+//  Map tab — locations where plants were observed, with a themed location
+//  summary and an automatically expanding plant-detail sheet.
 //
 
 import SwiftUI
@@ -12,6 +11,7 @@ import MapKit
 
 struct LocationMapView: View {
     @Environment(\.appStore) private var store
+    @Environment(TabBarVisibility.self) private var tabBar: TabBarVisibility?
 
     @State private var selectedCluster: LocationCluster?
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -32,20 +32,22 @@ struct LocationMapView: View {
             MapUserLocationButton()
             MapCompass()
         }
-        .overlay(alignment: .bottomTrailing) {
+        .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
             recenterButton
                 .padding(.trailing, FieldSpace.md)
-                .padding(.bottom, 96) // clear the floating tab bar
+                .padding(.bottom, FieldSpace.md)
         }
         .navigationTitle("Locations")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { fitAllLocations() }
+        .onChange(of: selectedCluster) { _, cluster in
+            tabBar?.suppressed = cluster != nil
+        }
+        .onDisappear {
+            tabBar?.suppressed = false
+        }
         .sheet(item: $selectedCluster) { cluster in
             LocationDetailSheet(cluster: cluster)
-                .presentationDetents([.height(260), .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
-                .presentationCornerRadius(28)
         }
     }
 
@@ -68,12 +70,19 @@ struct LocationMapView: View {
 
     private func annotationForCluster(_ cluster: LocationCluster) -> some MapContent {
         Annotation(cluster.name, coordinate: cluster.coordinate, anchor: .bottom) {
-            PlantAnnotationView(
-                count: cluster.plantCount,
-                category: cluster.category,
-                isSelected: selectedCluster?.id == cluster.id
-            )
-            .onTapGesture { selectedCluster = cluster }
+            Button {
+                selectedCluster = cluster
+            } label: {
+                PlantAnnotationView(
+                    count: cluster.plantCount,
+                    category: cluster.category,
+                    isSelected: selectedCluster?.id == cluster.id
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(cluster.name)
+            .accessibilityValue("\(cluster.plantCount) plant\(cluster.plantCount == 1 ? "" : "s") observed")
+            .accessibilityHint("Shows plants observed at this location")
         }
     }
 
@@ -139,11 +148,11 @@ struct PlantAnnotationView: View {
         if count > 1 {
             Text("\(count)")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         } else {
             Image(systemName: "leaf.fill")
                 .font(.system(size: 16))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         }
     }
 }
@@ -151,45 +160,121 @@ struct PlantAnnotationView: View {
 // MARK: - Location Detail Sheet
 
 struct LocationDetailSheet: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let cluster: LocationCluster
+
+    @State private var path: [Plant] = []
+    @State private var selectedDetent: PresentationDetent = .height(420)
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            LocationSummaryView(cluster: cluster)
+                .navigationDestination(for: Plant.self) { plant in
+                    PlantDetailView(plant: plant)
+                }
+        }
+        .onChange(of: path.count) { _, depth in
+            let detent: PresentationDetent = depth == 0 ? .height(420) : .large
+            if reduceMotion {
+                selectedDetent = detent
+            } else {
+                withAnimation(.snappy) {
+                    selectedDetent = detent
+                }
+            }
+        }
+        .presentationDetents([.height(420), .large], selection: $selectedDetent)
+        .presentationDragIndicator(.visible)
+        .presentationBackground(FieldColor.paper)
+        .presentationCornerRadius(30)
+    }
+}
+
+// MARK: - Location Summary
+
+private struct LocationSummaryView: View {
     let cluster: LocationCluster
 
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: FieldSpace.md) {
-                HStack(spacing: FieldSpace.sm) {
-                    LocationIcon(category: cluster.category, size: .medium)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(cluster.name)
-                            .font(FieldType.title3)
-                            .foregroundStyle(FieldColor.ink)
-                            .lineLimit(1)
-                        Text("\(cluster.plantCount) plant\(cluster.plantCount == 1 ? "" : "s") observed here")
-                            .font(FieldType.footnote)
-                            .foregroundStyle(FieldColor.mutedInk)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, FieldSpace.md)
-                .padding(.top, FieldSpace.lg)
+        VStack(alignment: .leading, spacing: FieldSpace.lg) {
+            locationHeader
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: FieldSpace.md) {
+            VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                Text("Plants found here")
+                    .font(FieldType.sectionHeader)
+                    .textCase(.uppercase)
+                    .tracking(1.1)
+                    .foregroundStyle(FieldColor.mutedInk)
+                    .accessibilityAddTraits(.isHeader)
+
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: FieldSpace.md) {
                         ForEach(cluster.plants) { plant in
                             NavigationLink(value: plant) {
                                 MapPlantCard(plant: plant)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(plant.commonName)
+                            .accessibilityValue(plant.scientificName)
+                            .accessibilityHint("Opens plant details")
                         }
                     }
-                    .padding(.horizontal, FieldSpace.md)
+                    .padding(.vertical, FieldSpace.xs)
                 }
-
-                Spacer(minLength: 0)
-            }
-            .navigationDestination(for: Plant.self) { plant in
-                PlantDetailView(plant: plant)
+                .scrollIndicators(.hidden)
             }
         }
+        .padding(.horizontal, FieldSpace.lg)
+        .padding(.top, FieldSpace.lg)
+        .padding(.bottom, FieldSpace.md)
+        .background(
+            LinearGradient(
+                colors: [FieldColor.paper, FieldColor.canvasBottom.opacity(0.62)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    private var locationHeader: some View {
+        HStack(alignment: .top, spacing: FieldSpace.md) {
+            ZStack {
+                RoundedRectangle(cornerRadius: FieldRadius.lg, style: .continuous)
+                    .fill(cluster.category.color.opacity(0.14))
+
+                Image(systemName: cluster.category.iconName)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(cluster.category.color)
+            }
+            .frame(width: 58, height: 58)
+            .overlay {
+                RoundedRectangle(cornerRadius: FieldRadius.lg, style: .continuous)
+                    .stroke(cluster.category.color.opacity(0.18), lineWidth: 1)
+            }
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                Text(cluster.category.label)
+                    .font(FieldType.chapterLabel)
+                    .textCase(.uppercase)
+                    .tracking(1.2)
+                    .foregroundStyle(cluster.category.color)
+
+                Text(cluster.name)
+                    .font(FieldType.title2)
+                    .foregroundStyle(FieldColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Label(
+                    "\(cluster.plantCount) plant\(cluster.plantCount == 1 ? "" : "s") observed",
+                    systemImage: "leaf.fill"
+                )
+                .font(FieldType.footnote)
+                .foregroundStyle(FieldColor.mutedInk)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -199,17 +284,48 @@ private struct MapPlantCard: View {
     let plant: Plant
 
     var body: some View {
-        VStack(alignment: .leading, spacing: FieldSpace.xs) {
+        VStack(alignment: .leading, spacing: 0) {
             PlantIllustrationView(plant: plant, size: .card)
-                .frame(width: 120, height: 90)
-                .clipShape(RoundedRectangle(cornerRadius: FieldRadius.md, style: .continuous))
+                .frame(width: 156, height: 108)
+                .clipped()
 
-            Text(plant.commonName)
-                .font(FieldType.footnote.weight(.medium))
-                .foregroundStyle(FieldColor.ink)
-                .lineLimit(2)
-                .frame(width: 120, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(plant.commonName)
+                    .font(FieldType.callout.weight(.semibold))
+                    .foregroundStyle(FieldColor.ink)
+                    .lineLimit(2)
+
+                if !plant.scientificName.isEmpty {
+                    Text(plant.scientificName)
+                        .font(FieldType.scientificFootnote)
+                        .italic()
+                        .foregroundStyle(FieldColor.mutedInk)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(FieldSpace.sm)
         }
-        .frame(width: 120)
+        .frame(width: 156, height: 174, alignment: .top)
+        .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: FieldRadius.lg, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: FieldRadius.lg, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: FieldRadius.lg, style: .continuous)
+                .stroke(FieldColor.bookBorder.opacity(0.32), lineWidth: 0.75)
+        }
+        .fieldShadow(FieldShadow.card)
     }
+}
+
+#Preview("Map location sheet · Summary") {
+    LocationSummaryView(
+        cluster: LocationCluster(
+            name: "Target",
+            coordinate: CLLocationCoordinate2D(latitude: 19.65, longitude: -155.99),
+            category: .urban,
+            plants: Array(Plant.mockPlants.prefix(3)),
+            plantIds: Set(Plant.mockPlants.prefix(3).map(\.id))
+        )
+    )
+    .frame(height: 420, alignment: .top)
 }

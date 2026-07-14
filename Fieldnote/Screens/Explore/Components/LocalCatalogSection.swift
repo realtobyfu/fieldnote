@@ -2,9 +2,8 @@
 //  LocalCatalogSection.swift
 //  Fieldnote
 //
-//  Ecology-led Explore sections driven by the locale-aware ranking. Each card
-//  carries a "Why this plant?" line built from the item's explanation codes.
-//  Wording stays at "reported nearby" — never abundance.
+//  Ecology-led Explore sections driven by the locale-aware ranking.
+//  Section placement carries the local context so cards can stay compact.
 //  See LocaleAwareCatalogImplementationPlan.md (B3).
 //
 
@@ -48,22 +47,10 @@ struct LocalCatalogSection: View {
 
 // MARK: - Card
 
-/// A catalog card annotated with the locale-aware "Why this plant?" reason.
+/// A compact catalog card used in locale-aware horizontal sections.
 struct LocalCatalogCard: View {
     let item: LocalCatalogItem
     let isDiscovered: Bool
-
-    /// The card's "Why this plant?" line. We skip the occurrence codes
-    /// (commonly/also reported) — the section header already says that — and only
-    /// surface a genuinely additive reason like a seasonal peak or a first find.
-    private var whyThisPlant: String? {
-        item.explanationCodes.first { code in
-            switch code {
-            case .commonlyReported, .alsoReported: return false
-            case .seasonalPeak, .easyFirstFind: return true
-            }
-        }?.label
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: FieldSpace.xs) {
@@ -91,37 +78,18 @@ struct LocalCatalogCard: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.catalogPlant.commonName)
-                    .font(FieldType.callout)
-                    .foregroundColor(isDiscovered ? FieldColor.vintageInk : FieldColor.fadedInk)
-                    .lineLimit(2)
-                    .frame(height: 40, alignment: .top)
-
-                if let whyThisPlant {
-                    HStack(alignment: .top, spacing: 3) {
-                        Image(systemName: "mappin.and.ellipse")
-                            .font(.system(size: 9))
-                            .foregroundColor(FieldColor.accent)
-                            .padding(.top, 1)
-                        Text(whyThisPlant)
-                            .font(FieldType.caption2)
-                            .foregroundColor(FieldColor.mutedInk)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(height: 30, alignment: .top)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Why this plant? \(whyThisPlant)")
-                }
-            }
+            Text(item.catalogPlant.commonName)
+                .font(FieldType.callout)
+                .foregroundStyle(isDiscovered ? FieldColor.vintageInk : FieldColor.fadedInk)
+                .lineLimit(2)
+                .frame(height: 40, alignment: .top)
         }
         .frame(width: 140)
     }
 }
 
 #if DEBUG
-#Preview("Local Catalog Section") {
+#Preview("Local catalog section · Compact cards") {
     NavigationStack {
         ScrollView {
             VStack(alignment: .leading, spacing: FieldSpace.xl) {
@@ -143,7 +111,7 @@ struct LocalCatalogCard: View {
     }
 }
 
-#Preview("Local Catalog Card") {
+#Preview("Local catalog card · Discovery states") {
     HStack(spacing: FieldSpace.md) {
         if let discovered = LocaleCatalogPreviewData.items.first {
             LocalCatalogCard(item: discovered, isDiscovered: true)

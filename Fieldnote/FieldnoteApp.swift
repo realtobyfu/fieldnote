@@ -150,3 +150,4 @@ struct FieldnoteApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+    

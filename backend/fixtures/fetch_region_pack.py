@@ -62,8 +62,6 @@ def strip_html(s):
         return None
     text = re.sub(r"<[^>]+>", "", s)
     text = re.sub(r"\s+", " ", text).strip()
-    if len(text) > 300:
-        text = text[:297].rstrip() + "…"
     return text or None
 
 

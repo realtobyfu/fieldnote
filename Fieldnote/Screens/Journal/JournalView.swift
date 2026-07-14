@@ -114,7 +114,6 @@ struct JournalView: View {
                                     JournalFindRow(
                                         encounter: find.encounter,
                                         plant: find.plant,
-                                        isNewSpecies: isDiscovery(find.encounter),
                                         palette: palette(for: index)
                                     )
                                 }
@@ -293,7 +292,6 @@ private struct JournalFindCard: View {
 private struct JournalFindRow: View {
     let encounter: Encounter
     let plant: Plant
-    let isNewSpecies: Bool
     var palette: FindPalette = .forest
 
     @State private var image: UIImage?
@@ -304,7 +302,6 @@ private struct JournalFindRow: View {
             scientificName: plant.scientificName,
             locationName: encounter.displayLocationName ?? "Location unknown",
             relativeDate: encounter.date.formatted(.relative(presentation: .named)),
-            isNewSpecies: isNewSpecies,
             image: image.map { Image(uiImage: $0) },
             palette: palette
         )

@@ -6,10 +6,14 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ExploreView: View {
     @Environment(\.appStore) private var store
+    @Environment(\.openURL) private var openURL
+    @Environment(TabBarVisibility.self) private var tabBar: TabBarVisibility?
     @State private var searchQuery = ""
+    @State private var isSearchPresented = false
     @State private var showRegionPicker = false
     /// True once we've kicked off a local-catalog load this session, so the
     /// pre-permission prompt doesn't flash while the first fetch is in flight.
@@ -29,7 +33,33 @@ struct ExploreView: View {
         }
         .background(FieldColor.paper)
         .navigationTitle("Explore")
-        .searchable(text: $searchQuery, prompt: "Search plants")
+        .modifier(
+            PresentedSearchModifier(
+                text: $searchQuery,
+                isPresented: $isSearchPresented
+            )
+        )
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if !isSearchPresented {
+                    Button {
+                        isSearchPresented = true
+                    } label: {
+                        Label("Search plants", systemImage: "magnifyingglass")
+                    }
+                    .accessibilityIdentifier("explore.search")
+                }
+            }
+        }
+        .onChange(of: isSearchPresented) { _, presented in
+            tabBar?.suppressed = presented
+            if !presented {
+                searchQuery = ""
+            }
+        }
+        .onDisappear {
+            tabBar?.suppressed = false
+        }
         .navigationDestination(for: Plant.self) { plant in
             PlantDetailView(plant: plant)
         }
@@ -83,14 +113,22 @@ struct ExploreView: View {
             // No locality resolved (permission not granted, no region chosen):
             // offer the value prompt, then the standard sections below it.
             LocalDiscoveryPrompt(
-                onUseLocation: {
-                    Task { await appStore.selectRegion(.currentLocation) }
-                },
+                locationAction: LocationService.shared.requiresSettings ? .openSettings : .retry,
+                onUseLocation: { useCurrentLocation(appStore: appStore) },
                 onChooseRegion: { region in
                     Task { await appStore.selectRegion(region) }
                 }
             )
             standardSections(appStore: appStore)
+        }
+    }
+
+    private func useCurrentLocation(appStore: AppStore) {
+        if LocationService.shared.requiresSettings,
+           let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+            openURL(settingsURL)
+        } else {
+            Task { await appStore.selectRegion(.currentLocation) }
         }
     }
 
@@ -224,6 +262,27 @@ struct ExploreView: View {
                     catalogPlants: matchedCatalog
                 )
             }
+        }
+    }
+}
+
+/// iOS 26 renders a dormant bottom search affordance whenever `.searchable`
+/// exists in the hierarchy. Install it only for the explicit search session so
+/// Explore's resting state has a single, reachable search entry point.
+private struct PresentedSearchModifier: ViewModifier {
+    @Binding var text: String
+    @Binding var isPresented: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isPresented {
+            content.searchable(
+                text: $text,
+                isPresented: $isPresented,
+                prompt: "Search plants"
+            )
+        } else {
+            content
         }
     }
 }
