@@ -28,6 +28,36 @@ enum ExploreRegion: Hashable {
     case region(CatalogRegion)
 }
 
+enum RegionDetectionState: Equatable {
+    case idle
+    case detecting
+    case detected(CatalogRegion)
+    case permissionDenied
+    case servicesDisabled
+    case unavailable
+    case unsupported(placeName: String?)
+}
+
+enum LocalCatalogLoadState: Equatable {
+    case idle
+    case loading
+    case loaded
+    case unavailable
+}
+
+/// Outcome of resolving the device's location against the curated region set,
+/// used to drive the Explore UI (auto-selection vs. a "not covered here" notice).
+enum RegionCoverage: Equatable {
+    /// Location hasn't been resolved yet, or Explore isn't following current
+    /// location (an explicit region is selected).
+    case unknown
+    /// The device's location falls inside a curated region, which is now active.
+    case covered(CatalogRegion)
+    /// A location was resolved but it isn't inside any curated region. Carries a
+    /// friendly place name for the notice, when one is available.
+    case notCovered(placeName: String?)
+}
+
 /// A named discovery region defined by iNaturalist place IDs. A macro-region
 /// (e.g. the Pacific Northwest) is the union of its states' place IDs, which
 /// iNaturalist aggregates server-side in a single query. Place IDs verified
@@ -57,6 +87,54 @@ struct CatalogRegion: Identifiable, Hashable {
         CatalogRegion(id: "northeast", name: "Northeast US", subtitle: "NY · MA · VT", placeIDs: [48, 2, 47]),
         CatalogRegion(id: "hawaii", name: "Hawai\u{2018}i", placeIDs: [11])
     ]
+
+    // MARK: - Location → region matching (auto-selection)
+
+    /// Which curated region covers a given US state. Multi-state regions map each
+    /// of their states here; the Northeast is broadened to the New England + NY
+    /// cluster (shared flora) beyond the three representative states in its pack.
+    private static let regionIDByStateCode: [String: String] = [
+        "CA": "california",
+        "WA": "pacific-northwest", "OR": "pacific-northwest",
+        "AZ": "desert-southwest",  "NV": "desert-southwest",
+        "CO": "rocky-mountains",   "UT": "rocky-mountains",
+        "TX": "texas",
+        "FL": "florida",
+        "NY": "northeast", "MA": "northeast", "VT": "northeast",
+        "CT": "northeast", "RI": "northeast", "NH": "northeast", "ME": "northeast",
+        "HI": "hawaii"
+    ]
+
+    /// Full state names → two-letter codes, for the states we map. `CLPlacemark`'s
+    /// `administrativeArea` returns a code in some locales and the full name in
+    /// others, so we normalize both.
+    private static let stateCodeByName: [String: String] = [
+        "california": "CA", "washington": "WA", "oregon": "OR",
+        "arizona": "AZ", "nevada": "NV", "colorado": "CO", "utah": "UT",
+        "texas": "TX", "florida": "FL", "new york": "NY", "massachusetts": "MA",
+        "vermont": "VT", "connecticut": "CT", "rhode island": "RI",
+        "new hampshire": "NH", "maine": "ME", "hawaii": "HI", "hawai\u{2018}i": "HI"
+    ]
+
+    /// Normalizes a `CLPlacemark.administrativeArea` value to a two-letter US
+    /// state code, or nil when it isn't one we recognize.
+    static func normalizedStateCode(_ administrativeArea: String) -> String? {
+        let trimmed = administrativeArea.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.count == 2 { return trimmed.uppercased() }
+        return stateCodeByName[trimmed.lowercased()]
+    }
+
+    /// The curated region covering a reverse-geocoded placemark, or nil when the
+    /// location isn't in one (including any location outside the US). Only US
+    /// regions are curated today.
+    static func matching(countryCode: String?, administrativeArea: String?) -> CatalogRegion? {
+        if let code = countryCode, code.uppercased() != "US" { return nil }
+        guard let administrativeArea,
+              let state = normalizedStateCode(administrativeArea),
+              let regionID = regionIDByStateCode[state] else { return nil }
+        return presets.first { $0.id == regionID }
+    }
 }
 
 /// On-device Explore preference storage. Current-location profiles contain only
@@ -73,11 +151,11 @@ struct ExplorePreferences {
         self.defaults = defaults
     }
 
-    func loadRegion() -> ExploreRegion {
+    func loadRegion() -> ExploreRegion? {
         guard let regionID = defaults.string(forKey: Keys.selectedRegionID),
               regionID != "current-location",
               let region = CatalogRegion.presets.first(where: { $0.id == regionID }) else {
-            return .currentLocation
+            return nil
         }
         return .region(region)
     }
@@ -144,10 +222,23 @@ class AppStore {
     private(set) var catalogFreshnessDate: Date?
     /// True while a `refreshLocalCatalog()` pass is in flight (for spinners).
     private(set) var isRefreshingLocalCatalog = false
+    /// Identifies the newest catalog request so an older response cannot overwrite
+    /// a region the user selected while that response was in flight.
+    private var activeLocalCatalogRequestID: UUID?
+    /// Catalog loading is tracked separately from location detection so a network
+    /// failure never presents itself as a location failure.
+    private(set) var localCatalogLoadState: LocalCatalogLoadState = .idle
+    /// One-time region detection feedback displayed by the region picker.
+    private(set) var regionDetectionState: RegionDetectionState = .idle
 
     /// Which place Explore ranks for. Changing this is a view preference and is
     /// deliberately *not* persisted onto any observation.
-    var selectedRegionOverride: ExploreRegion
+    var selectedRegionOverride: ExploreRegion?
+
+    /// Result of matching the device's location against the curated regions,
+    /// driving auto-selection and the "not covered here" notice. Updated whenever
+    /// the local catalog refreshes while following current location.
+    private(set) var regionCoverage: RegionCoverage = .unknown
 
     /// Radius (km) used for the nearby query — kept in one place for copy + query.
     let localCatalogRadiusKm = 25
@@ -368,21 +459,52 @@ class AppStore {
     /// against it. Resilient by design: on any failure the existing state is left
     /// untouched so the screen never regresses to empty.
     func refreshLocalCatalog() async {
-        guard !isRefreshingLocalCatalog else { return }
-        isRefreshingLocalCatalog = true
-        defer { isRefreshingLocalCatalog = false }
-
-        // 1. Build a locality profile for the chosen region.
-        guard let profile = await resolveLocalityProfile() else {
-            // No location available yet (permission not granted, no chosen region).
-            // Leave any existing state in place.
+        guard let requestedRegion = selectedRegionOverride else {
+            localCatalogLoadState = .idle
             return
         }
 
+        let requestID = UUID()
+        activeLocalCatalogRequestID = requestID
+        isRefreshingLocalCatalog = true
+        localCatalogLoadState = .loading
+        defer {
+            if activeLocalCatalogRequestID == requestID {
+                isRefreshingLocalCatalog = false
+            }
+        }
+
+        // 1. Build a locality profile for the chosen region.
+        guard let profile = await resolveLocalityProfile(for: requestedRegion),
+              activeLocalCatalogRequestID == requestID,
+              selectedRegionOverride == requestedRegion else {
+            if activeLocalCatalogRequestID == requestID {
+                localCatalogLoadState = .unavailable
+            }
+            return
+        }
+        guard !Task.isCancelled else {
+            if activeLocalCatalogRequestID == requestID {
+                localCatalogLoadState = .idle
+            }
+            return
+        }
+        localityProfile = profile
+
         // 2. Resolve the ranking inputs: a precomputed region pack (2B) for named
         //    regions, else the live iNaturalist species-count path.
-        guard let inputs = await resolveRankingInputs(for: profile) else {
-            // No usable data (no cache, network down): keep existing state.
+        guard let inputs = await resolveRankingInputs(for: profile, region: requestedRegion),
+              activeLocalCatalogRequestID == requestID,
+              selectedRegionOverride == requestedRegion else {
+            if activeLocalCatalogRequestID == requestID {
+                localCatalogLoadState = .unavailable
+            }
+            return
+        }
+        guard !Task.isCancelled else {
+            if activeLocalCatalogRequestID == requestID {
+                localCatalogLoadState = .idle
+            }
             return
         }
 
@@ -393,6 +515,9 @@ class AppStore {
             month: profile.currentMonth
         )
 
+        guard activeLocalCatalogRequestID == requestID,
+              selectedRegionOverride == requestedRegion else { return }
+
         // 4. Publish. Direct assignment is fine — these are stored properties.
         //    `regionCatalog` becomes the ranked catalog: the region-scoped set on
         //    the pack path, the bundled 50 on the live path. This drives the
@@ -401,7 +526,13 @@ class AppStore {
         localCatalogItems = items
         catalogFreshnessDate = inputs.fetchedAt
         regionCatalog = inputs.catalog
+        localCatalogLoadState = .loaded
     }
+
+    /*
+     The request token above intentionally allows a newer selection to begin while
+     an older fetch is suspended. Only the newest request is allowed to publish.
+     */
 
     /// The pieces `LocalRankingService.rank` needs, sourced from whichever path
     /// applies to the current region.
@@ -417,8 +548,11 @@ class AppStore {
     /// precomputed backend pack when the backend is configured, falling back to
     /// the live iNaturalist path when no pack is available. `.currentLocation`
     /// always uses the live path (2B Phase 1).
-    private func resolveRankingInputs(for profile: LocalityProfile) async -> RankingInputs? {
-        if case .region(let region) = selectedRegionOverride {
+    private func resolveRankingInputs(
+        for profile: LocalityProfile,
+        region requestedRegion: ExploreRegion
+    ) async -> RankingInputs? {
+        if case .region(let region) = requestedRegion {
             if let packInputs = await regionPackInputs(regionID: region.id) {
                 return packInputs
             }
@@ -489,16 +623,37 @@ class AppStore {
     /// Builds a `LocalityProfile` for the chosen Explore region. For
     /// `.currentLocation` we ask `LocationService` (one-shot, may return nil when
     /// permission isn't granted yet); for `.region` we use its iNaturalist places.
-    private func resolveLocalityProfile() async -> LocalityProfile? {
-        switch selectedRegionOverride {
+    private func resolveLocalityProfile(for requestedRegion: ExploreRegion) async -> LocalityProfile? {
+        switch requestedRegion {
         case .currentLocation:
             let locationService = LocationService.shared
             if let coordinate = await locationService.requestCurrentLocation() {
                 // Reverse-geocode the coarse cell center (not the precise fix) for a
-                // friendly label; geocoding failure is non-fatal.
+                // friendly label + the state used to match a curated region.
                 let profile = LocalityProfile.make(from: coordinate)
-                let name = await LocationGeocoderService.shared.reverseGeocode(profile.coordinate)
-                let resolvedProfile = LocalityProfile.make(from: coordinate, displayRegion: name)
+                let place = await LocationGeocoderService.shared.reverseGeocodeDetailed(profile.coordinate)
+                guard selectedRegionOverride == requestedRegion else { return nil }
+
+                // Auto-select the curated region the location falls in. Persisting
+                // it means the choice is remembered next launch (the user can still
+                // switch, including back to Current Location to re-detect).
+                if let matched = CatalogRegion.matching(
+                    countryCode: place?.countryCode,
+                    administrativeArea: place?.administrativeArea
+                ) {
+                    selectedRegionOverride = .region(matched)
+                    explorePreferences.save(region: .region(matched))
+                    regionCoverage = .covered(matched)
+                    return LocalityProfile.makeRegion(name: matched.name, placeIDs: matched.placeIDs)
+                }
+
+                // Reverse-geocoding placed us outside every curated region — surface
+                // the notice. If geocoding failed outright (no state resolved), we
+                // can't claim "not covered", so stay `.unknown` and just rank near-you.
+                regionCoverage = place?.administrativeArea == nil
+                    ? .unknown
+                    : .notCovered(placeName: place?.displayName)
+                let resolvedProfile = LocalityProfile.make(from: coordinate, displayRegion: place?.displayName)
                 explorePreferences.save(currentLocationProfile: resolvedProfile)
                 return resolvedProfile
             }
@@ -515,6 +670,7 @@ class AppStore {
                 displayRegion: savedProfile.displayRegion
             )
         case .region(let region):
+            regionCoverage = .covered(region)
             return LocalityProfile.makeRegion(name: region.name, placeIDs: region.placeIDs)
         }
     }
@@ -542,8 +698,71 @@ class AppStore {
         selectedRegionOverride = region
         explorePreferences.save(region: region)
         // Clear current items so the UI shows a loading state for the new region.
+        localityProfile = nil
         localCatalogItems = []
+        regionCatalog = nil
+        localCatalogLoadState = .loading
         await refreshLocalCatalog()
+    }
+
+    /// Resets transient detection feedback whenever the picker is opened while
+    /// preserving actionable system-level permission states.
+    func prepareRegionPicker() {
+        switch LocationService.shared.accessState {
+        case .denied:
+            regionDetectionState = .permissionDenied
+        case .servicesDisabled:
+            regionDetectionState = .servicesDisabled
+        case .notDetermined, .authorized:
+            regionDetectionState = .idle
+        }
+    }
+
+    /// Uses location once to map the device to one of the curated regions. The
+    /// detected region becomes the same persistent preference as a manual choice.
+    func detectRegion() async {
+        regionDetectionState = .detecting
+
+        do {
+            let coordinate = try await LocationService.shared.requestCurrentLocationResult()
+            guard !Task.isCancelled else { return }
+
+            let coarseProfile = LocalityProfile.make(from: coordinate)
+            guard let place = await LocationGeocoderService.shared.reverseGeocodeDetailed(
+                coarseProfile.coordinate
+            ) else {
+                guard !Task.isCancelled else { return }
+                regionDetectionState = .unavailable
+                return
+            }
+            guard !Task.isCancelled else { return }
+
+            guard let region = CatalogRegion.matching(
+                countryCode: place.countryCode,
+                administrativeArea: place.administrativeArea
+            ) else {
+                regionCoverage = .notCovered(placeName: place.displayName)
+                regionDetectionState = .unsupported(placeName: place.displayName)
+                return
+            }
+
+            regionCoverage = .covered(region)
+            regionDetectionState = .detected(region)
+            await selectRegion(.region(region))
+        } catch let error as LocationRequestError {
+            guard !Task.isCancelled else { return }
+            switch error {
+            case .permissionDenied:
+                regionDetectionState = .permissionDenied
+            case .servicesDisabled:
+                regionDetectionState = .servicesDisabled
+            case .unavailable:
+                regionDetectionState = .unavailable
+            }
+        } catch {
+            guard !Task.isCancelled else { return }
+            regionDetectionState = .unavailable
+        }
     }
 
     // MARK: - Locale-aware Catalog Derived Views

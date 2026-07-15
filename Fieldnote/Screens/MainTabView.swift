@@ -24,6 +24,7 @@ struct MainTabView: View {
     @State private var explorePath = NavigationPath()
     @State private var mapPath = NavigationPath()
     @State private var profilePath = NavigationPath()
+    @State private var tabBarClearance: CGFloat = 84
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Follow-up chosen inside the camera (library / manual entry) — run after
@@ -49,34 +50,23 @@ struct MainTabView: View {
     // MARK: - Shell
 
     private func content(_ appStore: AppStore) -> some View {
-        tabContent(appStore)
-            // Unlike an overlay, a safe-area inset reports its measured height to
-            // the navigation stacks. Root content therefore clears the real bar,
-            // without a device-dependent padding constant.
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                FieldGlassContainer(spacing: FieldSpace.sm) {
-                    if shouldShowTabBar(appStore) {
-                        FieldTabBar(
-                            selection: Binding(
-                                get: { appStore.selectedTab },
-                                set: { appStore.selectedTab = $0 }
-                            ),
-                            collapsed: tabBar.collapsed,
-                            onCapture: { startCamera() },
-                            onCaptureLibrary: { showLibrary = true },
-                            onManualEntry: { viewModel.startManualEntry() },
-                            namespace: tabNamespace
-                        )
-                        .padding(.horizontal, FieldSpace.md)
-                        .padding(.bottom, FieldSpace.sm)
-                        // Keep the bar pinned under the keyboard without disabling
-                        // keyboard avoidance for tab content.
-                        .ignoresSafeArea(.keyboard)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .simultaneousGesture(tabBarDragGesture)
+        ZStack(alignment: .bottom) {
+            tabContent(appStore)
+
+            // The visible bar remains an overlay, while each active root screen
+            // receives an equal measured inset inside its NavigationStack below.
+            // That makes ScrollView's maximum offset include the full floating bar.
+            if shouldShowTabBar(appStore) {
+                fieldTabBar(appStore)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { height in
+                        guard abs(height - tabBarClearance) > 0.5 else { return }
+                        tabBarClearance = height
                     }
-                }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+        }
             .animation(
                 reduceMotion ? nil : .snappy(duration: 0.34),
                 value: shouldShowTabBar(appStore)
@@ -125,6 +115,25 @@ struct MainTabView: View {
             }
     }
 
+    private func fieldTabBar(_ appStore: AppStore) -> some View {
+        FieldTabBar(
+            selection: Binding(
+                get: { appStore.selectedTab },
+                set: { appStore.selectedTab = $0 }
+            ),
+            collapsed: tabBar.collapsed,
+            onCapture: { startCamera() },
+            onCaptureLibrary: { showLibrary = true },
+            onManualEntry: { viewModel.startManualEntry() },
+            namespace: tabNamespace
+        )
+        .padding(.horizontal, FieldSpace.md)
+        .padding(.bottom, FieldSpace.sm)
+        // Keep the bar pinned under the keyboard without disabling keyboard
+        // avoidance for tab content.
+        .ignoresSafeArea(.keyboard)
+    }
+
     // MARK: - Tab content (state-preserving)
 
     @ViewBuilder
@@ -152,7 +161,18 @@ struct MainTabView: View {
         // `.capture` is an action, not a rendered tab — keep Journal visible under it.
         let active = appStore.selectedTab == tab
             || (tab == .journal && appStore.selectedTab == .capture)
-        NavigationStack(path: path) { content() }
+        NavigationStack(path: path) {
+            content()
+                // This inset belongs to the actual root screen, not the outer
+                // stack-of-stacks shell. Its clear region becomes real scroll
+                // extent, so the final control can move above the floating bar.
+                .safeAreaInset(edge: .bottom, spacing: FieldSpace.sm) {
+                    Color.clear
+                        .frame(height: active && shouldShowTabBar(appStore) ? tabBarClearance : 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+        }
             .collapsesTabBarOnScroll()
             .opacity(active ? 1 : 0)
             .allowsHitTesting(active)
@@ -172,20 +192,6 @@ struct MainTabView: View {
         case .profile:
             return profilePath.isEmpty
         }
-    }
-
-    private var tabBarDragGesture: some Gesture {
-        DragGesture(minimumDistance: 18)
-            .onEnded { value in
-                let vertical = value.translation.height
-                guard abs(vertical) > abs(value.translation.width), abs(vertical) > 24 else {
-                    return
-                }
-
-                withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) {
-                    tabBar.collapsed = vertical > 0
-                }
-            }
     }
 
     // MARK: - Capture
