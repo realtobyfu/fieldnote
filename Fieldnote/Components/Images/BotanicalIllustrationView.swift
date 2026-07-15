@@ -70,7 +70,7 @@ struct BotanicalIllustrationView: View {
     private func illustrationImage(_ assetName: String) -> some View {
         if fill {
             // Edge-to-edge: line-art fits on a cream plate; the parent card frames it.
-            Image(assetName)
+            BundledImagery.image(assetName)
                 .resizable()
                 .scaledToFit()
                 .padding(FieldSpace.sm)
@@ -78,7 +78,7 @@ struct BotanicalIllustrationView: View {
                 .background(FieldColor.illustrationBg)
                 .overlay(Rectangle().fill(FieldColor.sepia.opacity(0.03)))
         } else {
-            Image(assetName)
+            BundledImagery.image(assetName)
                 .resizable()
                 .scaledToFit()
                 .background(FieldColor.illustrationBg)

@@ -38,7 +38,7 @@ struct OnboardingWelcomePage: View {
     /// with a tracked plate-label eyebrow, the common name, and the Latin name.
     private var specimenPlate: some View {
         VStack(spacing: 0) {
-            Image("american_elm")
+            BundledImagery.image("american_elm")
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: .infinity)

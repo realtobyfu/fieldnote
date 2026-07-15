@@ -79,7 +79,7 @@ struct PhotoZoomView: View {
             if let providedImage {
                 image = providedImage
             } else if let assetName {
-                image = UIImage(named: assetName)
+                image = BundledImagery.uiImage(named: assetName)
             }
         }
     }

@@ -116,7 +116,7 @@ struct PlantPhotoGalleryView: View {
         ZStack {
             switch item {
             case .asset(let name):
-                Image(name)
+                BundledImagery.image(name)
                     .resizable()
                     .scaledToFill()
             case .user(let filename):
@@ -191,7 +191,7 @@ struct PlantPhotoGalleryView: View {
         ZStack {
             switch item {
             case .asset(let name):
-                Image(name)
+                BundledImagery.image(name)
                     .resizable()
                     .scaledToFill()
             case .user(let filename):
@@ -310,7 +310,7 @@ private struct PhotoGalleryPagerView: View {
     private func image(for item: GalleryItem) -> UIImage? {
         switch item {
         case .asset(let name):
-            return UIImage(named: name)
+            return BundledImagery.uiImage(named: name)
         case .user(let filename):
             return userImages[filename]
         }

@@ -61,7 +61,7 @@ struct IllustrationFullScreenView: View {
     @ViewBuilder
     private var image: some View {
         if let assetName {
-            Image(assetName).resizable()
+            BundledImagery.image(assetName).resizable()
         } else if let photoURL {
             AsyncImage(url: photoURL) { phase in
                 switch phase {
