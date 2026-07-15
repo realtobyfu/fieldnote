@@ -11,6 +11,7 @@ import UIKit
 struct ExploreView: View {
     @Environment(\.appStore) private var store
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(TabBarVisibility.self) private var tabBar: TabBarVisibility?
     @State private var searchQuery = ""
     @State private var isSearchPresented = false
@@ -94,10 +95,21 @@ struct ExploreView: View {
             didRequestLocalCatalog = true
             await appStore.refreshLocalCatalog()
         }
-        .sheet(isPresented: $showRegionPicker) {
-            RegionPickerSheet { region in
-                Task { await appStore.selectRegion(region) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, showRegionPicker {
+                appStore.prepareRegionPicker()
             }
+        }
+        .sheet(isPresented: $showRegionPicker) {
+            RegionPickerSheet(
+                selectedRegion: appStore.selectedRegionOverride,
+                detectionState: appStore.regionDetectionState,
+                onDetect: { await appStore.detectRegion() },
+                onOpenSettings: openLocationSettings,
+                onSelect: { region in
+                    Task { await appStore.selectRegion(region) }
+                }
+            )
         }
     }
 
@@ -105,31 +117,26 @@ struct ExploreView: View {
     private func browseSections(appStore: AppStore) -> some View {
         if appStore.hasLocalCatalog {
             localCatalogSections(appStore: appStore)
-        } else if !didRequestLocalCatalog || appStore.isRefreshingLocalCatalog {
-            // First load in flight — fall through to the standard sections so
-            // nothing flashes; the local sections appear once ranked.
+        } else if appStore.selectedRegionOverride != nil {
+            regionHeader(appStore: appStore)
+            localCatalogStatus(appStore: appStore)
             standardSections(appStore: appStore)
         } else {
-            // No locality resolved (permission not granted, no region chosen):
-            // offer the value prompt, then the standard sections below it.
-            LocalDiscoveryPrompt(
-                locationAction: LocationService.shared.requiresSettings ? .openSettings : .retry,
-                onUseLocation: { useCurrentLocation(appStore: appStore) },
-                onChooseRegion: { region in
-                    Task { await appStore.selectRegion(region) }
-                }
-            )
+            LocalDiscoveryPrompt {
+                presentRegionPicker(appStore: appStore)
+            }
             standardSections(appStore: appStore)
         }
     }
 
-    private func useCurrentLocation(appStore: AppStore) {
-        if LocationService.shared.requiresSettings,
-           let settingsURL = URL(string: UIApplication.openSettingsURLString) {
-            openURL(settingsURL)
-        } else {
-            Task { await appStore.selectRegion(.currentLocation) }
-        }
+    private func presentRegionPicker(appStore: AppStore) {
+        appStore.prepareRegionPicker()
+        showRegionPicker = true
+    }
+
+    private func openLocationSettings() {
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(settingsURL)
     }
 
     /// Ecology-led ordering when a locality exists: Commonly Reported → More to
@@ -141,7 +148,7 @@ struct ExploreView: View {
         // For current location the data is a local radius, so say "Near You"
         // rather than a reverse-geocoded state name over local data. A chosen
         // region names the place: "Common in Hawai‘i".
-        let scope = appStore.selectedRegionOverride == .currentLocation
+        let scope = appStore.selectedRegionOverride == .some(.currentLocation)
             ? "Near You"
             : "in \(regionName(appStore: appStore))"
 
@@ -204,7 +211,7 @@ struct ExploreView: View {
     private func regionHeader(appStore: AppStore) -> some View {
         VStack(alignment: .leading, spacing: FieldSpace.xs) {
             Button {
-                showRegionPicker = true
+                presentRegionPicker(appStore: appStore)
             } label: {
                 HStack(spacing: FieldSpace.xs) {
                     Image(systemName: "location.fill")
@@ -234,10 +241,53 @@ struct ExploreView: View {
     }
 
     private func regionName(appStore: AppStore) -> String {
-        if case .region(let region) = appStore.selectedRegionOverride {
+        if case .some(.region(let region)) = appStore.selectedRegionOverride {
             return region.name
         }
         return appStore.localityProfile?.displayRegion ?? "Current Location"
+    }
+
+    @ViewBuilder
+    private func localCatalogStatus(appStore: AppStore) -> some View {
+        switch appStore.localCatalogLoadState {
+        case .loading:
+            HStack(spacing: FieldSpace.sm) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading plants for \(regionName(appStore: appStore))…")
+                    .font(.caption)
+                    .foregroundStyle(FieldColor.fadedInk)
+            }
+            .padding(.horizontal, FieldSpace.md)
+            .accessibilityElement(children: .combine)
+        case .unavailable:
+            HStack(alignment: .top, spacing: FieldSpace.sm) {
+                Image(systemName: "wifi.exclamationmark")
+                    .foregroundStyle(FieldColor.errorRed)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                    Text("Region catalog unavailable")
+                        .font(.callout)
+                        .foregroundStyle(FieldColor.ink)
+                    Text("We couldn’t update \(regionName(appStore: appStore)). Your full catalog is still available below.")
+                        .font(.caption)
+                        .foregroundStyle(FieldColor.fadedInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Try Again") {
+                        Task { await appStore.refreshLocalCatalog() }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(FieldColor.accent)
+                    .frame(minHeight: 44, alignment: .leading)
+                }
+            }
+            .padding(FieldSpace.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FieldColor.errorRed.opacity(0.08), in: .rect(cornerRadius: FieldRadius.card))
+            .padding(.horizontal, FieldSpace.md)
+        case .idle, .loaded:
+            EmptyView()
+        }
     }
 
     @ViewBuilder

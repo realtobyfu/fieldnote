@@ -77,9 +77,9 @@ struct FieldTabBar: View {
     private var captureButton: some View {
         Button(action: onCapture) {
             Image(systemName: "camera.fill")
-                .font(.system(size: collapsed ? 16 : 19, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: collapsed ? 44 : 50, height: collapsed ? 44 : 50)
+                .frame(width: 50, height: 50)
                 .background(
                     LinearGradient(
                         colors: [FieldColor.accent, FieldColor.accentDeep],
@@ -118,9 +118,11 @@ struct FieldTabBar: View {
                 }
             }
             .foregroundStyle(isSelected ? FieldColor.accentDeep : FieldColor.mutedInk)
+            // Width stays constant on collapse — only the caption is dropped, so
+            // targets never narrow or slide under the finger.
             .frame(
                 minWidth: 44,
-                maxWidth: collapsed ? 44 : .infinity,
+                maxWidth: .infinity,
                 minHeight: 44
             )
             .padding(.vertical, 7)

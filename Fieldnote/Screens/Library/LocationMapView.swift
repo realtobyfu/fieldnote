@@ -35,7 +35,6 @@ struct LocationMapView: View {
         .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
             recenterButton
                 .padding(.trailing, FieldSpace.md)
-                .padding(.bottom, FieldSpace.md)
         }
         .navigationTitle("Locations")
         .navigationBarTitleDisplayMode(.inline)
