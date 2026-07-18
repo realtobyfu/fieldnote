@@ -8,9 +8,23 @@
 import SwiftUI
 import UIKit
 
+/// A licensed remote photo (today: iNaturalist) shown alongside the curated
+/// bundled shots. Attribution is the source's prebuilt credit string and is
+/// surfaced in the full-screen viewer.
+struct RemoteGalleryPhoto: Identifiable, Hashable {
+    /// Medium rendition — gallery thumbnails.
+    let url: URL
+    /// Large rendition — full-screen viewing (falls back to `url`).
+    let fullURL: URL?
+    let attribution: String?
+
+    var id: String { url.absoluteString }
+}
+
 struct PlantPhotoGalleryView: View {
     let plantName: String
     let userPhotoFilenames: [String]
+    let remotePhotos: [RemoteGalleryPhoto]
     let isProminent: Bool
 
     @State private var selectedIndex: Int?
@@ -20,9 +34,15 @@ struct PlantPhotoGalleryView: View {
     private let itemSize = CGSize(width: 200, height: 140)
     private let prominentHeroSize = CGSize(width: 320, height: 220)
 
-    init(plantName: String, userPhotoFilenames: [String] = [], isProminent: Bool = false) {
+    init(
+        plantName: String,
+        userPhotoFilenames: [String] = [],
+        remotePhotos: [RemoteGalleryPhoto] = [],
+        isProminent: Bool = false
+    ) {
         self.plantName = plantName
         self.userPhotoFilenames = userPhotoFilenames
+        self.remotePhotos = remotePhotos
         self.isProminent = isProminent
     }
 
@@ -119,6 +139,8 @@ struct PlantPhotoGalleryView: View {
                 BundledImagery.image(name)
                     .resizable()
                     .scaledToFill()
+            case .remote(let photo):
+                remoteThumbnail(photo, cornerRadius: FieldRadius.md)
             case .user(let filename):
                 if let image = userThumbnails[filename] {
                     Image(uiImage: image)
@@ -184,7 +206,8 @@ struct PlantPhotoGalleryView: View {
     private var galleryItems: [GalleryItem] {
         let curated = PlantPhotoService.photoNames(for: plantName).map { GalleryItem.asset(name: $0) }
         let user = userPhotoFilenames.map { GalleryItem.user(filename: $0) }
-        return user + curated
+        let remote = remotePhotos.map { GalleryItem.remote(photo: $0) }
+        return user + curated + remote
     }
 
     private func galleryItem(_ item: GalleryItem) -> some View {
@@ -194,6 +217,8 @@ struct PlantPhotoGalleryView: View {
                 BundledImagery.image(name)
                     .resizable()
                     .scaledToFill()
+            case .remote(let photo):
+                remoteThumbnail(photo, cornerRadius: FieldRadius.sm)
             case .user(let filename):
                 if let image = userThumbnails[filename] {
                     Image(uiImage: image)
@@ -227,6 +252,36 @@ struct PlantPhotoGalleryView: View {
             Rectangle()
                 .fill(FieldColor.sepia.opacity(0.03))
         )
+    }
+
+    /// AsyncImage thumbnail for a remote (iNaturalist) photo, matching the
+    /// bundled-asset treatment.
+    private func remoteThumbnail(_ photo: RemoteGalleryPhoto, cornerRadius: CGFloat) -> some View {
+        AsyncImage(url: photo.url) { phase in
+            switch phase {
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFill()
+            case .empty:
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(FieldColor.illustrationBg)
+                    .overlay(
+                        ProgressView()
+                            .tint(FieldColor.fadedInk)
+                    )
+            case .failure:
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(FieldColor.illustrationBg)
+                    .overlay(
+                        Image(systemName: "photo")
+                            .foregroundColor(FieldColor.fadedInk)
+                    )
+            @unknown default:
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(FieldColor.illustrationBg)
+            }
+        }
     }
 
     private func loadUserThumbnails() async {
@@ -272,10 +327,7 @@ private struct PhotoGalleryPagerView: View {
 
             TabView(selection: $selection) {
                 ForEach(items.indices, id: \.self) { index in
-                    PhotoZoomView(
-                        image: image(for: items[index]),
-                        showsCloseButton: false
-                    )
+                    page(for: items[index])
                         .tag(index)
                 }
             }
@@ -307,12 +359,57 @@ private struct PhotoGalleryPagerView: View {
         }
     }
 
-    private func image(for item: GalleryItem) -> UIImage? {
+    @ViewBuilder
+    private func page(for item: GalleryItem) -> some View {
         switch item {
         case .asset(let name):
-            return BundledImagery.uiImage(named: name)
+            PhotoZoomView(image: BundledImagery.uiImage(named: name), showsCloseButton: false)
         case .user(let filename):
-            return userImages[filename]
+            PhotoZoomView(image: userImages[filename], showsCloseButton: false)
+        case .remote(let photo):
+            RemotePhotoZoomPage(photo: photo)
+        }
+    }
+}
+
+/// Full-screen page for a remote photo: downloads the large rendition into the
+/// shared zoom viewer, with the source attribution pinned beneath (licensed
+/// photos must stay credited wherever they render large).
+private struct RemotePhotoZoomPage: View {
+    let photo: RemoteGalleryPhoto
+
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            if let image {
+                PhotoZoomView(image: image, showsCloseButton: false)
+            } else if failed {
+                PhotoZoomView(image: nil, showsCloseButton: false)
+            } else {
+                ProgressView()
+                    .tint(.white)
+            }
+
+            if let attribution = photo.attribution, !attribution.isEmpty {
+                Text("Photo: \(attribution) · iNaturalist")
+                    .font(FieldType.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, FieldSpace.lg)
+                    .padding(.bottom, FieldSpace.xxl)
+            }
+        }
+        .task {
+            guard image == nil else { return }
+            let url = photo.fullURL ?? photo.url
+            if let (data, _) = try? await URLSession.shared.data(from: url),
+               let loaded = UIImage(data: data) {
+                image = loaded
+            } else {
+                failed = true
+            }
         }
     }
 }
@@ -320,11 +417,13 @@ private struct PhotoGalleryPagerView: View {
 private enum GalleryItem: Identifiable, Hashable {
     case asset(name: String)
     case user(filename: String)
+    case remote(photo: RemoteGalleryPhoto)
 
     var id: String {
         switch self {
         case .asset(let name): return "asset-\(name)"
         case .user(let filename): return "user-\(filename)"
+        case .remote(let photo): return "remote-\(photo.id)"
         }
     }
 }

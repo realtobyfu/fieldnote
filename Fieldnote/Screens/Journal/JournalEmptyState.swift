@@ -116,31 +116,43 @@ struct JournalEmptyState: View {
 
 // MARK: - Shelf specimen
 
-/// An unboxed nearby-species item: the illustration plate with the name and
-/// report count beneath, laid directly on the paper canvas.
+/// An unboxed nearby-species item: the specimen imagery with the name and
+/// sighting count beneath, laid directly on the paper canvas.
 private struct ShelfSpecimen: View {
     let plant: CatalogPlant
     let observationCount: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            BotanicalIllustrationView(
-                plant.commonName,
-                family: plant.family,
-                size: .card
-            )
+            // Plate-first, licensed regional photo as fallback. `isDiscovered: true`
+            // is deliberate: this shelf is an invitation, not collection state, so
+            // the imagery stays full-color instead of the undiscovered gray-out.
+            CatalogThumbnail(catalogPlant: plant, isDiscovered: true, size: .card)
+                .frame(width: 140, height: 100)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: FieldRadius.sm))
 
             Text(plant.commonName)
                 .font(FieldType.callout)
                 .foregroundStyle(FieldColor.vintageInk)
                 .lineLimit(1)
 
-            Text(observationCount > 0 ? "\(observationCount) reports nearby" : plant.family)
+            Text(countLine)
                 .font(FieldType.caption)
                 .foregroundStyle(FieldColor.fadedInk)
                 .lineLimit(1)
         }
         .frame(width: 140, alignment: .leading)
+    }
+
+    /// iNaturalist research-grade observations reported in the user's region,
+    /// compacted ("48k sightings nearby") so the number reads as scale, not noise.
+    private var countLine: String {
+        guard observationCount > 0 else { return plant.family }
+        let compact = observationCount
+            .formatted(.number.notation(.compactName))
+            .lowercased()
+        return "\(compact) sightings nearby"
     }
 }
 

@@ -32,6 +32,20 @@ struct INatSpeciesCount: Codable, Hashable, Identifiable {
     var id: Int { taxonID }
 }
 
+/// One curated taxon photo from iNaturalist `taxa/{id}` (`taxon_photos`), kept
+/// only when its license permits reuse. Attribution is iNaturalist's prebuilt
+/// credit string, e.g. "(c) someone, some rights reserved (CC BY-NC)".
+struct INatTaxonPhoto: Hashable, Identifiable {
+    let photoID: Int
+    /// Medium rendition — gallery thumbnails.
+    let mediumURL: URL
+    /// Large rendition — full-screen viewing. Falls back to `mediumURL` when absent.
+    let largeURL: URL?
+    let attribution: String?
+
+    var id: Int { photoID }
+}
+
 // MARK: - Errors
 
 enum INaturalistError: LocalizedError {
@@ -119,6 +133,37 @@ actor INaturalistService {
         )
     }
 
+    /// Fetches the curated `taxon_photos` for a taxon, keeping only photos whose
+    /// license permits reuse (all-rights-reserved photos come back with a null
+    /// `license_code` and are dropped).
+    func taxonPhotos(taxonID: Int, limit: Int = 8) async throws -> [INatTaxonPhoto] {
+        guard let url = URL(string: "https://api.inaturalist.org/v1/taxa/\(taxonID)") else {
+            throw INaturalistError.invalidRequest
+        }
+
+        let data = try await fetchData(from: url)
+
+        let decoded: TaxaResponse
+        do {
+            decoded = try JSONDecoder().decode(TaxaResponse.self, from: data)
+        } catch {
+            throw INaturalistError.decodingFailed
+        }
+
+        let photos = (decoded.results.first?.taxonPhotos ?? []).compactMap { entry -> INatTaxonPhoto? in
+            let photo = entry.photo
+            guard photo.licenseCode != nil,
+                  let medium = photo.bestMediumURL else { return nil }
+            return INatTaxonPhoto(
+                photoID: photo.id,
+                mediumURL: medium,
+                largeURL: photo.bestLargeURL,
+                attribution: photo.attribution
+            )
+        }
+        return Array(photos.prefix(max(limit, 1)))
+    }
+
     /// Shared request/decode path. `scope` supplies the geographic constraint
     /// (lat/lng/radius or place_id); everything else is common.
     private func speciesCounts(
@@ -147,6 +192,30 @@ actor INaturalistService {
             throw INaturalistError.invalidRequest
         }
 
+        let data = try await fetchData(from: url)
+
+        let decoded: SpeciesCountsResponse
+        do {
+            decoded = try JSONDecoder().decode(SpeciesCountsResponse.self, from: data)
+        } catch {
+            throw INaturalistError.decodingFailed
+        }
+
+        return decoded.results.compactMap { result in
+            guard let taxon = result.taxon, let name = taxon.name else { return nil }
+            return INatSpeciesCount(
+                taxonID: taxon.id,
+                scientificName: name,
+                commonName: taxon.preferredCommonName,
+                count: result.count,
+                defaultPhotoURL: taxon.defaultPhoto?.mediumURL.flatMap(URL.init(string:)),
+                defaultPhotoLicense: taxon.defaultPhoto?.licenseCode
+            )
+        }
+    }
+
+    /// Shared GET + status handling for iNaturalist endpoints.
+    private func fetchData(from url: URL) async throws -> Data {
         var request = URLRequest(url: url)
         request.timeoutInterval = 20
         // iNaturalist recommends identifying the client in the User-Agent.
@@ -167,25 +236,7 @@ actor INaturalistService {
         case 429: throw INaturalistError.rateLimited
         default: throw INaturalistError.networkError
         }
-
-        let decoded: SpeciesCountsResponse
-        do {
-            decoded = try JSONDecoder().decode(SpeciesCountsResponse.self, from: data)
-        } catch {
-            throw INaturalistError.decodingFailed
-        }
-
-        return decoded.results.compactMap { result in
-            guard let taxon = result.taxon, let name = taxon.name else { return nil }
-            return INatSpeciesCount(
-                taxonID: taxon.id,
-                scientificName: name,
-                commonName: taxon.preferredCommonName,
-                count: result.count,
-                defaultPhotoURL: taxon.defaultPhoto?.mediumURL.flatMap(URL.init(string:)),
-                defaultPhotoLicense: taxon.defaultPhoto?.licenseCode
-            )
-        }
+        return data
     }
 }
 
@@ -219,6 +270,50 @@ private struct SpeciesCountsResponse: Decodable {
         enum CodingKeys: String, CodingKey {
             case mediumURL = "medium_url"
             case licenseCode = "license_code"
+        }
+    }
+}
+
+private struct TaxaResponse: Decodable {
+    let results: [Result]
+
+    struct Result: Decodable {
+        let taxonPhotos: [TaxonPhotoEntry]?
+
+        enum CodingKeys: String, CodingKey {
+            case taxonPhotos = "taxon_photos"
+        }
+    }
+
+    struct TaxonPhotoEntry: Decodable {
+        let photo: Photo
+    }
+
+    struct Photo: Decodable {
+        let id: Int
+        let licenseCode: String?
+        let attribution: String?
+        let url: String?
+        let mediumURL: String?
+        let largeURL: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, attribution, url
+            case licenseCode = "license_code"
+            case mediumURL = "medium_url"
+            case largeURL = "large_url"
+        }
+
+        /// Some responses omit the sized fields and only carry the square `url`;
+        /// iNaturalist renditions differ only by the size token in the filename.
+        var bestMediumURL: URL? {
+            (mediumURL ?? url.map { $0.replacingOccurrences(of: "square", with: "medium") })
+                .flatMap(URL.init(string:))
+        }
+
+        var bestLargeURL: URL? {
+            (largeURL ?? url.map { $0.replacingOccurrences(of: "square", with: "large") })
+                .flatMap(URL.init(string:))
         }
     }
 }

@@ -66,18 +66,28 @@ extension IllustrationCredit {
     /// A single-line attribution caption in the app's antiquarian voice, e.g.
     /// "After P.-J. Redouté · Les Roses, 1817". Built defensively so partial
     /// metadata still yields a sensible line.
+    ///
+    /// When the source names no attributable artist (many public-domain scans
+    /// only credit an institution or "Unknown"), the caption leads with the work
+    /// instead of "After Unknown", and falls back to a plain public-domain note
+    /// when there's no usable work text either.
     var captionText: String {
-        var parts: [String] = ["After \(creator)"]
+        let unknownCreator = creator.isEmpty
+            || creator.lowercased().hasPrefix("unknown")
+            || creator.lowercased() == "anonymous"
 
-        let workComponents = [title, publication].compactMap { $0 }
-        var work = workComponents.joined(separator: ", ")
-        if let year {
-            work = work.isEmpty ? String(year) : "\(work), \(year)"
+        let work = [title, publication].compactMap { $0 }.joined(separator: ", ")
+
+        var parts: [String] = []
+        if !unknownCreator {
+            parts.append("After \(creator)")
         }
         if !work.isEmpty {
-            parts.append(work)
+            parts.append(year.map { "\(work), \($0)" } ?? work)
+        } else if !unknownCreator, let year {
+            parts.append(String(year))
         }
 
-        return parts.joined(separator: " · ")
+        return parts.isEmpty ? "Public-domain illustration" : parts.joined(separator: " · ")
     }
 }

@@ -70,6 +70,8 @@ struct FieldnoteApp: App {
                     NavigationStack { ProfileView() }
                 } else if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "subscription" {
                     NavigationStack { SubscriptionStatusView() }
+                } else if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "plantdetail" {
+                    DebugCatalogDetailScreen()
                 } else if onboardingStore.shouldShowOnboarding {
                     OnboardingContainerView()
                 } else {
@@ -150,4 +152,47 @@ struct FieldnoteApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+
+#if DEBUG
+/// `SEED_SCREEN=plantdetail` (+ optional `SEED_PLANT=<scientific or common name>`,
+/// default Prunella vulgaris): renders `CatalogPlantDetailView` for that plant on
+/// launch. Exists because idb taps are broken in the screenshot environment, so
+/// only launch state is capturable. Resolves from the bundled catalog first, then
+/// each bundled region pack's merged catalog.
+private struct DebugCatalogDetailScreen: View {
+    private static let regionIDs = [
+        "pacific-northwest", "california", "desert-southwest", "rocky-mountains",
+        "texas", "florida", "northeast", "hawaii"
+    ]
+
+    var body: some View {
+        NavigationStack {
+            if let plant = Self.resolvePlant() {
+                CatalogPlantDetailView(catalogPlant: plant)
+            } else {
+                ContentUnavailableView("SEED_PLANT not found", systemImage: "leaf")
+            }
+        }
+    }
+
+    private static func resolvePlant() -> CatalogPlant? {
+        let query = (ProcessInfo.processInfo.environment["SEED_PLANT"] ?? "Prunella vulgaris")
+            .lowercased()
+        let matches: ([CatalogPlant]) -> CatalogPlant? = { plants in
+            plants.first {
+                $0.scientificName.lowercased().contains(query)
+                    || $0.commonName.lowercased().contains(query)
+            }
+        }
+        if let bundled = matches(CatalogPlant.catalog) { return bundled }
+        for regionID in regionIDs {
+            if let pack = BundledRegionPacks.pack(for: regionID),
+               let plant = matches(pack.catalogPlants(mergedWith: CatalogPlant.catalog)) {
+                return plant
+            }
+        }
+        return nil
+    }
+}
+#endif
     

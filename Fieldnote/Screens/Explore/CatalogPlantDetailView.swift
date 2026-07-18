@@ -13,6 +13,11 @@ struct CatalogPlantDetailView: View {
     /// What the full-screen viewer is currently showing (nil = closed).
     @State private var fullScreen: FullScreenTarget?
 
+    /// Licensed iNaturalist photos for the gallery. Seeded synchronously with the
+    /// region pack's default photo, then replaced by the taxon's curated photo set
+    /// once fetched (see `loadRemotePhotos`).
+    @State private var remotePhotos: [RemoteGalleryPhoto] = []
+
     private enum FullScreenTarget: Identifiable {
         case illustration(String)   // asset name
         case photo(URL)
@@ -54,19 +59,13 @@ struct CatalogPlantDetailView: View {
                 // Tap to see it full-screen (especially nice for a good plate).
                 expandableHero
 
-                // When a plate leads, the licensed photo sits below it.
-                if hasIllustration, let url = photoURL {
-                    Button {
-                        fullScreen = .photo(url)
-                    } label: {
-                        regionalPhotoBelow
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("View \(catalogPlant.commonName) photo full screen")
-                }
-
-                // Curated photo gallery
-                PlantPhotoGalleryView(plantName: catalogPlant.commonName)
+                // Photo gallery: curated bundled shots plus the taxon's licensed
+                // iNaturalist photos, in one scroll (replaces the old single
+                // stacked photo under the plate).
+                PlantPhotoGalleryView(
+                    plantName: catalogPlant.commonName,
+                    remotePhotos: galleryRemotePhotos
+                )
 
                 // Plant info card
                 VintageCard {
@@ -183,6 +182,9 @@ struct CatalogPlantDetailView: View {
         .background(FieldColor.agedPaper)
         .navigationTitle(catalogPlant.commonName)
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: catalogPlant.id) {
+            await loadRemotePhotos()
+        }
         .fullScreenCover(item: $fullScreen) { target in
             switch target {
             case .illustration(let name):
@@ -283,15 +285,39 @@ struct CatalogPlantDetailView: View {
         }
     }
 
-    /// The licensed iNaturalist photo shown *below* the plate, so an illustrated
-    /// plant offers both the field-guide plate and a real-world reference photo.
-    @ViewBuilder
-    private var regionalPhotoBelow: some View {
-        if let url = photoURL {
-            VStack(spacing: 0) {
-                photoHero(url)
-                photoAttributionLine
-            }
+    // MARK: - Remote photos
+
+    /// The remote photos the gallery should show. When the hero *is* the photo
+    /// (no plate), the hero image is dropped from the gallery to avoid showing
+    /// the same picture twice on one screen.
+    private var galleryRemotePhotos: [RemoteGalleryPhoto] {
+        guard !hasIllustration, let heroURL = photoURL else { return remotePhotos }
+        return remotePhotos.filter { $0.url != heroURL }
+    }
+
+    private func loadRemotePhotos() async {
+        // Seed instantly with the pack's licensed default photo, so the gallery
+        // isn't empty while the taxon fetch is in flight (or offline).
+        if remotePhotos.isEmpty, let url = photoURL {
+            remotePhotos = [
+                RemoteGalleryPhoto(
+                    url: url,
+                    fullURL: url,
+                    attribution: catalogPlant.photoAttribution
+                )
+            ]
+        }
+
+        guard let taxonID = catalogPlant.inaturalistTaxonID else { return }
+        guard let photos = try? await INaturalistService.shared.taxonPhotos(taxonID: taxonID),
+              !photos.isEmpty else { return }
+
+        remotePhotos = photos.map {
+            RemoteGalleryPhoto(
+                url: $0.mediumURL,
+                fullURL: $0.largeURL ?? $0.mediumURL,
+                attribution: $0.attribution
+            )
         }
     }
 
