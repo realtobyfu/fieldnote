@@ -13,6 +13,7 @@ struct ProfileView: View {
     @Environment(\.gamificationService) private var gamification
     @State private var isBadgeGridExpanded = false
     @State private var isSettingsExpanded = false
+    @State private var selectedBadge: BadgeDisplayItem?
 
     var body: some View {
         ScrollView {
@@ -44,6 +45,11 @@ struct ProfileView: View {
         )
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $selectedBadge) { item in
+            BadgeDetailSheet(item: item)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Level hero
@@ -191,7 +197,12 @@ struct ProfileView: View {
 
             HStack(alignment: .top, spacing: FieldSpace.sm) {
                 ForEach(featured) { item in
-                    FeaturedBadgeTile(item: item)
+                    Button {
+                        selectedBadge = item
+                    } label: {
+                        FeaturedBadgeTile(item: item)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 12)
@@ -200,11 +211,16 @@ struct ProfileView: View {
 
                 LazyVGrid(columns: columns, spacing: FieldSpace.md) {
                     ForEach(remaining) { item in
-                        BadgeCell(
-                            badge: item.badge,
-                            isUnlocked: item.isUnlocked,
-                            progress: item.progress
-                        )
+                        Button {
+                            selectedBadge = item
+                        } label: {
+                            BadgeCell(
+                                badge: item.badge,
+                                isUnlocked: item.isUnlocked,
+                                progress: item.progress
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, FieldSpace.sm)
@@ -361,6 +377,136 @@ private struct BadgeCell: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .opacity(isUnlocked ? 1 : 0.85)
+    }
+}
+
+// MARK: - Badge detail sheet
+
+private struct BadgeDetailSheet: View {
+    let item: BadgeDisplayItem
+    @Environment(\.dismiss) private var dismiss
+
+    private var badge: BadgeDefinition { item.badge }
+
+    /// Approximate current count derived from the 0…1 progress toward `target`.
+    private var currentCount: Int {
+        min(badge.target, Int((item.progress * Double(badge.target)).rounded()))
+    }
+
+    private var progressPercent: Int {
+        Int((item.progress * 100).rounded())
+    }
+
+    var body: some View {
+        VStack(spacing: FieldSpace.lg) {
+            // Icon + progress ring — the same ring treatment used in the grid.
+            ZStack {
+                Circle()
+                    .fill(item.isUnlocked ? FieldColor.accent.opacity(0.16) : FieldColor.separator.opacity(0.6))
+
+                if !item.isUnlocked {
+                    Circle()
+                        .stroke(FieldColor.separator, lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: item.progress)
+                        .stroke(
+                            FieldColor.accent.opacity(0.85),
+                            style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                }
+
+                Image(systemName: badge.symbol)
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(item.isUnlocked ? FieldColor.accentDeep : FieldColor.tertiaryInk)
+            }
+            .frame(width: 96, height: 96)
+
+            VStack(spacing: FieldSpace.xs) {
+                Text(badge.title)
+                    .font(FieldType.title3)
+                    .foregroundStyle(FieldColor.ink)
+                    .multilineTextAlignment(.center)
+
+                Text(badge.detail)
+                    .font(FieldType.subheadline)
+                    .foregroundStyle(FieldColor.mutedInk)
+                    .multilineTextAlignment(.center)
+            }
+
+            // Requirement / progress card.
+            VStack(alignment: .leading, spacing: FieldSpace.sm) {
+                Label {
+                    Text("Requirement")
+                        .font(FieldType.footnote.weight(.semibold))
+                        .foregroundStyle(FieldColor.mutedInk)
+                } icon: {
+                    Image(systemName: "target")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(FieldColor.accentDeep)
+                }
+
+                Text(badge.requirementText)
+                    .font(FieldType.body)
+                    .foregroundStyle(FieldColor.ink)
+
+                Divider()
+                    .padding(.vertical, 2)
+
+                if item.isUnlocked {
+                    Label {
+                        Text(unlockedLabel)
+                            .font(FieldType.subheadline.weight(.semibold))
+                            .foregroundStyle(FieldColor.ink)
+                    } icon: {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(FieldColor.accentDeep)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: FieldSpace.xs) {
+                        HStack {
+                            Text("Progress")
+                                .font(FieldType.footnote.weight(.semibold))
+                                .foregroundStyle(FieldColor.mutedInk)
+                            Spacer()
+                            Text("\(currentCount) / \(badge.target)")
+                                .font(FieldType.footnote.weight(.semibold))
+                                .foregroundStyle(FieldColor.accentDeep)
+                                .monospacedDigit()
+                        }
+
+                        ProgressView(value: item.progress)
+                            .tint(FieldColor.accent)
+
+                        Text("\(progressPercent)% complete")
+                            .font(FieldType.caption)
+                            .foregroundStyle(FieldColor.tertiaryInk)
+                    }
+                }
+            }
+            .padding(FieldSpace.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .fieldShadow(FieldShadow.card)
+
+            Spacer(minLength: 0)
+        }
+        .padding(FieldSpace.lg)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(colors: [FieldColor.canvasTop, FieldColor.canvasBottom],
+                           startPoint: .top, endPoint: .bottom)
+            .ignoresSafeArea()
+        )
+    }
+
+    private var unlockedLabel: String {
+        guard let unlockedAt = item.unlockedAt else { return "Unlocked" }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return "Unlocked \(formatter.string(from: unlockedAt))"
     }
 }
 

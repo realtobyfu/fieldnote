@@ -36,6 +36,47 @@ struct BadgeDefinition: Identifiable {
             return n
         }
     }
+
+    /// Human-readable statement of what unlocks this badge, shown in the
+    /// badge detail sheet.
+    var requirementText: String {
+        switch criterion {
+        case .totalFinds(let n):
+            return "Log \(n) observation\(n == 1 ? "" : "s")"
+        case .uniqueSpecies(let n):
+            return "Discover \(n) different species"
+        case .uniqueFamilies(let n):
+            return "Record \(n) different plant families"
+        case .uniqueLocations(let n):
+            return "Observe at \(n) different locations"
+        case .collectionPercent(let n):
+            return "Discover \(n)% of the regional catalog"
+        case .streak(let n):
+            return "Maintain a \(n)-day observation streak"
+        case .seasonalFinds(let season, let n):
+            return "Find \(n) plants during \(season)"
+        }
+    }
+
+    /// Unit noun for progress counters (e.g. "3 / 10 observations").
+    var progressUnit: String {
+        switch criterion {
+        case .totalFinds:
+            return "observations"
+        case .uniqueSpecies:
+            return "species"
+        case .uniqueFamilies:
+            return "families"
+        case .uniqueLocations:
+            return "locations"
+        case .collectionPercent:
+            return "% complete"
+        case .streak:
+            return "days"
+        case .seasonalFinds:
+            return "finds"
+        }
+    }
 }
 
 enum BadgeCatalog {
