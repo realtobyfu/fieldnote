@@ -129,10 +129,19 @@ struct MainTabView: View {
         )
         .padding(.horizontal, FieldSpace.md)
         .padding(.bottom, FieldSpace.sm)
+        // Nudge the bar down toward the bottom edge — floating a full safe-area
+        // inset above the home indicator read as too high. `offset` moves it
+        // visually without changing the measured height used for content
+        // clearance (see `onGeometryChange` in `content`).
+        .offset(y: tabBarLowering)
         // Keep the bar pinned under the keyboard without disabling keyboard
         // avoidance for tab content.
         .ignoresSafeArea(.keyboard)
     }
+
+    /// How far to drop the floating tab bar toward the bottom edge, past the
+    /// bottom safe-area inset, while keeping clearance for the home indicator.
+    private let tabBarLowering: CGFloat = 24
 
     // MARK: - Tab content (state-preserving)
 
