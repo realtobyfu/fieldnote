@@ -25,7 +25,7 @@ struct MainTabView: View {
     @State private var captureOrigin: AppTab = .journal
     @State private var pendingSaveConfirmation = false
     @State private var saveConfirmation: UUID?
-    @State private var tabBarClearance: CGFloat = 84
+    @State private var tabBarClearance: CGFloat = 62
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Follow-up chosen inside the camera (library / manual entry) — run after
@@ -152,7 +152,6 @@ struct MainTabView: View {
                 get: { appStore.selectedTab },
                 set: { appStore.selectedTab = $0 }
             ),
-            collapsed: tabBar.collapsed,
             onCapture: { startCamera() },
             onCaptureLibrary: { showLibrary = true },
             onManualEntry: { viewModel.startManualEntry() },

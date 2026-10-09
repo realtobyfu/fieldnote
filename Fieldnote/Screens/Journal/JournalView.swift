@@ -135,7 +135,6 @@ struct JournalView: View {
                     .padding(.bottom, FieldSpace.md)
                 }
                 .refreshable { await store.refresh() }
-                .collapsesTabBarOnScroll()
             }
 
             if !store.plants.isEmpty {

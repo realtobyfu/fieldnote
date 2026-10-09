@@ -8,11 +8,10 @@
 
 import SwiftUI
 
-/// Shared collapse state for the custom tab bar, updated by scrolling content.
+/// Shared visibility state for the custom tab bar.
 @MainActor
 @Observable
 final class TabBarVisibility {
-    var collapsed = false
     /// Temporarily removes the root bar for other bottom chrome, such as search.
     var suppressed = false
 }
@@ -21,7 +20,6 @@ struct FieldTabBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Binding var selection: AppTab
-    var collapsed: Bool
     var onCapture: () -> Void
     var onCaptureLibrary: () -> Void
     var onManualEntry: () -> Void
@@ -52,7 +50,6 @@ struct FieldTabBar: View {
             }
             captureButton
         }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.34), value: collapsed)
     }
 
     // MARK: - Pieces
@@ -70,7 +67,7 @@ struct FieldTabBar: View {
             Image(systemName: "camera.fill")
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 58, height: 58)
+                .frame(width: 54, height: 54)
                 .background(
                     LinearGradient(
                         colors: [FieldColor.accent, FieldColor.accentDeep],
@@ -100,32 +97,23 @@ struct FieldTabBar: View {
                 selection = tab
             }
         } label: {
-            VStack(spacing: 3) {
-                Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
-                if !collapsed {
-                    Text(label)
-                        .font(.caption2.weight(.medium))
-                        .transition(.opacity.combined(with: .blurReplace))
+            Image(systemName: symbol)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(isSelected ? FieldColor.accentDeep : FieldColor.mutedInk)
+                // Icons stay compact while every tab retains a 44pt touch target.
+                .frame(
+                    minWidth: 44,
+                    maxWidth: .infinity,
+                    minHeight: 44
+                )
+                .background {
+                    if isSelected {
+                        Capsule()
+                            .fill(FieldColor.accent.opacity(0.16))
+                            .matchedGeometryEffect(id: "selpill", in: namespace)
+                    }
                 }
-            }
-            .foregroundStyle(isSelected ? FieldColor.accentDeep : FieldColor.mutedInk)
-            // Width stays constant on collapse — only the caption is dropped, so
-            // targets never narrow or slide under the finger.
-            .frame(
-                minWidth: 44,
-                maxWidth: .infinity,
-                minHeight: 44
-            )
-            .padding(.vertical, 7)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(FieldColor.accent.opacity(0.16))
-                        .matchedGeometryEffect(id: "selpill", in: namespace)
-                }
-            }
-            .contentShape(Rectangle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -134,56 +122,13 @@ struct FieldTabBar: View {
     }
 }
 
-// MARK: - Scroll-driven collapse
-
-/// Apply to a scroll view (or a container holding one) to contract the custom
-/// tab bar when scrolling down and expand it when scrolling up.
-struct CollapseTabBarOnScroll: ViewModifier {
-    @Environment(TabBarVisibility.self) private var visibility: TabBarVisibility?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content.onScrollGeometryChange(for: CGFloat.self) { geo in
-            geo.contentOffset.y
-        } action: { oldY, newY in
-            guard let visibility else { return }
-            // Always show the full bar near the top (and at rest on launch).
-            if newY < 24 {
-                if visibility.collapsed {
-                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.32)) {
-                        visibility.collapsed = false
-                    }
-                }
-                return
-            }
-            let delta = newY - oldY
-            guard abs(delta) > 6 else { return }
-            let goingDown = delta > 0
-            if goingDown != visibility.collapsed {
-                withAnimation(reduceMotion ? nil : .snappy(duration: 0.32)) {
-                    visibility.collapsed = goingDown
-                }
-            }
-        }
-    }
-}
-
-extension View {
-    func collapsesTabBarOnScroll() -> some View {
-        modifier(CollapseTabBarOnScroll())
-    }
-}
-
 private struct FieldTabBarPreview: View {
-    let collapsed: Bool
-
     @State private var selection: AppTab = .explore
     @Namespace private var namespace
 
     var body: some View {
         FieldTabBar(
             selection: $selection,
-            collapsed: collapsed,
             onCapture: {},
             onCaptureLibrary: {},
             onManualEntry: {},
@@ -194,10 +139,6 @@ private struct FieldTabBarPreview: View {
     }
 }
 
-#Preview("Tab bar · Expanded") {
-    FieldTabBarPreview(collapsed: false)
-}
-
-#Preview("Tab bar · Collapsed") {
-    FieldTabBarPreview(collapsed: true)
+#Preview("Tab bar · Icons") {
+    FieldTabBarPreview()
 }

@@ -233,16 +233,15 @@ private struct FilterChip: View {
         Button(action: action) {
             Text(text)
                 .font(FieldType.chipLabel)
-                .foregroundColor(isSelected ? .white : FieldColor.ink)
+                .foregroundStyle(isSelected ? .white : FieldColor.ink)
                 .padding(.horizontal, FieldSpace.md)
                 .frame(minHeight: 44)
-                .background(isSelected ? FieldBook.cover : FieldBook.wash.opacity(0.45))
-                .cornerRadius(FieldRadius.chip)
+                .background(isSelected ? FieldBook.cover : FieldBook.wash.opacity(0.45), in: Capsule())
                 .overlay(
-                    RoundedRectangle(cornerRadius: FieldRadius.chip)
+                    Capsule()
                         .stroke(isSelected ? FieldBook.cover : FieldColor.separator, lineWidth: 1)
                 )
-                .contentShape(RoundedRectangle(cornerRadius: FieldRadius.chip))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])

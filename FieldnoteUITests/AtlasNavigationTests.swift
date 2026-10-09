@@ -26,9 +26,11 @@ final class AtlasNavigationTests: XCTestCase {
         let app = launchPreview()
         app.buttons["tab.collection"].tap()
         app.buttons["Trees"].tap()
+        XCTAssertTrue(app.staticTexts["INDEX · 2"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["collection.specimen.Acer rubrum"].isHittable)
         app.buttons["tab.atlas"].tap()
         app.buttons["tab.collection"].tap()
+        XCTAssertTrue(app.staticTexts["INDEX · 2"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["collection.specimen.Solidago canadensis"].exists)
         XCTAssertTrue(app.buttons["collection.specimen.Acer rubrum"].isHittable)
     }
