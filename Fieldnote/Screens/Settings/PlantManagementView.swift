@@ -25,8 +25,10 @@ struct PlantManagementView: View {
                 )
             }
         }
-        .fieldListBackground()
-        .navigationTitle("Plant Catalog")
+        .scrollContentBackground(.hidden)
+        .background(FieldBook.wash.ignoresSafeArea())
+        .navigationTitle("Manage specimens")
+        .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(
             "Remove Illustration?",
             isPresented: Binding(
@@ -66,7 +68,7 @@ struct PlantManagementView: View {
             }
         } message: {
             if let plant = plantToDelete {
-                Text("This will remove \(plant.commonName) and all of its encounters.")
+                Text("This will remove \(plant.commonName) and \(FieldBook.encounterCount(plant.encounterCount)) from your journal.")
             }
         }
     }
@@ -76,7 +78,7 @@ struct PlantManagementView: View {
         List {
             Section("Overview") {
                 HStack {
-                    Label("Total Plants", systemImage: "leaf.fill")
+                    Label("Specimens", systemImage: "square.grid.2x2")
                     Spacer()
                     Text("\(appStore.plants.count)")
                         .foregroundColor(FieldColor.mutedInk)
@@ -92,9 +94,11 @@ struct PlantManagementView: View {
                 }
             }
 
+            .listRowBackground(FieldBook.paper)
+
             Section("Custom Illustrations") {
                 if appStore.plantsWithCustomIllustrations.isEmpty {
-                    Text("No custom illustrations yet.")
+                    Text("Custom illustrations added to specimens appear here.")
                         .font(FieldType.callout)
                         .foregroundColor(FieldColor.mutedInk)
                 } else {
@@ -106,7 +110,13 @@ struct PlantManagementView: View {
                 }
             }
 
-            Section("Catalog Entries") {
+            .listRowBackground(FieldBook.paper)
+
+            Section("Specimens") {
+                if appStore.plants.isEmpty {
+                    Text("Your first saved discovery will appear here. Add an entry from the camera in your journal.")
+                        .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                }
                 ForEach(appStore.plants.sorted { $0.commonName < $1.commonName }) { plant in
                     NavigationLink {
                         PlantEditView(plant: plant)
@@ -122,6 +132,7 @@ struct PlantManagementView: View {
                     }
                 }
             }
+            .listRowBackground(FieldBook.paper)
         }
     }
 }
@@ -146,6 +157,7 @@ private struct PlantCatalogRow: View {
                         .foregroundColor(FieldColor.mutedInk)
                 }
             }
+            .listRowBackground(FieldBook.paper)
         }
     }
 }

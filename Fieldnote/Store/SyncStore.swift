@@ -21,6 +21,9 @@ enum SyncStatus: Equatable {
 @MainActor
 @Observable
 class SyncStore {
+    /// Whether the running journal container was created with CloudKit storage.
+    /// Account availability alone cannot establish this after a local fallback.
+    let journalUsesCloudStorage: Bool
     // MARK: - Keys
 
     private enum Keys {
@@ -70,7 +73,8 @@ class SyncStore {
 
     // MARK: - Init
 
-    init() {
+    init(journalUsesCloudStorage: Bool = false) {
+        self.journalUsesCloudStorage = journalUsesCloudStorage
         self.lastSyncDate = UserDefaults.standard.object(forKey: Keys.lastSyncDate) as? Date
         self.lastPhotoSyncDate = UserDefaults.standard.object(forKey: Keys.lastPhotoSyncDate) as? Date
 

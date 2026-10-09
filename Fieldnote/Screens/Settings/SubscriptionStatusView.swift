@@ -35,13 +35,15 @@ struct SubscriptionStatusView: View {
             Section {
                 statusCard
             }
+            .listRowBackground(FieldBook.paper)
 
             // Usage section (for free users)
             if !subscriptionStore.isPremium {
                 Section {
                     usageCard
+                        .listRowBackground(FieldBook.paper)
                 } header: {
-                    Text("AI Identification Usage")
+                    Text("Photo identification")
                 }
             }
 
@@ -56,7 +58,7 @@ struct SubscriptionStatusView: View {
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.caption)
-                                .foregroundColor(FieldColor.mutedInk)
+                                .foregroundStyle(FieldColor.mutedInk)
                         }
                     }
                 }
@@ -78,6 +80,8 @@ struct SubscriptionStatusView: View {
                 .disabled(isRestoring)
             }
 
+            .listRowBackground(FieldBook.paper)
+
             // Manage subscription (for subscribers)
             if subscriptionStore.isPremium && subscriptionStore.subscriptionType == .annual {
                 Section {
@@ -87,13 +91,14 @@ struct SubscriptionStatusView: View {
                             Spacer()
                             Image(systemName: "arrow.up.right")
                                 .font(.caption)
-                                .foregroundColor(FieldColor.mutedInk)
+                                .foregroundStyle(FieldColor.mutedInk)
                         }
                     }
                 } footer: {
                     Text("Opens in App Store to manage your subscription, including cancellation.")
-                        .font(FieldType.caption2)
+                        .font(.caption2)
                 }
+                .listRowBackground(FieldBook.paper)
             }
 
             // Info section
@@ -101,12 +106,12 @@ struct SubscriptionStatusView: View {
 
                 VStack(alignment: .leading, spacing: FieldSpace.sm) {
                     Text("About Premium")
-                        .font(FieldType.bodyEmphasized)
-                        .foregroundColor(FieldColor.ink)
+                        .font(.headline)
+                        .foregroundStyle(FieldColor.ink)
 
-                    Text("Premium unlocks unlimited AI-powered plant identification. Free users can manually add plants without limits - only AI identification is restricted to \(SubscriptionStore.freeIdentificationLimit) uses.")
-                        .font(FieldType.callout)
-                        .foregroundColor(FieldColor.mutedInk)
+                    Text("Premium includes unlimited photo identification. The free plan includes \(SubscriptionStore.freeIdentificationLimit) photo identifications. Manual journal entries are always unlimited.")
+                        .font(.subheadline)
+                        .foregroundStyle(FieldColor.mutedInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, FieldSpace.xs)
@@ -120,13 +125,16 @@ struct SubscriptionStatusView: View {
                         Spacer()
                         Image(systemName: "arrow.up.right")
                             .font(.caption)
-                            .foregroundColor(FieldColor.mutedInk)
+                            .foregroundStyle(FieldColor.mutedInk)
                     }
                 }
             }
+            .listRowBackground(FieldBook.paper)
         }
-        .fieldListBackground()
-        .navigationTitle("Subscription")
+        .scrollContentBackground(.hidden)
+        .background(FieldBook.wash.ignoresSafeArea())
+        .navigationTitle("Membership")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showPaywall) {
             PaywallView()
         }
@@ -146,8 +154,8 @@ struct SubscriptionStatusView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(subscriptionStore.isPremium ? "Premium" : "Free")
-                        .font(FieldType.title2)
-                        .foregroundColor(FieldColor.vintageInk)
+                        .font(FieldBook.heading)
+                        .foregroundStyle(FieldColor.vintageInk)
 
                     statusSubtitle
                 }
@@ -159,9 +167,9 @@ struct SubscriptionStatusView: View {
                         .fill(subscriptionStore.isPremium ? FieldColor.accent.opacity(0.1) : FieldColor.separator)
                         .frame(width: 60, height: 60)
 
-                    Image(systemName: subscriptionStore.isPremium ? "leaf.fill" : "leaf")
+                    Image(systemName: subscriptionStore.isPremium ? "sparkles" : "book.closed")
                         .font(.system(size: 28))
-                        .foregroundColor(subscriptionStore.isPremium ? FieldColor.accent : FieldColor.mutedInk)
+                        .foregroundStyle(subscriptionStore.isPremium ? FieldColor.accent : FieldColor.mutedInk)
                 }
             }
         }
@@ -173,74 +181,47 @@ struct SubscriptionStatusView: View {
         if subscriptionStore.isPremium {
             switch subscriptionStore.subscriptionType {
             case .lifetime:
-                Text("Lifetime access - thank you!")
-                    .font(FieldType.callout)
-                    .foregroundColor(FieldColor.fadedInk)
+                Text("Lifetime access")
+                    .font(.subheadline)
+                    .foregroundStyle(FieldColor.fadedInk)
             case .annual:
                 if let expiration = subscriptionStore.subscriptionExpirationDate {
-                    Text("Renews \(expiration.formatted(date: .abbreviated, time: .omitted))")
-                        .font(FieldType.callout)
-                        .foregroundColor(FieldColor.fadedInk)
+                    Text("Access through \(expiration.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.subheadline)
+                        .foregroundStyle(FieldColor.fadedInk)
                 } else {
                     Text("Annual subscription")
-                        .font(FieldType.callout)
-                        .foregroundColor(FieldColor.fadedInk)
+                        .font(.subheadline)
+                        .foregroundStyle(FieldColor.fadedInk)
                 }
             case .none:
                 EmptyView()
             }
         } else {
-            Text("Limited AI identification")
-                .font(FieldType.callout)
-                .foregroundColor(FieldColor.fadedInk)
+            Text("Photo identification and unlimited manual entries")
+                .font(.subheadline)
+                .foregroundStyle(FieldColor.fadedInk)
         }
     }
 
     // MARK: - Usage Card
 
     private var usageCard: some View {
-        VStack(alignment: .leading, spacing: FieldSpace.md) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(subscriptionStore.aiIdentificationsUsed) of \(SubscriptionStore.freeIdentificationLimit)")
-                        .font(FieldType.title2)
-                        .foregroundColor(FieldColor.vintageInk)
-
-                    Text("AI identifications used")
-                        .font(FieldType.callout)
-                        .foregroundColor(FieldColor.fadedInk)
-                }
-
-                Spacer()
-
-                // Progress circle
-                ZStack {
-                    Circle()
-                        .stroke(FieldColor.separator, lineWidth: 6)
-
-                    Circle()
-                        .trim(from: 0, to: CGFloat(subscriptionStore.aiIdentificationsUsed) / CGFloat(SubscriptionStore.freeIdentificationLimit))
-                        .stroke(
-                            subscriptionStore.remainingFreeIdentifications > 0 ? FieldColor.accent : FieldColor.errorRed,
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-
-                    Text("\(subscriptionStore.remainingFreeIdentifications)")
-                        .font(FieldType.title3)
-                        .foregroundColor(subscriptionStore.remainingFreeIdentifications > 0 ? FieldColor.accent : FieldColor.errorRed)
-                }
-                .frame(width: 60, height: 60)
-            }
-
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(subscriptionStore.remainingFreeIdentifications) remaining")
+                .font(FieldBook.heading)
+                .foregroundStyle(FieldColor.ink)
+            ProgressView(value: Double(subscriptionStore.aiIdentificationsUsed),
+                         total: Double(SubscriptionStore.freeIdentificationLimit))
+                .tint(FieldBook.cover)
+                .accessibilityLabel("Photo identification allowance used")
+                .accessibilityValue("\(subscriptionStore.aiIdentificationsUsed) of \(SubscriptionStore.freeIdentificationLimit)")
+            Text("\(subscriptionStore.aiIdentificationsUsed) of \(SubscriptionStore.freeIdentificationLimit) used")
+                .font(.caption).foregroundStyle(FieldColor.mutedInk)
             if subscriptionStore.remainingFreeIdentifications == 0 {
-                HStack(spacing: FieldSpace.xs) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(FieldColor.warningOrange)
-                    Text("Upgrade to continue using AI identification")
-                        .font(FieldType.caption)
-                        .foregroundColor(FieldColor.fadedInk)
-                }
+                Text("Upgrade for more photo identifications, or keep adding entries by hand.")
+                    .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, FieldSpace.sm)

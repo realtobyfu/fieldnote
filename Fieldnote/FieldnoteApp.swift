@@ -14,7 +14,7 @@ struct FieldnoteApp: App {
     @State private var appStore: AppStore
     @State private var onboardingStore = OnboardingStore()
     @State private var subscriptionStore = SubscriptionStore()
-    @State private var syncStore = SyncStore()
+    @State private var syncStore: SyncStore
     @State private var gamificationService: GamificationService
     @State private var showPremiumPromo = false
 
@@ -23,6 +23,7 @@ struct FieldnoteApp: App {
 
         // Try CloudKit first, fall back to local if unavailable
         var container: ModelContainer?
+        var journalUsesCloudStorage = false
         #if DEBUG
         if DebugPreview.isEnabled {
             container = try? ModelContainer(for: schema, configurations: [
@@ -39,6 +40,7 @@ struct FieldnoteApp: App {
         if container == nil {
             do {
                 container = try ModelContainer(for: schema, configurations: [cloudConfig])
+                journalUsesCloudStorage = true
             } catch {
                 print("CloudKit unavailable, using local storage: \(error)")
             }
@@ -63,6 +65,7 @@ struct FieldnoteApp: App {
         FieldBook.registerFonts()
 
         self.sharedModelContainer = container!
+        self._syncStore = State(initialValue: SyncStore(journalUsesCloudStorage: journalUsesCloudStorage))
         let appStoreInstance = AppStore(modelContext: container!.mainContext)
         self._appStore = State(initialValue: appStoreInstance)
         self._gamificationService = State(

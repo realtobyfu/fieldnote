@@ -1,509 +1,219 @@
-//
-//  ProfileView.swift
-//  Fieldnote
-//
-//  Profile tab (Wave 2): the gamification home — level/XP, streak, collection,
-//  and the badge grid — with the existing Settings reachable below.
-//
-
 import SwiftUI
 import SwiftData
 
+/// The personal endpaper of the book: a record of the observer's practice.
 struct ProfileView: View {
+    @Environment(\.appStore) private var store
     @Environment(\.gamificationService) private var gamification
-    @State private var isBadgeGridExpanded = false
-    @State private var isSettingsExpanded = false
-    @State private var selectedBadge: BadgeDisplayItem?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.subscriptionStore) private var subscriptionStore
+    @Environment(\.syncStore) private var syncStore
+    @Environment(\.capturePlant) private var capturePlant
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
-            VStack(spacing: FieldSpace.lg) {
-                if let gamification {
-                    let stats = gamification.snapshot()
-                    let profile = gamification.profile()
-
-                    levelHero(profile: profile, stats: stats)
-                    statTiles(stats)
-                    badgeGrid(gamification: gamification, stats: stats)
-                }
-
-                ProfileMembershipCard()
-
-                settingsPill
-                if isSettingsExpanded {
-                    ProfileSettingsSection()
-                        .transition(.opacity)
+            if let store {
+                VStack(alignment: .leading, spacing: 0) {
+                    opening(store)
+                    VStack(alignment: .leading, spacing: 28) {
+                        monthlyNotes(store)
+                        journalIndex(store)
+                        if let gamification { milestones(gamification) }
+                        essentials
+                    }
+                    .padding(24)
                 }
             }
-            .padding(FieldSpace.md)
-            .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: isSettingsExpanded)
         }
         .background(FieldBook.paper.ignoresSafeArea())
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selectedBadge) { item in
-            BadgeDetailSheet(item: item)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    ProfileSettingsSection()
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .accessibilityIdentifier("profile.settings")
+            }
         }
     }
 
-    // MARK: - Level hero
-
-    private func levelHero(profile: FieldProfile, stats: GamificationService.Stats) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+    private func opening(_ store: AppStore) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("LEVEL")
-                        .font(.system(size: 11, weight: .semibold))
-                        .tracking(2)
-                        .foregroundStyle(.white.opacity(0.75))
-                    Text("\(profile.level)")
-                        .font(FieldType.displayTitle)
-                        .foregroundStyle(.white)
-                }
-                Spacer()
-                HStack(spacing: 4) {
-                    Image(systemName: "laurel.leading")
-                    Text("\(profile.currentStreak)")
-                        .monospacedDigit()
-                    Image(systemName: "laurel.trailing")
-                }
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12).padding(.vertical, 7)
-                .background(.white.opacity(0.18), in: Capsule())
-            }
-
-            VStack(alignment: .leading, spacing: 7) {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(.white.opacity(0.25))
-                        Capsule().fill(.white)
-                            .frame(width: max(8, geo.size.width * profile.levelProgress))
+                VStack(alignment: .leading, spacing: 8) {
+                    BookSectionLabel(text: "A life of noticing")
+                    Text("Your field journal.")
+                        .font(FieldBook.title)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    if let firstDate = store.allEncounters.last?.date {
+                        Text("First entry \(firstDate.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                    } else {
+                        Text("Every discovery starts with a closer look.")
+                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
                     }
                 }
-                .frame(height: 8)
-                Text("\(profile.xpIntoLevel) / \(profile.xpForNextLevel) XP to level \(profile.level + 1)")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-        }
-        .padding(20)
-        .background(
-            LinearGradient(colors: [FieldColor.accent, FieldColor.accentDeep],
-                           startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-        )
-        .fieldShadow(FieldShadow.cardHover)
-    }
-
-    // MARK: - Stat tiles
-
-    private func statTiles(_ stats: GamificationService.Stats) -> some View {
-        HStack(spacing: FieldSpace.sm) {
-            statTile(value: stats.uniqueSpecies, label: "Species")
-            statTile(value: stats.uniqueFamilies, label: "Families")
-            statTile(value: stats.uniqueLocations, label: "Places")
-            statTile(value: stats.collectionPercent, label: "Catalog", suffix: "%")
-        }
-    }
-
-    private func statTile(value: Int, label: String, suffix: String = "") -> some View {
-        VStack(spacing: 3) {
-            Text("\(value)\(suffix)")
-                .font(FieldType.title3)
-                .foregroundStyle(FieldColor.ink)
-            Text(label)
-                .font(FieldType.caption)
-                .foregroundStyle(FieldColor.mutedInk)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .fieldShadow(FieldShadow.card)
-    }
-
-    // MARK: - Badges
-
-    private func badgeGrid(gamification: GamificationService, stats: GamificationService.Stats) -> some View {
-        let unlockDates = gamification.achievements().reduce(into: [String: Date]()) { dates, achievement in
-            guard let unlockedAt = achievement.unlockedAt else { return }
-            dates[achievement.identifier] = max(dates[achievement.identifier] ?? .distantPast, unlockedAt)
-        }
-        let items = BadgeCatalog.all.map { badge in
-            BadgeDisplayItem(
-                badge: badge,
-                progress: gamification.progress(for: badge, stats: stats),
-                unlockedAt: unlockDates[badge.id]
-            )
-        }
-        let recentlyEarned = items
-            .filter { $0.unlockedAt != nil }
-            .sorted(by: BadgeDisplayItem.wasEarnedMoreRecently)
-        let closestLocked = items
-            .filter { $0.unlockedAt == nil }
-            .sorted(by: BadgeDisplayItem.isCloserToCompletion)
-
-        var featured = Array(recentlyEarned.prefix(2))
-        if let closest = closestLocked.first {
-            featured.append(closest)
-        }
-        if featured.count < 3 {
-            let featuredIDs = Set(featured.map(\.id))
-            featured.append(
-                contentsOf: items
-                    .filter { !featuredIDs.contains($0.id) }
-                    .prefix(3 - featured.count)
-            )
-        }
-        let featuredIDs = Set(featured.map(\.id))
-        let remaining = items.filter { !featuredIDs.contains($0.id) }
-        let unlockedCount = items.filter(\.isUnlocked).count
-        let columns = [GridItem(.adaptive(minimum: 96), spacing: FieldSpace.md)]
-
-        return VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Badges")
-                    .font(FieldType.title3)
-                    .foregroundStyle(FieldColor.ink)
-
-                Spacer()
-
-                Text("\(unlockedCount) / \(BadgeCatalog.all.count)")
-                    .font(FieldType.footnote.weight(.semibold))
-                    .foregroundStyle(FieldColor.mutedInk)
-
-                Button(action: toggleBadgeGrid) {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(FieldColor.mutedInk)
-                        .rotationEffect(.degrees(isBadgeGridExpanded ? 180 : 0))
-                        .frame(width: 30, height: 30)
-                        .background(FieldColor.separator.opacity(0.55), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .frame(width: 44, height: 44)
-                .contentShape(.circle)
-                .accessibilityLabel(isBadgeGridExpanded ? "Hide all badges" : "Show all badges")
-                .accessibilityHint(isBadgeGridExpanded ? "Collapses the remaining badges" : "Expands the remaining badges")
-            }
-            .padding(.horizontal, FieldSpace.md)
-            .padding(.vertical, 10)
-
-            HStack(alignment: .top, spacing: FieldSpace.sm) {
-                ForEach(featured) { item in
-                    Button {
-                        selectedBadge = item
-                    } label: {
-                        FeaturedBadgeTile(item: item)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-
-            if isBadgeGridExpanded {
-
-                LazyVGrid(columns: columns, spacing: FieldSpace.md) {
-                    ForEach(remaining) { item in
-                        Button {
-                            selectedBadge = item
-                        } label: {
-                            BadgeCell(
-                                badge: item.badge,
-                                isUnlocked: item.isUnlocked,
-                                progress: item.progress
-                            )
+                Spacer(minLength: 8)
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "text.book.closed")
+                        .font(.system(size: 29, weight: .light))
+                        .foregroundStyle(FieldBook.cover)
+                        .frame(width: 54, height: 68)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(FieldBook.cover.opacity(0.25), lineWidth: 1)
                         }
-                        .buttonStyle(.plain)
-                    }
+                        .rotationEffect(.degrees(-5))
+                        .accessibilityHidden(true)
                 }
-                .padding(.horizontal, FieldSpace.sm)
-                .padding(.vertical, FieldSpace.sm)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            Divider().overlay(FieldBook.cover.opacity(0.12))
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 14) { journalCounts(store) }
+            } else {
+                HStack(alignment: .top, spacing: 12) { journalCounts(store) }
             }
         }
-        .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .fieldShadow(FieldShadow.card)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: isBadgeGridExpanded)
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FieldBook.wash)
     }
 
-    private func toggleBadgeGrid() {
-        isBadgeGridExpanded.toggle()
+    @ViewBuilder private func journalCounts(_ store: AppStore) -> some View {
+        count(store.plants.count, label: "Specimens")
+        count(store.allEncounters.count, label: "Encounters")
+        count(store.uniqueLocations.count, label: "Places")
     }
 
-    // MARK: - Settings pill
+    private func count(_ value: Int, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value, format: .number).font(FieldBook.heading).monospacedDigit()
+            Text(label).font(.caption).foregroundStyle(FieldColor.mutedInk)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(value) \(label.lowercased())")
+    }
 
-    /// Collapsed-by-default pill that expands the settings cards inline (no push).
-    private var settingsPill: some View {
-        Button {
-            isSettingsExpanded.toggle()
-        } label: {
-            HStack(spacing: FieldSpace.sm) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(FieldColor.mutedInk)
-                Text("Settings & Info")
-                    .font(FieldType.body)
-                    .foregroundStyle(FieldColor.ink)
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(FieldColor.tertiaryInk)
-                    .rotationEffect(.degrees(isSettingsExpanded ? 180 : 0))
+    private func monthlyNotes(_ store: AppStore) -> some View {
+        let calendar = Calendar.current
+        let entries = store.allEncounters.filter {
+            calendar.isDate($0.date, equalTo: .now, toGranularity: .month)
+        }
+        let days = Set(entries.map { calendar.startOfDay(for: $0.date) }).count
+        return VStack(alignment: .leading, spacing: 10) {
+            BookSectionLabel(text: Date.now.formatted(.dateTime.month(.wide).year()))
+            Text(entries.isEmpty ? "A new page awaits." : "\(days) \(days == 1 ? "day" : "days") of noticing.")
+                .font(FieldBook.heading)
+                .accessibilityIdentifier("profile.monthSummary")
+            Text(entries.isEmpty
+                 ? "Return whenever something catches your eye. Your journal grows at your pace."
+                 : "\(FieldBook.encounterCount(entries.count)) recorded this month. Every return adds something to your book.")
+                .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+            if store.allEncounters.isEmpty, let capturePlant {
+                Button(action: capturePlant) {
+                    Label("Capture a discovery", systemImage: "camera")
+                        .font(.subheadline.weight(.medium))
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .tint(FieldBook.cover)
+                .accessibilityIdentifier("profile.firstCapture")
             }
-            .padding(16)
-            .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .fieldShadow(FieldShadow.card)
+        }
+    }
+
+    private func journalIndex(_ store: AppStore) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Inside your journal").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                NavigationLink {
+                    AllEncountersView()
+                } label: {
+                    BookNavigationRow(symbol: "clock", title: "Encounter history", subtitle: "Revisit the things you've noticed", detail: "\(store.allEncounters.count)")
+                }
+                .accessibilityIdentifier("profile.history")
+                Divider()
+                NavigationLink {
+                    LocationMapView()
+                } label: {
+                    BookNavigationRow(symbol: "map", title: "Your places", subtitle: "See encounters with saved coordinates")
+                }
+                .accessibilityIdentifier("profile.map")
+                Divider()
+                NavigationLink {
+                    PlantManagementView()
+                } label: {
+                    BookNavigationRow(symbol: "square.grid.2x2", title: "Manage specimens", subtitle: "Names, illustrations, and entries")
+                }
+                .accessibilityIdentifier("profile.specimens")
+                Divider()
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func milestones(_ gamification: GamificationService) -> some View {
+        let supported = Set(BadgeCatalog.all.map(\.id))
+        let earned = Set(gamification.achievements().filter { $0.unlockedAt != nil }.map(\.identifier)).intersection(supported)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Along the way").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
+            NavigationLink {
+                ProfileMilestonesView()
+            } label: {
+                BookNavigationRow(symbol: "rosette", title: "Milestones", subtitle: "Small markers of a growing practice", detail: "\(earned.count) earned")
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("profile.milestones")
+            Divider()
+        }
+    }
+
+    private var essentials: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            BookSectionLabel(text: "Journal essentials")
+            NavigationLink {
+                SubscriptionStatusView()
+            } label: {
+                BookNavigationRow(symbol: "sparkles", title: "Membership", subtitle: membershipSubtitle,
+                                  detail: subscriptionStore.isPremium ? "Premium" : "Free")
+            }
+            .accessibilityIdentifier("profile.membership")
+            Divider()
+            NavigationLink {
+                ProfileStorageView()
+            } label: {
+                BookNavigationRow(symbol: "externaldrive", title: "Storage & iCloud",
+                                  subtitle: "Journal saved on this device",
+                                  detail: syncStore.journalUsesCloudStorage ? "iCloud" : "Local")
+            }
+            .accessibilityIdentifier("profile.storage")
+            Divider()
+            NavigationLink {
+                ProfileSettingsSection()
+            } label: {
+                BookNavigationRow(symbol: "gearshape", title: "Settings", subtitle: "Permissions, sources, and help")
+            }
+            .accessibilityIdentifier("profile.settingsRow")
+            Divider()
+            Text("FIELDNOTE · A PERSONAL HERBARIUM")
+                .font(.caption2).tracking(1.2).foregroundStyle(FieldColor.tertiaryInk)
+                .padding(.top, 12)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Settings & Info")
-        .accessibilityHint(isSettingsExpanded ? "Collapses settings" : "Expands settings")
     }
-}
 
-// MARK: - Featured badges
-
-private struct BadgeDisplayItem: Identifiable {
-    let badge: BadgeDefinition
-    let progress: Double
-    let unlockedAt: Date?
-
-    var id: String { badge.id }
-    var isUnlocked: Bool { unlockedAt != nil }
-
-    nonisolated static func wasEarnedMoreRecently(_ lhs: Self, _ rhs: Self) -> Bool {
-        let lhsDate = lhs.unlockedAt ?? .distantPast
-        let rhsDate = rhs.unlockedAt ?? .distantPast
-        if lhsDate != rhsDate {
-            return lhsDate > rhsDate
+    private var membershipSubtitle: String {
+        if subscriptionStore.isPremium {
+            return subscriptionStore.subscriptionType == .lifetime ? "Lifetime identification access" : "Unlimited photo identification"
         }
-        return lhs.badge.title < rhs.badge.title
-    }
-
-    nonisolated static func isCloserToCompletion(_ lhs: Self, _ rhs: Self) -> Bool {
-        if lhs.progress != rhs.progress {
-            return lhs.progress > rhs.progress
-        }
-        return lhs.badge.title < rhs.badge.title
-    }
-}
-
-private struct FeaturedBadgeTile: View {
-    let item: BadgeDisplayItem
-
-    var body: some View {
-        VStack(spacing: FieldSpace.sm) {
-            ZStack {
-                Circle()
-                    .fill(item.isUnlocked ? FieldColor.accent.opacity(0.16) : FieldColor.separator.opacity(0.65))
-
-                if !item.isUnlocked {
-                    Circle()
-                        .stroke(FieldColor.separator, lineWidth: 3)
-                    Circle()
-                        .trim(from: 0, to: item.progress)
-                        .stroke(
-                            FieldColor.accent.opacity(0.8),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
-
-                Image(systemName: item.badge.symbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(item.isUnlocked ? FieldColor.accentDeep : FieldColor.tertiaryInk)
-            }
-            .frame(width: 52, height: 52)
-
-            Text(item.badge.title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(item.isUnlocked ? FieldColor.ink : FieldColor.mutedInk)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, minHeight: 30, alignment: .top)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-// MARK: - Badge cell
-
-private struct BadgeCell: View {
-    let badge: BadgeDefinition
-    let isUnlocked: Bool
-    let progress: Double
-
-    var body: some View {
-        VStack(spacing: 8) {
-            // Same progress-ring treatment as FeaturedBadgeTile — the ring is
-            // the app's single progress shape for goals.
-            ZStack {
-                Circle()
-                    .fill(isUnlocked ? FieldColor.accent.opacity(0.16) : FieldColor.separator.opacity(0.6))
-
-                if !isUnlocked {
-                    Circle()
-                        .stroke(FieldColor.separator, lineWidth: 3)
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(
-                            FieldColor.accent.opacity(0.8),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
-
-                Image(systemName: badge.symbol)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(isUnlocked ? FieldColor.accentDeep : FieldColor.tertiaryInk)
-            }
-            .frame(width: 58, height: 58)
-
-            Text(badge.title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(isUnlocked ? FieldColor.ink : FieldColor.mutedInk)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(height: 30, alignment: .top)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .opacity(isUnlocked ? 1 : 0.85)
-    }
-}
-
-// MARK: - Badge detail sheet
-
-private struct BadgeDetailSheet: View {
-    let item: BadgeDisplayItem
-    @Environment(\.dismiss) private var dismiss
-
-    private var badge: BadgeDefinition { item.badge }
-
-    /// Approximate current count derived from the 0…1 progress toward `target`.
-    private var currentCount: Int {
-        min(badge.target, Int((item.progress * Double(badge.target)).rounded()))
-    }
-
-    private var progressPercent: Int {
-        Int((item.progress * 100).rounded())
-    }
-
-    var body: some View {
-        VStack(spacing: FieldSpace.lg) {
-            // Icon + progress ring — the same ring treatment used in the grid.
-            ZStack {
-                Circle()
-                    .fill(item.isUnlocked ? FieldColor.accent.opacity(0.16) : FieldColor.separator.opacity(0.6))
-
-                if !item.isUnlocked {
-                    Circle()
-                        .stroke(FieldColor.separator, lineWidth: 5)
-                    Circle()
-                        .trim(from: 0, to: item.progress)
-                        .stroke(
-                            FieldColor.accent.opacity(0.85),
-                            style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
-
-                Image(systemName: badge.symbol)
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(item.isUnlocked ? FieldColor.accentDeep : FieldColor.tertiaryInk)
-            }
-            .frame(width: 96, height: 96)
-
-            VStack(spacing: FieldSpace.xs) {
-                Text(badge.title)
-                    .font(FieldType.title3)
-                    .foregroundStyle(FieldColor.ink)
-                    .multilineTextAlignment(.center)
-
-                Text(badge.detail)
-                    .font(FieldType.subheadline)
-                    .foregroundStyle(FieldColor.mutedInk)
-                    .multilineTextAlignment(.center)
-            }
-
-            // Requirement / progress card.
-            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                Label {
-                    Text("Requirement")
-                        .font(FieldType.footnote.weight(.semibold))
-                        .foregroundStyle(FieldColor.mutedInk)
-                } icon: {
-                    Image(systemName: "target")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(FieldColor.accentDeep)
-                }
-
-                Text(badge.requirementText)
-                    .font(FieldType.body)
-                    .foregroundStyle(FieldColor.ink)
-
-                Divider()
-                    .padding(.vertical, 2)
-
-                if item.isUnlocked {
-                    Label {
-                        Text(unlockedLabel)
-                            .font(FieldType.subheadline.weight(.semibold))
-                            .foregroundStyle(FieldColor.ink)
-                    } icon: {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(FieldColor.accentDeep)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                        HStack {
-                            Text("Progress")
-                                .font(FieldType.footnote.weight(.semibold))
-                                .foregroundStyle(FieldColor.mutedInk)
-                            Spacer()
-                            Text("\(currentCount) / \(badge.target)")
-                                .font(FieldType.footnote.weight(.semibold))
-                                .foregroundStyle(FieldColor.accentDeep)
-                                .monospacedDigit()
-                        }
-
-                        ProgressView(value: item.progress)
-                            .tint(FieldColor.accent)
-
-                        Text("\(progressPercent)% complete")
-                            .font(FieldType.caption)
-                            .foregroundStyle(FieldColor.tertiaryInk)
-                    }
-                }
-            }
-            .padding(FieldSpace.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .fieldShadow(FieldShadow.card)
-
-            Spacer(minLength: 0)
-        }
-        .padding(FieldSpace.lg)
-        .frame(maxWidth: .infinity)
-        .background(
-            LinearGradient(colors: [FieldColor.canvasTop, FieldColor.canvasBottom],
-                           startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea()
-        )
-    }
-
-    private var unlockedLabel: String {
-        guard let unlockedAt = item.unlockedAt else { return "Unlocked" }
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return "Unlocked \(formatter.string(from: unlockedAt))"
+        let remaining = subscriptionStore.remainingFreeIdentifications
+        return "\(remaining) photo \(remaining == 1 ? "identification" : "identifications") remaining · manual entries are unlimited"
     }
 }
 
