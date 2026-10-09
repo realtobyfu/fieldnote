@@ -32,8 +32,9 @@ struct ExploreView: View {
                 )
             }
         }
-        .background(FieldColor.paper)
-        .navigationTitle("Explore")
+        .background(FieldBook.paper.ignoresSafeArea())
+        .navigationTitle("Nearby")
+        .navigationBarTitleDisplayMode(.inline)
         .modifier(
             PresentedSearchModifier(
                 text: $searchQuery,
@@ -61,8 +62,9 @@ struct ExploreView: View {
         .onDisappear {
             tabBar?.suppressed = false
         }
-        .navigationDestination(for: Plant.self) { plant in
-            PlantDetailView(plant: plant)
+        .navigationDestination(for: NearbyPlantRoute.self) { route in
+            CatalogPlantDetailView(catalogPlant: route.plant, photoFirst: true)
+                .specimenDestination(route.plant.id)
         }
         .navigationDestination(for: CatalogPlant.self) { catalogPlant in
             CatalogPlantDetailView(catalogPlant: catalogPlant)
@@ -83,7 +85,7 @@ struct ExploreView: View {
                     searchResults(appStore: appStore)
                 }
             }
-            .padding(.vertical, FieldSpace.md)
+            .padding(.bottom, 24)
         }
         .refreshable {
             await appStore.refresh()
@@ -122,7 +124,9 @@ struct ExploreView: View {
             localCatalogStatus(appStore: appStore)
             standardSections(appStore: appStore)
         } else {
+            regionHeader(appStore: appStore)
             LocalDiscoveryPrompt {
+                // Let the user choose an area rather than claiming a location.
                 presentRegionPicker(appStore: appStore)
             }
             standardSections(appStore: appStore)
@@ -145,61 +149,12 @@ struct ExploreView: View {
     private func localCatalogSections(appStore: AppStore) -> some View {
         regionHeader(appStore: appStore)
 
-        // For current location the data is a local radius, so say "Near You"
-        // rather than a reverse-geocoded state name over local data. A chosen
-        // region names the place: "Common in Hawai‘i".
-        let scope = appStore.selectedRegionOverride == .some(.currentLocation)
-            ? "Near You"
-            : "in \(regionName(appStore: appStore))"
-
-        let common = appStore.commonlyReportedItems
-        if !common.isEmpty {
-            LocalCatalogSection(
-                title: "Common \(scope)",
-                items: common,
-                isDiscovered: appStore.isDiscovered
-            )
-        }
-
-        // Seasonal — only shows when catalog plants carry monthlyAffinity data
-        // that peaks around now. Hidden otherwise.
-        let active = appStore.activeThisMonthItems
-        if !active.isEmpty {
-            LocalCatalogSection(
-                title: appStore.currentMonthName.map { "Active in \($0)" } ?? "Active This Season",
-                items: active,
-                isDiscovered: appStore.isDiscovered
-            )
-        }
-
-        let more = appStore.moreToLookForItems
-        if !more.isEmpty {
-            LocalCatalogSection(
-                title: "More to Look For \(scope)",
-                items: more,
-                isDiscovered: appStore.isDiscovered
-            )
-        }
-
-        standardSections(appStore: appStore)
+        NearbyFieldGuide(items: appStore.localCatalogItems, isDiscovered: appStore.isDiscovered)
     }
 
     /// The pre-existing browse experience, used as a fallback so nothing regresses.
     @ViewBuilder
     private func standardSections(appStore: AppStore) -> some View {
-        ExploreSection(
-            title: "Recently Encountered",
-            plants: appStore.recentlyEncountered
-        )
-
-        let customPlants = appStore.customPlants
-        if !customPlants.isEmpty {
-            ExploreSection(
-                title: "Your Custom Plants",
-                plants: customPlants
-            )
-        }
-
         FullCatalogSection(
             catalogPlants: appStore.catalogPlants,
             isDiscovered: appStore.isDiscovered
@@ -209,42 +164,50 @@ struct ExploreView: View {
     /// Region picker + freshness pill shown above the locale-aware sections.
     @ViewBuilder
     private func regionHeader(appStore: AppStore) -> some View {
-        VStack(alignment: .leading, spacing: FieldSpace.xs) {
-            Button {
-                presentRegionPicker(appStore: appStore)
-            } label: {
-                HStack(spacing: FieldSpace.xs) {
-                    Image(systemName: "location.fill")
-                        .font(.caption)
-                    Text(regionName(appStore: appStore))
-                        .font(FieldType.callout)
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.caption2)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Around you").font(FieldBook.title).foregroundStyle(FieldColor.ink)
+            if appStore.selectedRegionOverride != nil {
+                Button {
+                    presentRegionPicker(appStore: appStore)
+                } label: {
+                    HStack(spacing: FieldSpace.xs) {
+                        Image(systemName: "location.fill")
+                            .font(.caption)
+                        Text(regionName(appStore: appStore))
+                            .font(FieldType.callout)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(FieldColor.accent)
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, FieldSpace.sm)
+                    .background(
+                        Capsule().stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                    )
                 }
-                .foregroundColor(FieldColor.accent)
-                .padding(.vertical, FieldSpace.xs)
-                .padding(.horizontal, FieldSpace.sm)
-                .background(
-                    Capsule().stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
-                )
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
-            if let freshness = appStore.catalogFreshnessLabel {
-                Text(freshness)
-                    .font(FieldType.caption2)
-                    .foregroundColor(FieldColor.fadedInk)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(appStore.selectedRegionOverride == nil ? "A field guide to your surroundings." : "Species reported in this area.")
+                    .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                if let freshness = appStore.catalogFreshnessLabel {
+                    Text(freshness).font(.caption2).foregroundStyle(FieldColor.mutedInk)
+                }
             }
         }
-        .padding(.horizontal, FieldSpace.md)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FieldBook.wash.opacity(0.6))
     }
 
     private func regionName(appStore: AppStore) -> String {
         if case .some(.region(let region)) = appStore.selectedRegionOverride {
             return region.name
         }
-        return appStore.localityProfile?.displayRegion ?? "Current Location"
+        return appStore.localityProfile?.displayRegion ?? "Choose an area"
     }
 
     @ViewBuilder

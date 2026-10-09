@@ -9,6 +9,9 @@ import SwiftUI
 
 struct CatalogPlantDetailView: View {
     let catalogPlant: CatalogPlant
+    var photoFirst = false
+    @Environment(\.appStore) private var store
+    @Environment(\.capturePlant) private var capturePlant
 
     /// What the full-screen viewer is currently showing (nil = closed).
     @State private var fullScreen: FullScreenTarget?
@@ -54,134 +57,56 @@ struct CatalogPlantDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: FieldSpace.lg) {
-                // Hero: illustration when we have a plate, else the photo.
-                // Tap to see it full-screen (especially nice for a good plate).
-                expandableHero
-
-                // Photo gallery: curated bundled shots plus the taxon's licensed
-                // iNaturalist photos, in one scroll (replaces the old single
-                // stacked photo under the plate).
-                PlantPhotoGalleryView(
-                    plantName: catalogPlant.commonName,
-                    remotePhotos: galleryRemotePhotos
-                )
-
-                // Plant info card
-                VintageCard {
-                    VStack(alignment: .leading, spacing: FieldSpace.md) {
-                        // Names
-                        VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                            HStack {
-                                Text(catalogPlant.commonName)
-                                    .font(FieldType.displaySubtitle)
-                                    .foregroundColor(FieldColor.vintageInk)
-
-                                Spacer()
-
-                                // Undiscovered badge
-                                Text("Undiscovered")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                    .padding(.horizontal, FieldSpace.sm)
-                                    .padding(.vertical, FieldSpace.xs)
-                                    .background(FieldColor.separator)
-                                    .cornerRadius(FieldRadius.chip)
-                            }
-
-                            ScientificNameText(catalogPlant.scientificName, size: .callout)
-                        }
-
-                        RuledLine()
-
-                        // Family and habitat
-                        HStack {
-                            VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                                Text("Family")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                Text(catalogPlant.family)
-                                    .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.vintageInk)
-                            }
-
-                            Spacer()
-
-                            VStack(alignment: .trailing, spacing: FieldSpace.xs) {
-                                Text("Habitat")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                Text(catalogPlant.habitat.capitalized)
-                                    .font(FieldType.bodyEmphasized)
-                                    .foregroundColor(FieldColor.vintageInk)
-                            }
-                        }
-
-                        // Native range
-                        if !catalogPlant.nativeRange.isEmpty {
-                            HStack(spacing: FieldSpace.xs) {
-                                Image(systemName: "globe.americas.fill")
-                                    .font(.caption2)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                Text(catalogPlant.nativeRange)
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-                                Spacer()
-                            }
-                        }
-
-                        // Traits
-                        if !catalogPlant.traits.isEmpty {
-                            RuledLine()
-
-                            VStack(alignment: .leading, spacing: FieldSpace.sm) {
-                                Text("Traits")
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.fadedInk)
-
-                                FlowLayout(spacing: FieldSpace.xs) {
-                                    ForEach(catalogPlant.traits, id: \.self) { trait in
-                                        TraitChip(trait)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Summary
-                        if !catalogPlant.summary.isEmpty {
-                            RuledLine()
-
-                            ExpandablePlantSummary(text: catalogPlant.summary)
-                        }
-                    }
+            VStack(alignment: .leading, spacing: 24) {
+                BookIdentity(label: "Field guide", name: catalogPlant.commonName,
+                             scientificName: catalogPlant.scientificName)
+                if photoFirst {
+                    NearbyPlantImage(plant: catalogPlant)
+                        .frame(height: 236).frame(maxWidth: .infinity).clipped()
+                        .clipShape(.rect(cornerRadius: 14))
+                    if PlantPhotoService.photoNames(for: catalogPlant.commonName).isEmpty { photoAttributionLine }
+                } else { expandableHero }
+                Label(store?.isDiscovered(catalogPlant) == true ? "In your herbarium" : "Yet to discover",
+                      systemImage: store?.isDiscovered(catalogPlant) == true ? "checkmark.circle" : "circle.dotted")
+                    .font(.subheadline).foregroundStyle(FieldBook.cover)
+                Divider()
+                BookRecognition(traits: catalogPlant.traits, summary: catalogPlant.summary)
+                if let existing = store?.plants.first(where: {
+                    CatalogPlant.scientificNameKey($0.scientificName) == catalogPlant.scientificNameKey
+                }) {
+                    NavigationLink(value: existing) {
+                        Label("View your \(FieldBook.encounterCount(existing.encounterCount))", systemImage: "book.closed")
+                    }.font(.subheadline).frame(minHeight: 44)
                 }
-
-                // Hint to discover
-                VintageCard {
-                    HStack(spacing: FieldSpace.sm) {
-                        Image(systemName: "camera.fill")
-                            .font(.title2)
-                            .foregroundColor(FieldColor.accent)
-
-                        VStack(alignment: .leading, spacing: FieldSpace.xs) {
-                            Text("Haven't seen this one yet?")
-                                .font(FieldType.bodyEmphasized)
-                                .foregroundColor(FieldColor.vintageInk)
-
-                            Text("Capture a photo when you find it to add it to your field journal.")
-                                .font(FieldType.callout)
-                                .foregroundColor(FieldColor.fadedInk)
-                        }
-
-                        Spacer()
-                    }
+                if let capturePlant {
+                    Button(action: capturePlant) { Label("Capture a discovery", systemImage: "camera") }
+                        .font(.body.weight(.medium)).frame(minHeight: 48)
+                }
+                BookDisclosure(title: "Botanical details") {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if !catalogPlant.family.isEmpty { LabeledContent("Family", value: catalogPlant.family) }
+                        if !catalogPlant.habitat.isEmpty { LabeledContent("Habitat", value: catalogPlant.habitat.capitalized) }
+                        if !catalogPlant.nativeRange.isEmpty { Text(catalogPlant.nativeRange) }
+                    }.font(.subheadline)
+                }
+                BookDisclosure(title: "Photographs & botanical plate") {
+                    PlantPhotoGalleryView(plantName: catalogPlant.commonName, remotePhotos: galleryRemotePhotos)
+                    if photoFirst, hasIllustration { expandableHero }
                 }
             }
-            .padding(FieldSpace.md)
+            .foregroundStyle(FieldColor.ink)
+            .padding(24)
         }
-        .background(FieldColor.agedPaper)
+        .background(FieldBook.paper.ignoresSafeArea())
         .navigationTitle(catalogPlant.commonName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if let capturePlant {
+                    Button(action: capturePlant) { Label("Capture plant", systemImage: "camera") }
+                }
+            }
+        }
         .task(id: catalogPlant.id) {
             await loadRemotePhotos()
         }
@@ -239,15 +164,9 @@ struct CatalogPlantDetailView: View {
                     catalogPlant.commonName,
                     family: catalogPlant.family,
                     scientificName: catalogPlant.scientificName,
-                    size: .hero
+                    size: .hero, fill: true
                 )
-                .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
-                .background(FieldColor.surface)
-                .cornerRadius(FieldRadius.lg)
-
-                ScientificNamePlate(name: catalogPlant.scientificName)
-                    .padding(.top, FieldSpace.sm)
-                    .padding(.horizontal, FieldSpace.lg)
+                .frame(height: 240)
 
                 // Attribution — renders only for real, human-authored plates.
                 IllustrationCreditLine(
@@ -261,10 +180,6 @@ struct CatalogPlantDetailView: View {
                 // No plate (typically a new regional taxon): the photo is the hero.
                 photoHero(url)
 
-                ScientificNamePlate(name: catalogPlant.scientificName)
-                    .padding(.top, FieldSpace.sm)
-                    .padding(.horizontal, FieldSpace.lg)
-
                 photoAttributionLine
             } else {
                 // Neither plate nor photo: the illustration placeholder.
@@ -272,15 +187,9 @@ struct CatalogPlantDetailView: View {
                     catalogPlant.commonName,
                     family: catalogPlant.family,
                     scientificName: catalogPlant.scientificName,
-                    size: .hero
+                    size: .hero, fill: true
                 )
-                .bookPageBorder(padding: FieldSpace.md, cornerRadius: FieldRadius.lg)
-                .background(FieldColor.surface)
-                .cornerRadius(FieldRadius.lg)
-
-                ScientificNamePlate(name: catalogPlant.scientificName)
-                    .padding(.top, FieldSpace.sm)
-                    .padding(.horizontal, FieldSpace.lg)
+                .frame(height: 240)
             }
         }
     }

@@ -11,6 +11,7 @@ struct ExpandablePlantSummary: View {
     let text: String
 
     @State private var isExpanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let collapsedLineLimit = 4
     private let disclosureCharacterThreshold = 220
@@ -22,7 +23,7 @@ struct ExpandablePlantSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FieldSpace.xs) {
             Text(text)
-                .font(FieldType.callout)
+                .font(.body)
                 .foregroundStyle(FieldColor.ink)
                 .lineLimit(isExpanded || !needsDisclosure ? nil : collapsedLineLimit)
                 .fixedSize(horizontal: false, vertical: true)
@@ -46,7 +47,7 @@ struct ExpandablePlantSummary: View {
     }
 
     private func toggleExpanded() {
-        isExpanded.toggle()
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) { isExpanded.toggle() }
     }
 }
 

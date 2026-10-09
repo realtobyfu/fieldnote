@@ -1,59 +1,45 @@
-//
-//  FullCatalogSection.swift
-//  Fieldnote
-//
-//  Full catalog showing all plants in horizontal scrolling rows
-//
-
 import SwiftUI
 
+/// A general field guide remains available before a nearby area is chosen.
 struct FullCatalogSection: View {
     let catalogPlants: [CatalogPlant]
     let isDiscovered: (CatalogPlant) -> Bool
 
-    private let plantsPerRow = 10
-
-    private var discoveredCount: Int {
-        catalogPlants.filter { isDiscovered($0) }.count
-    }
-
-    /// Split catalog into chunks of 10 for horizontal rows
-    private var plantRows: [[CatalogPlant]] {
-        stride(from: 0, to: catalogPlants.count, by: plantsPerRow).map { startIndex in
-            Array(catalogPlants[startIndex..<min(startIndex + plantsPerRow, catalogPlants.count)])
-        }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: FieldSpace.lg) {
-            // Header
-            HStack {
-                SectionHeader(title: "Plant Catalog")
-                Spacer()
-                Text("\(discoveredCount)/\(catalogPlants.count)")
-                    .font(FieldType.caption)
-                    .foregroundColor(FieldColor.fadedInk)
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Field guide").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
+                Text("Browse all species in the guide.")
+                    .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
             }
-            .padding(.horizontal, FieldSpace.md)
-
-            // Horizontal scrolling rows
-            ForEach(Array(plantRows.enumerated()), id: \.offset) { index, rowPlants in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: FieldSpace.sm) {
-                        ForEach(rowPlants) { catalogPlant in
-                            NavigationLink(value: catalogPlant) {
-                                CatalogGridCard(
-                                    catalogPlant: catalogPlant,
-                                    isDiscovered: isDiscovered(catalogPlant)
-                                )
-                                .frame(width: 140)
+            LazyVStack(spacing: 16) {
+                ForEach(catalogPlants) { plant in
+                    NavigationLink(value: NearbyPlantRoute(plant: plant)) {
+                        HStack(spacing: 16) {
+                            NearbyPlantImage(plant: plant)
+                                .frame(width: 68, height: 78).clipped()
+                                .clipShape(.rect(cornerRadius: 10))
+                                .specimenSource(plant.id)
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(plant.commonName).font(FieldBook.name)
+                                Text(plant.scientificName).font(.caption).italic()
+                                    .foregroundStyle(FieldColor.mutedInk)
+                                if isDiscovered(plant) {
+                                    Label("In your herbarium", systemImage: "checkmark.circle")
+                                        .font(.caption).foregroundStyle(FieldBook.cover)
+                                }
                             }
-                            .buttonStyle(.plain)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.caption2)
+                                .foregroundStyle(FieldColor.mutedInk)
                         }
+                        .foregroundStyle(FieldColor.ink).contentShape(Rectangle())
                     }
-                    .padding(.horizontal, FieldSpace.md)
+                    .buttonStyle(.plain)
+                    Divider()
                 }
             }
         }
+        .padding(.horizontal, 24)
     }
 }

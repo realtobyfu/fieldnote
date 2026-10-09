@@ -2,9 +2,8 @@
 //  MainTabView.swift
 //  Fieldnote
 //
-//  Root shell with a custom glass-capsule tab bar (FieldTabBar). The Capture FAB
-//  jumps straight to the camera — the old take-photo/choose-library chooser screen
-//  is retired; library + manual entry live in the FAB's long-press menu.
+//  Three state-preserving reading contexts, plus a separate camera action.
+//  Library import and manual entry remain in the camera's long-press menu.
 //
 
 import SwiftUI
@@ -22,8 +21,10 @@ struct MainTabView: View {
     @State private var tabBar = TabBarVisibility()
     @State private var journalPath = NavigationPath()
     @State private var explorePath = NavigationPath()
-    @State private var mapPath = NavigationPath()
-    @State private var profilePath = NavigationPath()
+    @State private var collectionPath = NavigationPath()
+    @State private var captureOrigin: AppTab = .journal
+    @State private var pendingSaveConfirmation = false
+    @State private var saveConfirmation: UUID?
     @State private var tabBarClearance: CGFloat = 84
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -34,6 +35,9 @@ struct MainTabView: View {
         case manualEntry
     }
     @Namespace private var tabNamespace
+    @Namespace private var atlasNamespace
+    @Namespace private var nearbyNamespace
+    @Namespace private var collectionNamespace
 
     var body: some View {
         if let appStore = store {
@@ -66,13 +70,39 @@ struct MainTabView: View {
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+            if saveConfirmation != nil {
+                Label("Saved to your collection", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(FieldBook.cover, in: .capsule)
+                    .padding(.bottom, tabBarClearance + 12)
+                    .accessibilityIdentifier("capture.saved")
+                    .transition(.opacity)
+            }
         }
+            .environment(\.capturePlant, { startCamera() })
+            .task {
+                #if DEBUG
+                presentDebugReviewIfRequested()
+                #endif
+            }
+            .task(id: saveConfirmation) {
+                guard saveConfirmation != nil else { return }
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { saveConfirmation = nil }
+            }
             .animation(
                 reduceMotion ? nil : .snappy(duration: 0.34),
                 value: shouldShowTabBar(appStore)
             )
             .onChange(of: appStore.selectedTab) { _, newTab in
-                if newTab == .capture { handleCaptureSelection(appStore) }
+                if newTab == .capture {
+                    handleCaptureSelection(appStore)
+                } else {
+                    captureOrigin = newTab
+                }
             }
             .onChange(of: capturedImage) { _, image in
                 if let image {
@@ -95,10 +125,11 @@ struct MainTabView: View {
                 matching: .images,
                 photoLibrary: .shared()
             )
-            .sheet(item: $viewModel.destination) { destination in
+            .sheet(item: $viewModel.destination, onDismiss: showSaveConfirmationIfNeeded) { destination in
                 switch destination {
                 case .review(let mode):
-                    CaptureReviewSheet(viewModel: viewModel, store: appStore, captureMode: mode)
+                    CaptureReviewSheet(viewModel: viewModel, store: appStore, captureMode: mode,
+                                       onSave: { pendingSaveConfirmation = true })
                         .environment(\.appStore, store)
                 case .paywall:
                     PaywallView()
@@ -148,14 +179,9 @@ struct MainTabView: View {
     @ViewBuilder
     private func tabContent(_ appStore: AppStore) -> some View {
         ZStack {
-            tabStack(appStore, .journal, path: $journalPath) { JournalView() }
-            tabStack(appStore, .explore, path: $explorePath) { ExploreView() }
-            // The map stays full-bleed under the floating bar by design.
-            // (Plant destination is registered inside LocationMapView itself.)
-            tabStack(appStore, .map, path: $mapPath) {
-                LocationMapView()
-            }
-            tabStack(appStore, .profile, path: $profilePath) { ProfileView() }
+            tabStack(appStore, .journal, path: $journalPath, namespace: atlasNamespace) { AtlasView() }
+            tabStack(appStore, .explore, path: $explorePath, namespace: nearbyNamespace) { ExploreView() }
+            tabStack(appStore, .collection, path: $collectionPath, namespace: collectionNamespace) { LibraryView() }
         }
         .environment(tabBar)
     }
@@ -165,6 +191,7 @@ struct MainTabView: View {
         _ appStore: AppStore,
         _ tab: AppTab,
         path: Binding<NavigationPath>,
+        namespace: Namespace.ID? = nil,
         @ViewBuilder _ content: () -> C
     ) -> some View {
         // `.capture` is an action, not a rendered tab — keep Journal visible under it.
@@ -177,14 +204,25 @@ struct MainTabView: View {
                 // extent, so the final control can move above the floating bar.
                 .safeAreaInset(edge: .bottom, spacing: FieldSpace.sm) {
                     Color.clear
-                        .frame(height: active && shouldShowTabBar(appStore) ? tabBarClearance : 0)
+                        .frame(height: tabBarClearance)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
+                .navigationDestination(for: Plant.self) { plant in
+                    PlantDetailView(plant: plant).specimenDestination(plant.id)
+                }
+                .navigationDestination(for: BookUtilityRoute.self) { route in
+                    switch route {
+                    case .history: AllEncountersView()
+                    case .map: LocationMapView()
+                    case .profile: ProfileView()
+                    }
+                }
         }
-            .collapsesTabBarOnScroll()
+            .environment(\.specimenNamespace, namespace)
             .opacity(active ? 1 : 0)
             .allowsHitTesting(active)
+            .accessibilityHidden(!active)
             .zIndex(active ? 1 : 0)
     }
 
@@ -196,10 +234,8 @@ struct MainTabView: View {
             return journalPath.isEmpty
         case .explore:
             return explorePath.isEmpty
-        case .map:
-            return mapPath.isEmpty
-        case .profile:
-            return profilePath.isEmpty
+        case .collection:
+            return collectionPath.isEmpty
         }
     }
 
@@ -208,6 +244,13 @@ struct MainTabView: View {
     private func startCamera() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         showCamera = true
+    }
+
+    private func showSaveConfirmationIfNeeded() {
+        guard pendingSaveConfirmation else { return }
+        pendingSaveConfirmation = false
+        withAnimation(reduceMotion ? nil : .easeIn(duration: 0.2)) { saveConfirmation = UUID() }
+        UIAccessibility.post(notification: .announcement, argument: "Saved to your collection")
     }
 
     private func runPostCameraAction() {
@@ -226,11 +269,11 @@ struct MainTabView: View {
     private func handleCaptureSelection(_ appStore: AppStore) {
         #if DEBUG
         if presentDebugReviewIfRequested() {
-            appStore.selectedTab = .journal
+            appStore.selectedTab = captureOrigin
             return
         }
         #endif
-        appStore.selectedTab = .journal
+        appStore.selectedTab = captureOrigin
         startCamera()
     }
 
@@ -262,6 +305,8 @@ struct MainTabView: View {
     }
 
     private func debugSampleImage() -> UIImage {
+        if let name = PlantPhotoService.photoNames(for: "Red Maple").first,
+           let image = BundledImagery.uiImage(named: name) { return image }
         let size = CGSize(width: 800, height: 800)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let colors = [

@@ -14,8 +14,7 @@ enum AppTab: Int {
     case journal
     case explore
     case capture
-    case map
-    case profile
+    case collection
 }
 
 /// Which place the Explore catalog is ranked for. This is a *view* preference —

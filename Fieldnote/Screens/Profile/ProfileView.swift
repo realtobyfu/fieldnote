@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var isBadgeGridExpanded = false
     @State private var isSettingsExpanded = false
     @State private var selectedBadge: BadgeDisplayItem?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollView {
@@ -36,13 +37,9 @@ struct ProfileView: View {
                 }
             }
             .padding(FieldSpace.md)
-            .animation(.smooth(duration: 0.3), value: isSettingsExpanded)
+            .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: isSettingsExpanded)
         }
-        .background(
-            LinearGradient(colors: [FieldColor.canvasTop, FieldColor.canvasBottom],
-                           startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea()
-        )
+        .background(FieldBook.paper.ignoresSafeArea())
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedBadge) { item in
@@ -230,7 +227,7 @@ struct ProfileView: View {
         }
         .background(FieldColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .fieldShadow(FieldShadow.card)
-        .animation(.snappy(duration: 0.25), value: isBadgeGridExpanded)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: isBadgeGridExpanded)
     }
 
     private func toggleBadgeGrid() {

@@ -2,14 +2,8 @@
 //  FieldTabBar.swift
 //  Fieldnote
 //
-//  Custom tab bar: ONE glass capsule holding all four tabs with the Capture
-//  button embedded at its center as a solid accent circle. Glass is reserved
-//  for this floating chrome layer ("field paper, glass chrome").
-//
-//  On scroll-down the bar contracts to a compact icons-only capsule — labels
-//  slide away and the capture circle shrinks — but every tab stays visible in
-//  the same order, so targets never disappear or shift under the finger
-//  (unlike the old per-side collapse-to-one-tab behavior).
+//  A glass capsule for Atlas, Nearby, and Collection, with a separate camera
+//  action on the right. Capture never becomes a selected tab.
 //
 
 import SwiftUI
@@ -35,43 +29,40 @@ struct FieldTabBar: View {
 
     private typealias TabItem = (tab: AppTab, symbol: String, label: String)
 
-    private let leading: [TabItem] = [
-        (.journal, "book.closed.fill", "Journal"),
-        (.explore, "safari.fill", "Explore")
-    ]
-    private let trailing: [TabItem] = [
-        (.map, "map.fill", "Map"),
-        (.profile, "person.crop.circle.fill", "Profile")
+    private let tabs: [TabItem] = [
+        (.journal, "book.closed.fill", "Atlas"),
+        (.explore, "location", "Nearby"),
+        (.collection, "square.grid.2x2.fill", "Collection")
     ]
 
     var body: some View {
-        Group {
-            if #available(iOS 26.0, *) {
-                bar
-                    .glassEffect(.regular, in: .capsule)
-                    .glassEffectID("field-tab-bar", in: namespace)
-                    .glassEffectTransition(.materialize)
-            } else {
-                bar
-                    .background(.regularMaterial, in: Capsule())
-                    .overlay(Capsule().stroke(FieldColor.separator, lineWidth: 0.5))
-                    .fieldShadow(FieldShadow.card)
+        HStack(spacing: 12) {
+            Group {
+                if #available(iOS 26.0, *) {
+                    tabCapsule
+                        .glassEffect(.regular, in: .capsule)
+                        .glassEffectID("field-tab-bar", in: namespace)
+                        .glassEffectTransition(.materialize)
+                } else {
+                    tabCapsule
+                        .background(.regularMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(FieldColor.separator, lineWidth: 0.5))
+                        .fieldShadow(FieldShadow.card)
+                }
             }
+            captureButton
         }
         .animation(reduceMotion ? nil : .snappy(duration: 0.34), value: collapsed)
     }
 
     // MARK: - Pieces
 
-    private var bar: some View {
+    private var tabCapsule: some View {
         HStack(spacing: 4) {
-            ForEach(leading, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
-            captureButton
-                .padding(.horizontal, 6)
-            ForEach(trailing, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
+            ForEach(tabs, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 5)
     }
 
     private var captureButton: some View {
@@ -79,7 +70,7 @@ struct FieldTabBar: View {
             Image(systemName: "camera.fill")
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 50, height: 50)
+                .frame(width: 58, height: 58)
                 .background(
                     LinearGradient(
                         colors: [FieldColor.accent, FieldColor.accentDeep],
@@ -90,7 +81,8 @@ struct FieldTabBar: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Capture")
+        .accessibilityLabel("Capture plant")
+        .accessibilityIdentifier("tab.capture")
         .contextMenu {
             Button { onCaptureLibrary() } label: {
                 Label("Choose from Library", systemImage: "photo.on.rectangle")
@@ -113,7 +105,7 @@ struct FieldTabBar: View {
                     .font(.system(size: 18, weight: .semibold))
                 if !collapsed {
                     Text(label)
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.caption2.weight(.medium))
                         .transition(.opacity.combined(with: .blurReplace))
                 }
             }
@@ -137,6 +129,8 @@ struct FieldTabBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+        .accessibilityIdentifier("tab.\(label.lowercased())")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

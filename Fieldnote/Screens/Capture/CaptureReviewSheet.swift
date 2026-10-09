@@ -14,9 +14,11 @@ struct CaptureReviewSheet: View {
     @Bindable var viewModel: CaptureViewModel
     var store: AppStore
     var captureMode: CaptureMode
+    var onSave: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.gamificationService) private var gamification
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var commonName: String
     @State private var scientificName: String
@@ -58,10 +60,11 @@ struct CaptureReviewSheet: View {
         captureMode.alternatives
     }
 
-    init(viewModel: CaptureViewModel, store: AppStore, captureMode: CaptureMode) {
+    init(viewModel: CaptureViewModel, store: AppStore, captureMode: CaptureMode, onSave: (() -> Void)? = nil) {
         self.viewModel = viewModel
         self.store = store
         self.captureMode = captureMode
+        self.onSave = onSave
 
         if let result = captureMode.identificationResult {
             let matchedPlant = CatalogPlant.match(for: result, in: store.catalogPlants)
@@ -109,7 +112,7 @@ struct CaptureReviewSheet: View {
                 }
                 .padding(.bottom, FieldSpace.md)
             }
-            .background(FieldColor.agedPaper)
+            .background(FieldBook.paper)
             .navigationTitle("Review Capture")
             .navigationBarTitleDisplayMode(.inline)
             .bottomActionBar {
@@ -185,14 +188,14 @@ struct CaptureReviewSheet: View {
                     }
 
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { isEditingID = true }
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { isEditingID = true }
                     } label: {
-                        Label("Not quite? Edit details", systemImage: "pencil")
+                        Label("Edit details", systemImage: "pencil")
                             .font(FieldType.footnote.weight(.semibold))
                             .foregroundColor(FieldColor.accent)
                     }
                     .buttonStyle(.plain)
-                    .padding(.top, FieldSpace.xs)
+                    .frame(minHeight: 44, alignment: .leading)
                 } else {
                     // Editable fields (manual entry, or AI correction).
                     HStack {
@@ -234,10 +237,11 @@ struct CaptureReviewSheet: View {
                         Button {
                             showCatalogPicker = true
                         } label: {
-                            Label("Choose", systemImage: "leaf")
+                            Label("Choose", systemImage: "book.closed")
                                 .font(FieldType.caption)
                         }
                         .buttonStyle(.plain)
+                        .frame(minHeight: 44)
                     }
 
                     // Manual captures: humane certainty picker instead of a precise slider.
@@ -330,7 +334,7 @@ struct CaptureReviewSheet: View {
     private var moreDetailsSection: some View {
         VStack(spacing: FieldSpace.md) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { showMoreDetails.toggle() }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { showMoreDetails.toggle() }
             } label: {
                 HStack {
                     Text(showMoreDetails ? "Hide extra details" : "Add conditions & notes")
@@ -342,8 +346,10 @@ struct CaptureReviewSheet: View {
                         .foregroundColor(FieldColor.accent)
                 }
                 .padding(.horizontal, FieldSpace.xs)
+                .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
+            .accessibilityValue(showMoreDetails ? "Expanded" : "Collapsed")
 
             if showMoreDetails {
                 conditionsCard
@@ -512,7 +518,7 @@ struct CaptureReviewSheet: View {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFill()
-                        .frame(maxWidth: .infinity)
+                        .containerRelativeFrame(.horizontal)
                         .frame(height: 300)
                         .clipped()
                         .overlay(
@@ -524,6 +530,10 @@ struct CaptureReviewSheet: View {
                         }
                 }
                 .buttonStyle(.plain)
+                .containerRelativeFrame(.horizontal)
+                .contentShape(Rectangle())
+                .accessibilityLabel("Change photo")
+                .accessibilityIdentifier("capture.changePhoto")
             } else {
                 // Tappable full-bleed placeholder to add a photo (manual entry path).
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
@@ -678,6 +688,7 @@ struct CaptureReviewSheet: View {
         isSaving = false
 
         // Dismiss and reset
+        onSave?()
         dismiss()
         viewModel.reset()
     }

@@ -23,16 +23,25 @@ struct FieldnoteApp: App {
 
         // Try CloudKit first, fall back to local if unavailable
         var container: ModelContainer?
+        #if DEBUG
+        if DebugPreview.isEnabled {
+            container = try? ModelContainer(for: schema, configurations: [
+                ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            ])
+        }
+        #endif
 
         let cloudConfig = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
             cloudKitDatabase: .automatic
         )
-        do {
-            container = try ModelContainer(for: schema, configurations: [cloudConfig])
-        } catch {
-            print("CloudKit unavailable, using local storage: \(error)")
+        if container == nil {
+            do {
+                container = try ModelContainer(for: schema, configurations: [cloudConfig])
+            } catch {
+                print("CloudKit unavailable, using local storage: \(error)")
+            }
         }
 
         // Fall back to local-only if CloudKit failed
@@ -51,6 +60,7 @@ struct FieldnoteApp: App {
 
         // Restyle navigation bars to the serif "paper" design language app-wide.
         FieldNavBar.applyAppearance()
+        FieldBook.registerFonts()
 
         self.sharedModelContainer = container!
         let appStoreInstance = AppStore(modelContext: container!.mainContext)
@@ -72,6 +82,8 @@ struct FieldnoteApp: App {
                     NavigationStack { SubscriptionStatusView() }
                 } else if ProcessInfo.processInfo.environment["SEED_SCREEN"] == "plantdetail" {
                     DebugCatalogDetailScreen()
+                } else if DebugPreview.isEnabled {
+                    MainTabView()
                 } else if onboardingStore.shouldShowOnboarding {
                     OnboardingContainerView()
                 } else {
@@ -96,16 +108,22 @@ struct FieldnoteApp: App {
             .task {
                 #if DEBUG
                 DebugSeed.seedIfRequested(appStore: appStore, gamification: gamificationService)
-                // Jump to Capture so the DEBUG review-sheet hook can present on launch.
-                if ProcessInfo.processInfo.environment["SEED_REVIEW"] != nil {
-                    appStore.selectedTab = .capture
-                }
                 // Open Explore on a named region so the regional catalog (bundled
                 // pack fallback) renders on launch. e.g. SEED_REGION=florida.
-                if let regionID = ProcessInfo.processInfo.environment["SEED_REGION"],
+                if ProcessInfo.processInfo.environment["SEED_REGION"] == "none" {
+                    appStore.selectedRegionOverride = nil
+                } else if let regionID = ProcessInfo.processInfo.environment["SEED_REGION"],
                    let region = CatalogRegion.presets.first(where: { $0.id == regionID }) {
                     appStore.selectedTab = .explore
                     await appStore.selectRegion(.region(region))
+                }
+                if let tab = ProcessInfo.processInfo.environment["SEED_TAB"] {
+                    switch tab {
+                    case "atlas": appStore.selectedTab = .journal
+                    case "collection": appStore.selectedTab = .collection
+                    case "nearby": appStore.selectedTab = .explore
+                    default: break
+                    }
                 }
                 #endif
                 // Check subscription status on launch
@@ -195,4 +213,3 @@ private struct DebugCatalogDetailScreen: View {
     }
 }
 #endif
-    

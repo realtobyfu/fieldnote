@@ -92,6 +92,12 @@ class SyncStore {
     // MARK: - iCloud Availability
 
     func checkiCloudAvailability() {
+        #if DEBUG
+        if DebugPreview.isEnabled {
+            iCloudUnavailableReason = "Local design preview"
+            return
+        }
+        #endif
         CKContainer.default().accountStatus { [weak self] status, error in
             DispatchQueue.main.async {
                 switch status {

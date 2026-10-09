@@ -13,11 +13,11 @@ struct FieldColor {
     /// Warm paper background - main app background
     static let paper = Color(red: 0.98, green: 0.97, blue: 0.95) // #FAF8F2
 
-    /// White surface for cards and elevated content
-    static let surface = Color.white
+    /// Tonal paper surface for cards and elevated content
+    static let surface = Color(red: 0.955, green: 0.95, blue: 0.927)
 
-    /// Elevated surface (same as surface for light mode)
-    static let surfaceElevated = Color.white
+    /// Elevated content uses the same tonal stock.
+    static let surfaceElevated = surface
 
     /// Pressed state for interactive surfaces
     static let surfacePressed = Color(white: 0.97)

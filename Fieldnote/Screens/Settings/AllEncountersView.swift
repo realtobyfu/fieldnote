@@ -26,7 +26,9 @@ struct AllEncountersView: View {
                 )
             }
         }
-        .navigationTitle("All Encounters")
+        .background(FieldBook.paper.ignoresSafeArea())
+        .navigationTitle("History")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     @ViewBuilder
@@ -43,6 +45,7 @@ struct AllEncountersView: View {
                             } label: {
                                 EncounterListRow(encounter: encounter, plantName: plant.commonName)
                             }
+                            .listRowBackground(FieldBook.paper)
                         }
                     }
                     .onDelete { offsets in
@@ -50,7 +53,8 @@ struct AllEncountersView: View {
                     }
                 }
                 .listStyle(.plain)
-                .fieldListBackground()
+                .scrollContentBackground(.hidden)
+                .background(FieldBook.paper)
             }
         }
         .confirmationDialog(
@@ -132,7 +136,7 @@ private struct EncounterListRow: View {
                     RoundedRectangle(cornerRadius: FieldRadius.sm)
                         .fill(FieldColor.illustrationBg)
                         .overlay(
-                            Image(systemName: "leaf.fill")
+                            Image(systemName: "camera")
                                 .font(.body)
                                 .foregroundColor(FieldColor.fadedInk)
                         )
@@ -146,7 +150,7 @@ private struct EncounterListRow: View {
                 Text(plantName)
                     .font(FieldType.bodyEmphasized)
                     .foregroundColor(FieldColor.ink)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: FieldSpace.xs) {
                     Text(encounter.date, style: .date)

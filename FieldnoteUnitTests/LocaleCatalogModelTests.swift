@@ -139,9 +139,9 @@ struct ExplorePreferenceTests {
         return ExplorePreferences(defaults: defaults)
     }
 
-    @Test("Current location is the default")
-    func currentLocationDefault() {
-        #expect(preferences().loadRegion() == .currentLocation)
+    @Test("An area must be chosen before nearby discovery")
+    func regionIsInitiallyUnselected() {
+        #expect(preferences().loadRegion() == nil)
     }
 
     @Test("A selected named region is restored")

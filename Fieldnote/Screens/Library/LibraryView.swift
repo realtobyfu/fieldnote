@@ -2,7 +2,7 @@
 //  LibraryView.swift
 //  Fieldnote
 //
-//  Main library screen with grid view, search, filter, and sort
+//  A searchable specimen index with encounter history and a personal map.
 //
 
 import SwiftUI
@@ -12,6 +12,8 @@ struct LibraryView: View {
     @State private var searchText = ""
     @State private var selectedType: PlantType?
     @State private var sortOrder: SortOrder = .recent
+    @FocusState private var searchFocused: Bool
+    @Environment(\.capturePlant) private var capturePlant
 
     enum SortOrder {
         case recent
@@ -39,29 +41,43 @@ struct LibraryView: View {
                 )
             }
         }
-        .background(FieldColor.paper)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(FieldBook.paper.ignoresSafeArea())
         .navigationTitle("Collection")
-        // Plant destination is provided by the enclosing stack (Journal / Map),
-        // which now pushes this view as the "Collection" screen.
-        .searchable(text: $searchText, prompt: "Search plants...")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: BookUtilityRoute.profile) {
+                    Label("Profile and settings", systemImage: "person.crop.circle")
+                }
+            }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { searchFocused = false }
+            }
+        }
     }
 
     @ViewBuilder
     private func libraryContent(appStore: AppStore) -> some View {
         let plants = filteredAndSortedPlants(from: appStore)
-        let accessionNumbers = accessionNumbers(from: appStore)
 
-        if plants.isEmpty {
+        if appStore.plants.isEmpty {
             if searchText.isEmpty && selectedType == nil {
-                EmptyStateView(
-                    icon: "leaf",
-                    title: "No Plants Yet",
-                    message: "Start your field journal by capturing your first plant encounter.",
-                    actionLabel: "Capture Plant",
-                    action: {
-                        appStore.selectedTab = .capture
+                VStack(alignment: .leading, spacing: 20) {
+                    BookSectionLabel(text: "Your collection")
+                    Text("Every book begins with a discovery.").font(FieldBook.title)
+                    Text("Photograph a plant to start your herbarium. Your encounters will gather here.")
+                        .font(.body).foregroundStyle(FieldColor.mutedInk)
+                    Button {
+                        capturePlant?()
+                    } label: {
+                        Label("Capture a plant", systemImage: "camera")
+                            .font(.body.weight(.medium)).frame(minHeight: 48)
                     }
-                )
+                    Spacer()
+                }
+                .padding(24)
             } else {
                 EmptyStateView(
                     icon: "magnifyingglass",
@@ -71,55 +87,76 @@ struct LibraryView: View {
             }
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: FieldSpace.md) {
-                    // Filter chips
-                    filterChips(appStore: appStore)
-
-                    // Sort menu
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Your collection").font(FieldBook.title)
+                        Text("\(appStore.plants.count) specimens · \(appStore.allEncounters.count) encounters")
+                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                    }
+                    HStack(spacing: 20) {
+                        NavigationLink(value: BookUtilityRoute.history) {
+                            Label("History", systemImage: "clock")
+                        }
+                        NavigationLink(value: BookUtilityRoute.map) {
+                            Label("Your map", systemImage: "map")
+                        }
+                    }
+                    .font(.subheadline).frame(minHeight: 44)
                     HStack {
-                        Text("\(plants.count) plants")
-                            .font(FieldType.caption)
-                            .foregroundColor(FieldColor.mutedInk)
-
+                        Image(systemName: "magnifyingglass").foregroundStyle(FieldColor.mutedInk)
+                        TextField("Search your specimens", text: $searchText)
+                            .accessibilityIdentifier("collection.search")
+                            .focused($searchFocused)
+                            .submitLabel(.search)
+                            .onSubmit { searchFocused = false }
+                        if !searchText.isEmpty {
+                            Button { searchText = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .frame(width: 44, height: 44)
+                            .accessibilityLabel("Clear search")
+                        }
+                    }
+                    .padding(.horizontal, 14).frame(minHeight: 48)
+                    .background(FieldBook.wash.opacity(0.6), in: .rect(cornerRadius: 12))
+                    filterChips(appStore: appStore)
+                    HStack {
+                        BookSectionLabel(text: "Index · \(plants.count)")
                         Spacer()
-
                         Menu {
                             Button("Recent") { sortOrder = .recent }
                             Button("Name") { sortOrder = .name }
                             Button("Confidence") { sortOrder = .confidence }
                         } label: {
-                            HStack(spacing: FieldSpace.xs) {
-                                Text(sortOrder.label)
-                                    .font(FieldType.caption)
-                                    .foregroundColor(FieldColor.ink)
-                                Image(systemName: "chevron.down")
-                                    .font(.caption2)
-                                    .foregroundColor(FieldColor.mutedInk)
-                            }
-                        }
+                            Label(sortOrder.label, systemImage: "arrow.up.arrow.down")
+                                .font(.caption).foregroundStyle(FieldColor.mutedInk)
+                        }.frame(minHeight: 44)
                     }
-
-                    // Plant grid
-                    LazyVGrid(columns: [
-                        GridItem(.adaptive(minimum: 160, maximum: 200), spacing: FieldSpace.md)
-                    ], spacing: FieldSpace.md) {
+                    if plants.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("No matching specimens").font(FieldBook.heading)
+                            Text("Try another name or show the full index.")
+                                .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                            Button("Reset search & filters") {
+                                searchText = ""
+                                selectedType = nil
+                                searchFocused = false
+                            }.frame(minHeight: 44)
+                        }.padding(.vertical, 20)
+                    }
+                    LazyVStack(spacing: 16) {
                         ForEach(plants) { plant in
-                            NavigationLink(value: plant) {
-                                PlantCard(
-                                    plant: plant,
-                                    layout: .grid,
-                                    collectionNumber: accessionNumbers[plant.id]
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            NavigationLink(value: plant) { BookSpecimenRow(plant: plant) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("collection.specimen.\(plant.scientificName)")
+                            Divider()
                         }
                     }
                 }
-                .padding(FieldSpace.md)
+                .padding(24)
             }
-            .refreshable {
-                await appStore.refresh()
-            }
+            .scrollDismissesKeyboard(.interactively)
+            .refreshable { await appStore.refresh() }
         }
     }
 
@@ -144,15 +181,6 @@ struct LibraryView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Accession Numbers
-
-    /// Stable specimen numbers: position in the collection by date added,
-    /// independent of the current search/filter/sort.
-    private func accessionNumbers(from appStore: AppStore) -> [UUID: Int] {
-        let ordered = appStore.plants.sorted { $0.createdAt < $1.createdAt }
-        return Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($1.id, $0 + 1) })
     }
 
     // MARK: - Filtered and Sorted Plants
@@ -208,15 +236,16 @@ private struct FilterChip: View {
                 .foregroundColor(isSelected ? .white : FieldColor.ink)
                 .padding(.horizontal, FieldSpace.md)
                 .frame(minHeight: 44)
-                .background(isSelected ? FieldColor.accent : FieldColor.surface)
+                .background(isSelected ? FieldBook.cover : FieldBook.wash.opacity(0.45))
                 .cornerRadius(FieldRadius.chip)
                 .overlay(
                     RoundedRectangle(cornerRadius: FieldRadius.chip)
-                        .stroke(isSelected ? FieldColor.accent : FieldColor.separator, lineWidth: 1)
+                        .stroke(isSelected ? FieldBook.cover : FieldColor.separator, lineWidth: 1)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: FieldRadius.chip))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

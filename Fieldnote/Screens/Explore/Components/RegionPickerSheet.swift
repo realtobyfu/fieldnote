@@ -68,6 +68,7 @@ struct RegionPickerSheet: View {
                 } footer: {
                     Text("Uses your location once to choose a broad region. Your precise location isn’t shared with Fieldnote’s catalog service.")
                 }
+                .listRowBackground(FieldColor.surface)
 
                 Section("Choose manually") {
                     ForEach(CatalogRegion.presets) { region in
@@ -101,7 +102,10 @@ struct RegionPickerSheet: View {
                         .accessibilityValue(isSelected(region) ? "Selected" : "")
                     }
                 }
+                .listRowBackground(FieldColor.surface)
             }
+            .scrollContentBackground(.hidden)
+            .background(FieldBook.paper.ignoresSafeArea())
             .navigationTitle("Choose Region")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
