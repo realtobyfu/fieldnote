@@ -44,25 +44,25 @@ struct AtlasView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("FIELDNOTE / A PERSONAL HERBARIUM")
                 .font(.caption2.weight(.medium)).tracking(1.6)
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(FieldColor.mutedInk)
             VStack(alignment: .leading, spacing: 6) {
                 Text("Your herbarium.").font(FieldBook.title)
                 Text("A book of things you’ve noticed.")
-                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                    .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
             }
-            Divider().overlay(.white.opacity(0.22))
+            Divider().overlay(FieldBook.cover.opacity(0.12))
             HStack {
                 Text("\(store.plants.count) specimens")
                 Spacer()
                 Text("\(volumes(store).count) volumes")
             }
             .font(.caption)
-            .foregroundStyle(.white.opacity(0.75))
+            .foregroundStyle(FieldColor.mutedInk)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(FieldBook.cover)
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FieldBook.cover)
+        .background(FieldBook.wash)
     }
 
     private func volumes(_ store: AppStore) -> [PlantType] {
