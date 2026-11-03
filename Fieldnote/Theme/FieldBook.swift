@@ -9,6 +9,23 @@ enum FieldBook {
     static let title = Font.custom("CormorantGaramond-Regular", size: 42, relativeTo: .largeTitle)
     static let heading = Font.custom("CormorantGaramond-Regular", size: 29, relativeTo: .title2)
     static let name = Font.custom("CormorantGaramond-Regular", size: 25, relativeTo: .title3)
+    /// Scientific names set in the book's own italic, not the system serif italic.
+    static let scientific = Font.custom("CormorantGaramond-Italic", size: 18, relativeTo: .subheadline)
+    static let scientificSmall = Font.custom("CormorantGaramond-Italic", size: 15, relativeTo: .caption)
+
+    /// Cormorant's default figures are old-style, so "10" reads as a small-cap "IO".
+    /// Statistics use lining figures via the font's number-case feature.
+    static func lining(size: CGFloat, relativeTo style: UIFont.TextStyle = .title2) -> Font {
+        let descriptor = UIFontDescriptor(name: "CormorantGaramond-Regular", size: size)
+            .addingAttributes([
+                .featureSettings: [[
+                    UIFontDescriptor.FeatureKey.type: kNumberCaseType,
+                    UIFontDescriptor.FeatureKey.selector: kUpperCaseNumbersSelector
+                ]]
+            ])
+        let font = UIFont(descriptor: descriptor, size: size)
+        return Font(UIFontMetrics(forTextStyle: style).scaledFont(for: font))
+    }
 
     static func encounterCount(_ count: Int) -> String {
         "\(count) \(count == 1 ? "encounter" : "encounters")"

@@ -91,7 +91,7 @@ struct ProfileView: View {
 
     private func count(_ value: Int, label: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(value, format: .number).font(FieldBook.heading).monospacedDigit()
+            Text(value, format: .number).font(FieldBook.lining(size: 29))
             Text(label).font(.caption).foregroundStyle(FieldColor.mutedInk)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

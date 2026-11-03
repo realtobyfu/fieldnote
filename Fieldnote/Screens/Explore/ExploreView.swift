@@ -52,6 +52,13 @@ struct ExploreView: View {
                     .accessibilityIdentifier("explore.search")
                 }
             }
+            // Every root tab reaches Profile (and Settings behind it) from the same spot.
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: BookUtilityRoute.profile) {
+                    Label("Profile and settings", systemImage: "person.crop.circle")
+                }
+                .accessibilityIdentifier("explore.profile")
+            }
         }
         .onChange(of: isSearchPresented) { _, presented in
             tabBar?.suppressed = presented

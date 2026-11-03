@@ -115,7 +115,7 @@ struct AtlasView: View {
                             .specimenSource(plant.id)
                         VStack(alignment: .leading, spacing: 8) {
                             Text(plant.commonName).font(FieldBook.heading)
-                            Text(plant.scientificName).font(.subheadline).italic()
+                            Text(plant.scientificName).font(FieldBook.scientific)
                                 .foregroundStyle(FieldColor.mutedInk)
                             Text(FieldBook.encounterCount(plant.encounterCount))
                                 .font(.caption).foregroundStyle(FieldBook.cover)
@@ -171,7 +171,7 @@ struct BookSpecimenRow: View {
             BookPlantImage(plant: plant).frame(width: 72, height: 88).specimenSource(plant.id)
             VStack(alignment: .leading, spacing: 5) {
                 Text(plant.commonName).font(FieldBook.name)
-                Text(plant.scientificName).font(.caption).italic().foregroundStyle(FieldColor.mutedInk)
+                Text(plant.scientificName).font(FieldBook.scientificSmall).foregroundStyle(FieldColor.mutedInk)
                 Text(FieldBook.encounterCount(plant.encounterCount)).font(.caption).foregroundStyle(FieldBook.cover)
             }
             Spacer(minLength: 0)
