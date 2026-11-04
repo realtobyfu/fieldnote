@@ -2,29 +2,29 @@
 //  LibraryView.swift
 //  Fieldnote
 //
-//  A searchable specimen index with encounter history and a personal map.
+//  The herbarium: every specimen, organised in volumes, with the index beneath.
 //
 
 import SwiftUI
 
 struct LibraryView: View {
     @Environment(\.appStore) private var store
+    @Environment(\.capturePlant) private var capturePlant
+    @Environment(TabBarVisibility.self) private var tabBar: TabBarVisibility?
     @State private var searchText = ""
+    @State private var isSearchPresented = false
     @State private var selectedType: PlantType?
     @State private var sortOrder: SortOrder = .recent
-    @FocusState private var searchFocused: Bool
-    @Environment(\.capturePlant) private var capturePlant
 
-    enum SortOrder {
-        case recent
-        case name
-        case confidence
+    enum SortOrder: CaseIterable, Identifiable {
+        case recent, name, confidence
+        var id: Self { self }
 
         var label: String {
             switch self {
-            case .recent: return "Recent"
-            case .name: return "Name"
-            case .confidence: return "Confidence"
+            case .recent: return "Recent first"
+            case .name: return "By name"
+            case .confidence: return "By confidence"
             }
         }
     }
@@ -32,7 +32,7 @@ struct LibraryView: View {
     var body: some View {
         Group {
             if let appStore = store {
-                libraryContent(appStore: appStore)
+                content(appStore)
             } else {
                 ContentUnavailableView(
                     "Unable to Load",
@@ -43,115 +43,70 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(FieldBook.paper.ignoresSafeArea())
-        .navigationTitle("Collection")
+        .navigationTitle("Herbarium")
         .navigationBarTitleDisplayMode(.inline)
+        .modifier(
+            PresentedSearchModifier(
+                text: $searchText,
+                isPresented: $isSearchPresented,
+                prompt: "Search your specimens"
+            )
+        )
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if !isSearchPresented {
+                    Button {
+                        isSearchPresented = true
+                    } label: {
+                        Label("Search your specimens", systemImage: "magnifyingglass")
+                    }
+                    .accessibilityIdentifier("collection.search")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Sort", selection: $sortOrder) {
+                        ForEach(SortOrder.allCases) { Text($0.label).tag($0) }
+                    }
+                } label: {
+                    Label("Sort", systemImage: "arrow.up.arrow.down")
+                }
+                .accessibilityIdentifier("collection.sort")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink(value: BookUtilityRoute.profile) {
                     Label("Profile and settings", systemImage: "person.crop.circle")
                 }
             }
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") { searchFocused = false }
+        }
+        .onChange(of: isSearchPresented) { _, presented in
+            tabBar?.suppressed = presented
+            if !presented {
+                searchText = ""
             }
+        }
+        .onDisappear {
+            tabBar?.suppressed = false
         }
     }
 
-    @ViewBuilder
-    private func libraryContent(appStore: AppStore) -> some View {
-        let plants = filteredAndSortedPlants(from: appStore)
+    private var trimmedQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
+    @ViewBuilder
+    private func content(_ appStore: AppStore) -> some View {
         if appStore.plants.isEmpty {
-            if searchText.isEmpty && selectedType == nil {
-                VStack(alignment: .leading, spacing: 20) {
-                    BookSectionLabel(text: "Your collection")
-                    Text("Every book begins with a discovery.").font(FieldBook.title)
-                    Text("Photograph a plant to start your herbarium. Your encounters will gather here.")
-                        .font(.body).foregroundStyle(FieldColor.mutedInk)
-                    Button {
-                        capturePlant?()
-                    } label: {
-                        Label("Capture a plant", systemImage: "camera")
-                            .font(.body.weight(.medium)).frame(minHeight: 48)
-                    }
-                    Spacer()
-                }
-                .padding(24)
-            } else {
-                EmptyStateView(
-                    icon: "magnifyingglass",
-                    title: "No Results",
-                    message: "We couldn't find any plants matching your filters. Try adjusting your search or filters."
-                )
-            }
+            emptyHerbarium
         } else {
+            let plants = filteredAndSortedPlants(from: appStore)
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Your collection").font(FieldBook.title)
-                        Text("\(appStore.plants.count) specimens · \(appStore.allEncounters.count) encounters")
-                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                VStack(alignment: .leading, spacing: 28) {
+                    if trimmedQuery.isEmpty {
+                        opening(appStore)
+                        volumes(appStore)
                     }
-                    HStack(spacing: 20) {
-                        NavigationLink(value: BookUtilityRoute.history) {
-                            Label("History", systemImage: "clock")
-                        }
-                        NavigationLink(value: BookUtilityRoute.map) {
-                            Label("Your map", systemImage: "map")
-                        }
-                    }
-                    .font(.subheadline).frame(minHeight: 44)
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundStyle(FieldColor.mutedInk)
-                        TextField("Search your specimens", text: $searchText)
-                            .accessibilityIdentifier("collection.search")
-                            .focused($searchFocused)
-                            .submitLabel(.search)
-                            .onSubmit { searchFocused = false }
-                        if !searchText.isEmpty {
-                            Button { searchText = "" } label: {
-                                Image(systemName: "xmark.circle.fill")
-                            }
-                            .frame(width: 44, height: 44)
-                            .accessibilityLabel("Clear search")
-                        }
-                    }
-                    .padding(.horizontal, 14).frame(minHeight: 48)
-                    .background(FieldBook.wash.opacity(0.6), in: .rect(cornerRadius: 12))
-                    filterChips(appStore: appStore)
-                    HStack {
-                        BookSectionLabel(text: "Index · \(plants.count)")
-                        Spacer()
-                        Menu {
-                            Button("Recent") { sortOrder = .recent }
-                            Button("Name") { sortOrder = .name }
-                            Button("Confidence") { sortOrder = .confidence }
-                        } label: {
-                            Label(sortOrder.label, systemImage: "arrow.up.arrow.down")
-                                .font(.caption).foregroundStyle(FieldColor.mutedInk)
-                        }.frame(minHeight: 44)
-                    }
-                    if plants.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("No matching specimens").font(FieldBook.heading)
-                            Text("Try another name or show the full index.")
-                                .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
-                            Button("Reset search & filters") {
-                                searchText = ""
-                                selectedType = nil
-                                searchFocused = false
-                            }.frame(minHeight: 44)
-                        }.padding(.vertical, 20)
-                    }
-                    LazyVStack(spacing: 16) {
-                        ForEach(plants) { plant in
-                            NavigationLink(value: plant) { BookSpecimenRow(plant: plant) }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("collection.specimen.\(plant.scientificName)")
-                            Divider()
-                        }
-                    }
+                    index(plants)
                 }
                 .padding(24)
             }
@@ -160,49 +115,129 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Filter Chips
+    // MARK: - Empty
 
-    /// Plant-type chips (only the types actually present in the collection), in a
-    /// stable canonical order — far friendlier than raw botanical family names.
-    private func filterChips(appStore: AppStore) -> some View {
-        let present = Set(appStore.plants.map { $0.plantType })
-        let types = PlantType.allCases.filter { present.contains($0) }
-
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: FieldSpace.xs) {
-                FilterChip("All", isSelected: selectedType == nil) {
-                    selectedType = nil
+    private var emptyHerbarium: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            BookSectionLabel(text: "Fieldnote · Herbarium")
+            Text("Every book begins with a discovery.").font(FieldBook.title)
+            Text("Photograph a plant to start your herbarium. Your specimens will gather here.")
+                .font(.body).foregroundStyle(FieldColor.mutedInk)
+            if let capturePlant {
+                Button(action: capturePlant) {
+                    Label("Capture a plant", systemImage: "camera")
+                        .font(.body.weight(.medium)).frame(minHeight: 48)
                 }
+            }
+            Spacer()
+        }
+        .padding(24)
+    }
 
-                ForEach(types) { type in
-                    FilterChip(type.label, isSelected: selectedType == type) {
-                        selectedType = type
+    // MARK: - Opening
+
+    private func opening(_ appStore: AppStore) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            BookSectionLabel(text: "Fieldnote · Herbarium")
+            Text("Your herbarium").font(FieldBook.title).accessibilityAddTraits(.isHeader)
+            Text(summary(appStore)).font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+            BookDoubleRule().padding(.top, 14)
+        }
+    }
+
+    private func summary(_ appStore: AppStore) -> String {
+        let specimens = appStore.plants.count
+        var parts = [
+            "\(specimens) \(specimens == 1 ? "specimen" : "specimens")",
+            FieldBook.encounterCount(appStore.allEncounters.count)
+        ]
+        if let first = appStore.allEncounters.map(\.date).min() {
+            parts.append("since \(first.formatted(.dateTime.month(.wide).year()))")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: - Volumes
+
+    /// Plant-type chips in canonical order, numbered like the book's volumes.
+    private func volumes(_ appStore: AppStore) -> some View {
+        let present = PlantType.allCases.filter { type in appStore.plants.contains { $0.plantType == type } }
+        return VStack(alignment: .leading, spacing: 10) {
+            BookSectionLabel(text: "Volumes")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    VolumeChip(numeral: nil, title: "All", count: appStore.plants.count,
+                               isSelected: selectedType == nil) { selectedType = nil }
+                    ForEach(Array(present.enumerated()), id: \.element) { index, type in
+                        VolumeChip(numeral: roman(index + 1), title: type.label,
+                                   count: appStore.plants.filter { $0.plantType == type }.count,
+                                   isSelected: selectedType == type) { selectedType = type }
                     }
+                }
+                .padding(.horizontal, 24)
+            }
+            .padding(.horizontal, -24)
+        }
+    }
+
+    private func roman(_ number: Int) -> String {
+        ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"][min(number - 1, 7)]
+    }
+
+    // MARK: - Index
+
+    private func index(_ plants: [Plant]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                BookSectionLabel(text: "Index · \(plants.count)")
+                Spacer()
+                Text(sortOrder.label).font(.caption).foregroundStyle(FieldColor.mutedInk)
+            }
+            .padding(.bottom, 4)
+            if plants.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("No matching specimens").font(FieldBook.heading)
+                    Text("Try another name or show the whole index.")
+                        .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                    Button("Show everything") {
+                        searchText = ""
+                        selectedType = nil
+                        isSearchPresented = false
+                    }
+                    .frame(minHeight: 44)
+                }
+                .padding(.vertical, 20)
+            }
+            LazyVStack(spacing: 0) {
+                ForEach(plants) { plant in
+                    NavigationLink(value: plant) {
+                        BookSpecimenRow(plant: plant).padding(.vertical, 12)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("collection.specimen.\(plant.scientificName)")
+                    Divider()
                 }
             }
         }
     }
 
-    // MARK: - Filtered and Sorted Plants
+    // MARK: - Filtering and sorting
 
     private func filteredAndSortedPlants(from appStore: AppStore) -> [Plant] {
         var plants = appStore.plants
 
-        // Apply search filter
-        if !searchText.isEmpty {
+        if !trimmedQuery.isEmpty {
             plants = plants.filter {
-                $0.commonName.localizedCaseInsensitiveContains(searchText) ||
-                $0.scientificName.localizedCaseInsensitiveContains(searchText) ||
-                $0.family.localizedCaseInsensitiveContains(searchText)
+                $0.commonName.localizedCaseInsensitiveContains(trimmedQuery) ||
+                $0.scientificName.localizedCaseInsensitiveContains(trimmedQuery) ||
+                $0.family.localizedCaseInsensitiveContains(trimmedQuery)
             }
         }
 
-        // Apply plant-type filter
         if let selectedType {
             plants = plants.filter { $0.plantType == selectedType }
         }
 
-        // Apply sort
         switch sortOrder {
         case .recent:
             return plants.sorted {
@@ -216,41 +251,36 @@ struct LibraryView: View {
     }
 }
 
-// MARK: - Filter Chip Component
+// MARK: - Volume chip
 
-private struct FilterChip: View {
-    let text: String
+private struct VolumeChip: View {
+    let numeral: String?
+    let title: String
+    let count: Int
     let isSelected: Bool
     let action: () -> Void
 
-    init(_ text: String, isSelected: Bool, action: @escaping () -> Void) {
-        self.text = text
-        self.isSelected = isSelected
-        self.action = action
-    }
+    private static let numeralFont = Font.custom("CormorantGaramond-Regular", size: 18, relativeTo: .subheadline)
 
     var body: some View {
         Button(action: action) {
-            Text(text)
-                .font(FieldType.chipLabel)
-                .foregroundStyle(isSelected ? .white : FieldColor.ink)
-                .padding(.horizontal, FieldSpace.md)
-                .frame(minHeight: 44)
-                .background(isSelected ? FieldBook.cover : FieldBook.wash.opacity(0.45), in: Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(isSelected ? FieldBook.cover : FieldColor.separator, lineWidth: 1)
-                )
-                .contentShape(Capsule())
+            HStack(spacing: 6) {
+                if let numeral {
+                    Text(numeral).font(Self.numeralFont)
+                        .foregroundStyle(isSelected ? Color.white : FieldColor.botanicalBrown)
+                }
+                Text(title).font(FieldType.chipLabel)
+                Text("· \(count)").font(FieldType.chipLabel).opacity(0.75)
+            }
+            .foregroundStyle(isSelected ? Color.white : FieldColor.ink)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(isSelected ? FieldBook.cover : Color.clear, in: Capsule())
+            .overlay(Capsule().stroke(isSelected ? FieldBook.cover : FieldColor.separator, lineWidth: 1))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel([numeral, title, "\(count)"].compactMap { $0 }.joined(separator: ", "))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
-
-//#Preview {
-//    NavigationStack {
-//        LibraryView()
-//            .environment(AppStore())
-//    }
-//}

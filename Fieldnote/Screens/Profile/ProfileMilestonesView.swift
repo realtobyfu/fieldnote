@@ -9,44 +9,18 @@ struct ProfileMilestonesView: View {
         ScrollView {
             if let gamification {
                 let stats = gamification.snapshot()
-                let profile = gamification.profile()
                 let milestones = milestoneItems(gamification, stats: stats)
                 VStack(alignment: .leading, spacing: 28) {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         BookSectionLabel(text: "Along the way")
-                        Text("A growing practice.").font(FieldBook.title).accessibilityAddTraits(.isHeader)
-                        Text("Small markers of curiosity, earned one entry at a time.")
-                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
-                        Divider()
-                        if dynamicTypeSize.isAccessibilitySize {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Level \(profile.level)").font(FieldBook.heading)
-                                Text("\(profile.xpIntoLevel) / \(profile.xpForNextLevel) XP")
-                                    .font(.caption).monospacedDigit()
-                            }
-                        } else {
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("Level \(profile.level)").font(FieldBook.heading)
-                                Spacer()
-                                Text("\(profile.xpIntoLevel) / \(profile.xpForNextLevel) XP")
-                                    .font(.caption).monospacedDigit()
-                            }
-                        }
-                        ProgressView(value: profile.levelProgress)
-                            .tint(FieldBook.cover)
-                            .accessibilityLabel("Progress to level \(profile.level + 1)")
-                            .accessibilityValue("\(Int(profile.levelProgress * 100)) percent")
-                        Text("\(stats.currentStreak)-day current streak · \(profile.longestStreak)-day longest streak")
-                            .font(.caption).foregroundStyle(FieldColor.mutedInk)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(24)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(FieldBook.wash)
-
-                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Milestones").font(FieldBook.title).accessibilityAddTraits(.isHeader)
                         Text("\(milestones.filter(\.isEarned).count) of \(milestones.count) earned")
                             .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+
+                    VStack(alignment: .leading, spacing: 12) {
                         LazyVStack(spacing: 0) {
                             ForEach(milestones) { item in
                                 Button { selectedMilestone = item } label: {

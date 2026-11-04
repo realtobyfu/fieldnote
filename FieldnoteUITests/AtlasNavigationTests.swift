@@ -9,23 +9,23 @@ final class AtlasNavigationTests: XCTestCase {
         return app
     }
 
-    @MainActor func testVolumeAndSpecimenReturnToContents() {
+    @MainActor func testVolumeChipAndSpecimenReturnToHerbarium() {
         let app = launchPreview()
+        app.buttons["tab.collection"].tap()
         app.buttons["I, Trees, 2"].tap()
-        XCTAssertTrue(app.navigationBars["Trees"].waitForExistence(timeout: 3))
-        app.buttons["Red Maple, Acer rubrum, 2 encounters"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["INDEX · 2"].waitForExistence(timeout: 3))
+        app.buttons["collection.specimen.Acer rubrum"].tap()
         XCTAssertTrue(app.navigationBars["Red Maple"].waitForExistence(timeout: 3))
         app.navigationBars["Red Maple"].buttons.firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Trees"].waitForExistence(timeout: 3))
-        app.navigationBars["Trees"].buttons.firstMatch.tap()
-        XCTAssertTrue(app.buttons["tab.atlas"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["I, Trees, 2"].isHittable)
+        XCTAssertTrue(app.buttons["tab.collection"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["INDEX · 2"].exists)
+        XCTAssertTrue(app.buttons["I, Trees, 2"].isSelected)
     }
 
     @MainActor func testCollectionFilterSurvivesTabSwitch() {
         let app = launchPreview()
         app.buttons["tab.collection"].tap()
-        app.buttons["Trees"].tap()
+        app.buttons["I, Trees, 2"].tap()
         XCTAssertTrue(app.staticTexts["INDEX · 2"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["collection.specimen.Acer rubrum"].isHittable)
         app.buttons["tab.atlas"].tap()
@@ -43,7 +43,7 @@ final class AtlasNavigationTests: XCTestCase {
         app.buttons["Close"].tap()
         XCTAssertTrue(app.buttons["tab.collection"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["tab.collection"].isSelected)
-        XCTAssertTrue(app.textFields["collection.search"].isHittable)
+        XCTAssertTrue(app.buttons["collection.search"].isHittable)
     }
 
     @MainActor func testSavingEncounterReturnsToNearbyAndUpdatesCollection() {
@@ -101,10 +101,25 @@ final class AtlasNavigationTests: XCTestCase {
         XCTAssertTrue(app.buttons["tab.collection"].isSelected)
     }
 
+    @MainActor func testJournalEntryOpensSpecimenAndHistory() {
+        let app = launchPreview()
+        let entry = app.buttons["journal.entry.Acer rubrum"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 3))
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Red Maple"].waitForExistence(timeout: 3))
+        app.navigationBars["Red Maple"].buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["tab.atlas"].waitForExistence(timeout: 3))
+        let history = app.buttons["journal.history"]
+        if !history.isHittable { app.swipeUp() }
+        XCTAssertTrue(history.waitForExistence(timeout: 3))
+        history.tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 3))
+    }
+
     @MainActor func testProfileSettingsReturnToJournal() {
         let app = launchPreview()
         app.buttons["Profile and settings"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["profile.history"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["profile.membership"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["tab.capture"].isHittable)
         app.buttons["profile.settings"].tap()
         XCTAssertTrue(app.buttons["settings.permissions"].waitForExistence(timeout: 3))
@@ -115,16 +130,15 @@ final class AtlasNavigationTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Sources & credits"].waitForExistence(timeout: 3))
         app.navigationBars["Sources & credits"].buttons.firstMatch.tap()
         app.navigationBars["Settings"].buttons.firstMatch.tap()
-        XCTAssertTrue(app.buttons["profile.history"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["profile.membership"].waitForExistence(timeout: 3))
         app.navigationBars["Profile"].buttons.firstMatch.tap()
         XCTAssertTrue(app.buttons["tab.atlas"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["I, Trees, 2"].isHittable)
+        XCTAssertTrue(app.buttons["journal.entry.Acer rubrum"].isHittable)
     }
 
     @MainActor func testMilestoneDetailDismissesBackToMilestones() {
         let app = launchPreview()
         app.buttons["Profile and settings"].firstMatch.tap()
-        app.swipeUp()
         let milestones = app.buttons["profile.milestones"]
         XCTAssertTrue(milestones.waitForExistence(timeout: 3))
         milestones.tap()
@@ -142,7 +156,7 @@ final class AtlasNavigationTests: XCTestCase {
         app.navigationBars["Milestones"].buttons.firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 3))
         let profileProof = XCTAttachment(screenshot: app.screenshot())
-        profileProof.name = "Profile journal essentials"
+        profileProof.name = "Profile"
         profileProof.lifetime = .keepAlways
         add(profileProof)
     }
@@ -153,19 +167,18 @@ final class AtlasNavigationTests: XCTestCase {
         app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Your field journal."].exists)
-        app.swipeUp()
-        XCTAssertTrue(app.staticTexts["A new page awaits."].waitForExistence(timeout: 3))
-        let history = app.buttons["profile.history"]
-        if !history.isHittable { app.swipeUp() }
-        XCTAssertTrue(history.isHittable)
-        XCTAssertGreaterThanOrEqual(history.frame.minX, app.frame.minX)
-        XCTAssertLessThanOrEqual(history.frame.maxX, app.frame.maxX)
+        XCTAssertTrue(app.staticTexts["Nothing recorded yet."].exists)
+        let settings = app.buttons["profile.settingsRow"]
+        if !settings.isHittable { app.swipeUp() }
+        if !settings.isHittable { app.swipeUp() }
+        XCTAssertTrue(settings.isHittable)
+        XCTAssertGreaterThanOrEqual(settings.frame.minX, app.frame.minX)
+        XCTAssertLessThanOrEqual(settings.frame.maxX, app.frame.maxX)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Profile at accessibility text size"
         attachment.lifetime = .keepAlways
         add(attachment)
-        history.tap()
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 3))
+        settings.tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
     }
 }

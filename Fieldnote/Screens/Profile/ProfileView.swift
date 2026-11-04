@@ -1,28 +1,25 @@
 import SwiftUI
 import SwiftData
 
-/// The personal endpaper of the book: a record of the observer's practice.
+/// The person behind the journal: how long they have been observing, how far
+/// they have come, and the account. The journal itself lives on the Journal tab.
 struct ProfileView: View {
     @Environment(\.appStore) private var store
     @Environment(\.gamificationService) private var gamification
     @Environment(\.subscriptionStore) private var subscriptionStore
     @Environment(\.syncStore) private var syncStore
-    @Environment(\.capturePlant) private var capturePlant
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
             if let store {
-                VStack(alignment: .leading, spacing: 0) {
-                    opening(store)
-                    VStack(alignment: .leading, spacing: 28) {
-                        monthlyNotes(store)
-                        journalIndex(store)
-                        if let gamification { milestones(gamification) }
-                        essentials
-                    }
-                    .padding(24)
+                VStack(alignment: .leading, spacing: 28) {
+                    identity(store)
+                    Divider()
+                    if let gamification { milestones(gamification) }
+                    account
                 }
+                .padding(24)
             }
         }
         .background(FieldBook.paper.ignoresSafeArea())
@@ -40,143 +37,92 @@ struct ProfileView: View {
         }
     }
 
-    private func opening(_ store: AppStore) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    BookSectionLabel(text: "A life of noticing")
-                    Text("Your field journal.")
-                        .font(FieldBook.title)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                    if let firstDate = store.allEncounters.last?.date {
-                        Text("First entry \(firstDate.formatted(date: .abbreviated, time: .omitted))")
-                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
-                    } else {
-                        Text("Every discovery starts with a closer look.")
-                            .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
-                    }
-                }
-                Spacer(minLength: 8)
-                if !dynamicTypeSize.isAccessibilitySize {
-                    Image(systemName: "text.book.closed")
-                        .font(.system(size: 29, weight: .light))
+    // MARK: - Identity
+
+    private func identity(_ store: AppStore) -> some View {
+        let first = store.allEncounters.map(\.date).min()
+        return HStack(alignment: .center, spacing: 16) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                ZStack {
+                    Circle().fill(FieldBook.wash)
+                    Image(systemName: "leaf")
+                        .font(.system(size: 26, weight: .light))
                         .foregroundStyle(FieldBook.cover)
-                        .frame(width: 54, height: 68)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(FieldBook.cover.opacity(0.25), lineWidth: 1)
-                        }
-                        .rotationEffect(.degrees(-5))
-                        .accessibilityHidden(true)
                 }
+                .frame(width: 64, height: 64)
+                .accessibilityHidden(true)
             }
-            Divider().overlay(FieldBook.cover.opacity(0.12))
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 14) { journalCounts(store) }
-            } else {
-                HStack(alignment: .top, spacing: 12) { journalCounts(store) }
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FieldBook.wash)
-    }
-
-    @ViewBuilder private func journalCounts(_ store: AppStore) -> some View {
-        count(store.plants.count, label: "Specimens")
-        count(store.allEncounters.count, label: "Encounters")
-        count(store.uniqueLocations.count, label: "Places")
-    }
-
-    private func count(_ value: Int, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value, format: .number).font(FieldBook.lining(size: 29))
-            Text(label).font(.caption).foregroundStyle(FieldColor.mutedInk)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(value) \(label.lowercased())")
-    }
-
-    private func monthlyNotes(_ store: AppStore) -> some View {
-        let calendar = Calendar.current
-        let entries = store.allEncounters.filter {
-            calendar.isDate($0.date, equalTo: .now, toGranularity: .month)
-        }
-        let days = Set(entries.map { calendar.startOfDay(for: $0.date) }).count
-        return VStack(alignment: .leading, spacing: 10) {
-            BookSectionLabel(text: Date.now.formatted(.dateTime.month(.wide).year()))
-            Text(entries.isEmpty ? "A new page awaits." : "\(days) \(days == 1 ? "day" : "days") of noticing.")
-                .font(FieldBook.heading)
-                .accessibilityIdentifier("profile.monthSummary")
-            Text(entries.isEmpty
-                 ? "Return whenever something catches your eye. Your journal grows at your pace."
-                 : "\(FieldBook.encounterCount(entries.count)) recorded this month. Every return adds something to your book.")
-                .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-            if store.allEncounters.isEmpty, let capturePlant {
-                Button(action: capturePlant) {
-                    Label("Capture a discovery", systemImage: "camera")
-                        .font(.subheadline.weight(.medium))
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.bordered)
-                .tint(FieldBook.cover)
-                .accessibilityIdentifier("profile.firstCapture")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(first.map { "Observing since \($0.formatted(.dateTime.month(.wide).year()))" } ?? "Nothing recorded yet.")
+                    .font(FieldBook.heading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(first == nil ? "Your first entry starts the journal." : counts(store))
+                    .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    private func journalIndex(_ store: AppStore) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Inside your journal").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
-            VStack(spacing: 0) {
-                NavigationLink {
-                    AllEncountersView()
-                } label: {
-                    BookNavigationRow(symbol: "clock", title: "Encounter history", subtitle: "Revisit the things you've noticed", detail: "\(store.allEncounters.count)")
-                }
-                .accessibilityIdentifier("profile.history")
-                Divider()
-                NavigationLink {
-                    LocationMapView()
-                } label: {
-                    BookNavigationRow(symbol: "map", title: "Your places", subtitle: "See encounters with saved coordinates")
-                }
-                .accessibilityIdentifier("profile.map")
-                Divider()
-                NavigationLink {
-                    PlantManagementView()
-                } label: {
-                    BookNavigationRow(symbol: "square.grid.2x2", title: "Manage specimens", subtitle: "Names, illustrations, and entries")
-                }
-                .accessibilityIdentifier("profile.specimens")
-                Divider()
-            }
-            .buttonStyle(.plain)
-        }
+    private func counts(_ store: AppStore) -> String {
+        let places = store.uniqueLocations.count
+        return [
+            "\(store.plants.count) species",
+            FieldBook.encounterCount(store.allEncounters.count),
+            "\(places) \(places == 1 ? "place" : "places")"
+        ].joined(separator: " · ")
     }
+
+    // MARK: - Milestones
 
     private func milestones(_ gamification: GamificationService) -> some View {
-        let supported = Set(BadgeCatalog.all.map(\.id))
-        let earned = Set(gamification.achievements().filter { $0.unlockedAt != nil }.map(\.identifier)).intersection(supported)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Along the way").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
+        let stats = gamification.snapshot()
+        let earnedDates = gamification.achievements().reduce(into: [String: Date]()) { result, achievement in
+            guard let date = achievement.unlockedAt else { return }
+            result[achievement.identifier] = max(result[achievement.identifier] ?? .distantPast, date)
+        }
+        let seals = BadgeCatalog.all.map { badge in
+            MilestoneSealItem(badge: badge,
+                              progress: gamification.progress(for: badge, stats: stats),
+                              earnedAt: earnedDates[badge.id])
+        }.sorted { a, b in
+            if a.isEarned != b.isEarned { return a.isEarned }
+            if a.isEarned { return (a.earnedAt ?? .distantPast) > (b.earnedAt ?? .distantPast) }
+            return a.progress > b.progress
+        }
+        let earned = seals.filter(\.isEarned).count
+        let columns = Array(
+            repeating: GridItem(.flexible(), alignment: .top),
+            count: dynamicTypeSize.isAccessibilitySize ? 2 : 4
+        )
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Milestones").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
+                Spacer()
+                Text("\(earned) of \(seals.count)")
+                    .font(.caption).foregroundStyle(FieldColor.mutedInk).monospacedDigit()
+            }
             NavigationLink {
                 ProfileMilestonesView()
             } label: {
-                BookNavigationRow(symbol: "rosette", title: "Milestones", subtitle: "Small markers of a growing practice", detail: "\(earned.count) earned")
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                    ForEach(seals.prefix(4)) { item in
+                        MilestoneSeal(item: item)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("profile.milestones")
-            Divider()
         }
     }
 
-    private var essentials: some View {
+    // MARK: - Account
+
+    private var account: some View {
         VStack(alignment: .leading, spacing: 8) {
-            BookSectionLabel(text: "Journal essentials")
+            BookSectionLabel(text: "Account")
             NavigationLink {
                 SubscriptionStatusView()
             } label: {
@@ -189,10 +135,18 @@ struct ProfileView: View {
                 ProfileStorageView()
             } label: {
                 BookNavigationRow(symbol: "externaldrive", title: "Storage & iCloud",
-                                  subtitle: "Journal saved on this device",
+                                  subtitle: syncStore.journalUsesCloudStorage ? "Synced with iCloud" : "Journal saved on this device",
                                   detail: syncStore.journalUsesCloudStorage ? "iCloud" : "Local")
             }
             .accessibilityIdentifier("profile.storage")
+            Divider()
+            NavigationLink {
+                PlantManagementView()
+            } label: {
+                BookNavigationRow(symbol: "square.grid.2x2", title: "Manage specimens",
+                                  subtitle: "Names, illustrations, and entries")
+            }
+            .accessibilityIdentifier("profile.specimens")
             Divider()
             NavigationLink {
                 ProfileSettingsSection()
@@ -201,8 +155,9 @@ struct ProfileView: View {
             }
             .accessibilityIdentifier("profile.settingsRow")
             Divider()
-            Text("FIELDNOTE · A PERSONAL HERBARIUM")
-                .font(.caption2).tracking(1.2).foregroundStyle(FieldColor.tertiaryInk)
+            Text("Fieldnote · \(ProfileAppInfo.version)")
+                .font(.caption2).foregroundStyle(FieldColor.mutedInk)
+                .frame(maxWidth: .infinity)
                 .padding(.top, 12)
         }
         .buttonStyle(.plain)
@@ -214,6 +169,57 @@ struct ProfileView: View {
         }
         let remaining = subscriptionStore.remainingFreeIdentifications
         return "\(remaining) photo \(remaining == 1 ? "identification" : "identifications") remaining · manual entries are unlimited"
+    }
+}
+
+// MARK: - Milestone seals
+
+private struct MilestoneSealItem: Identifiable {
+    let badge: BadgeDefinition
+    let progress: Double
+    let earnedAt: Date?
+
+    var id: String { badge.id }
+    var isEarned: Bool { earnedAt != nil }
+
+    var caption: String {
+        if let earnedAt {
+            return "Earned \(earnedAt.formatted(.dateTime.day().month(.abbreviated)))"
+        }
+        let count = min(badge.target, Int((progress * Double(badge.target)).rounded()))
+        if case .collectionPercent = badge.criterion { return "\(count)% of \(badge.target)%" }
+        return "\(count) of \(badge.target) \(badge.progressUnit)"
+    }
+}
+
+/// A pressed seal: filled when earned, a dashed ring with progress until then.
+private struct MilestoneSeal: View {
+    let item: MilestoneSealItem
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                if item.isEarned {
+                    Circle().fill(FieldBook.cover)
+                } else {
+                    Circle().stroke(FieldColor.bookBorder, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                }
+                Image(systemName: item.badge.symbol)
+                    .font(.system(size: 22, weight: .regular))
+                    .foregroundStyle(item.isEarned ? Color.white : FieldColor.mutedInk)
+            }
+            .frame(width: 60, height: 60)
+            VStack(spacing: 2) {
+                Text(item.badge.title).font(.caption.weight(.medium)).foregroundStyle(FieldColor.ink)
+                Text(item.caption).font(.caption2)
+                    .foregroundStyle(item.isEarned ? FieldBook.cover : FieldColor.mutedInk)
+            }
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.badge.title), \(item.isEarned ? "earned" : item.caption)")
     }
 }
 

@@ -12,6 +12,8 @@ enum FieldBook {
     /// Scientific names set in the book's own italic, not the system serif italic.
     static let scientific = Font.custom("CormorantGaramond-Italic", size: 18, relativeTo: .subheadline)
     static let scientificSmall = Font.custom("CormorantGaramond-Italic", size: 15, relativeTo: .caption)
+    /// The observer's own words, quoted in the book's italic.
+    static let note = Font.custom("CormorantGaramond-Italic", size: 18, relativeTo: .body)
 
     /// Cormorant's default figures are old-style, so "10" reads as a small-cap "IO".
     /// Statistics use lining figures via the font's number-case feature.
@@ -48,5 +50,16 @@ struct BookSectionLabel: View {
             .tracking(2)
             .foregroundStyle(FieldColor.mutedInk)
             .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// The book's double rule: closes a title block the way a printed herbarium does.
+struct BookDoubleRule: View {
+    var body: some View {
+        VStack(spacing: 2) {
+            Rectangle().fill(FieldColor.bookBorder).frame(height: 1)
+            Rectangle().fill(FieldColor.bookBorder).frame(height: 1)
+        }
+        .accessibilityHidden(true)
     }
 }

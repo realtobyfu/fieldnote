@@ -286,27 +286,6 @@ struct ExploreView: View {
     }
 }
 
-/// iOS 26 renders a dormant bottom search affordance whenever `.searchable`
-/// exists in the hierarchy. Install it only for the explicit search session so
-/// Explore's resting state has a single, reachable search entry point.
-private struct PresentedSearchModifier: ViewModifier {
-    @Binding var text: String
-    @Binding var isPresented: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if isPresented {
-            content.searchable(
-                text: $text,
-                isPresented: $isPresented,
-                prompt: "Search plants"
-            )
-        } else {
-            content
-        }
-    }
-}
-
 // Previews disabled - require SwiftData ModelContainer setup
 //#Preview {
 //    ExploreView()

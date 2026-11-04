@@ -178,7 +178,7 @@ struct MainTabView: View {
     @ViewBuilder
     private func tabContent(_ appStore: AppStore) -> some View {
         ZStack {
-            tabStack(appStore, .journal, path: $journalPath, namespace: atlasNamespace) { AtlasView() }
+            tabStack(appStore, .journal, path: $journalPath, namespace: atlasNamespace) { JournalHomeView() }
             tabStack(appStore, .explore, path: $explorePath, namespace: nearbyNamespace) { ExploreView() }
             tabStack(appStore, .collection, path: $collectionPath, namespace: collectionNamespace) { LibraryView() }
         }
