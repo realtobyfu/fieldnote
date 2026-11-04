@@ -3,7 +3,11 @@ import XCTest
 final class AtlasNavigationTests: XCTestCase {
     @MainActor private func launchPreview() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["FIELDNOTE_LOCAL_PREVIEW": "1", "SEED_SAMPLE_DATA": "1"]
+        // Keep interactive tests independent of the simulator's preview route.
+        app.launchEnvironment = [
+            "FIELDNOTE_LOCAL_PREVIEW": "1", "SEED_SAMPLE_DATA": "1",
+            "SEED_REGION": "none", "SEED_TAB": "", "SEED_SCREEN": "", "SEED_REVIEW": ""
+        ]
         app.launch()
         XCTAssertTrue(app.buttons["tab.atlas"].waitForExistence(timeout: 10))
         return app
@@ -37,6 +41,8 @@ final class AtlasNavigationTests: XCTestCase {
 
     @MainActor func testCameraCancelReturnsToCollection() {
         let app = launchPreview()
+        XCTAssertEqual(app.tabBars.buttons.count, 3)
+        XCTAssertFalse(app.tabBars.buttons["Capture plant"].exists)
         app.buttons["tab.collection"].tap()
         app.buttons["tab.capture"].tap()
         XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
