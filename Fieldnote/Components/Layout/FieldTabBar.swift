@@ -67,9 +67,9 @@ private struct NativeFieldTabs: UIViewRepresentable {
     @Binding var selection: AppTab
 
     private static let items: [(AppTab, String, String)] = [
-        (.journal, "Atlas", "book.closed.fill"),
+        (.journal, "Journal", "book.closed.fill"),
         (.explore, "Nearby", "location"),
-        (.collection, "Collection", "square.grid.2x2.fill")
+        (.collection, "Herbarium", "square.grid.2x2.fill")
     ]
 
     func makeCoordinator() -> Coordinator { Coordinator(selection: $selection) }

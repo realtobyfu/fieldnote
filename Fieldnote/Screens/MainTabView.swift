@@ -75,7 +75,7 @@ struct MainTabView: View {
             }
 
             if saveConfirmation != nil {
-                Label("Saved to your collection", systemImage: "checkmark.circle.fill")
+                Label("Saved to your herbarium", systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
@@ -221,7 +221,7 @@ struct MainTabView: View {
         guard pendingSaveConfirmation else { return }
         pendingSaveConfirmation = false
         withAnimation(reduceMotion ? nil : .easeIn(duration: 0.2)) { saveConfirmation = UUID() }
-        UIAccessibility.post(notification: .announcement, argument: "Saved to your collection")
+        UIAccessibility.post(notification: .announcement, argument: "Saved to your herbarium")
     }
 
     private func runPostCameraAction() {
