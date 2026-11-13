@@ -28,7 +28,7 @@ struct FieldColor {
     static let ink = Color(red: 0.15, green: 0.14, blue: 0.12) // #26241E
 
     /// Secondary text color - muted
-    static let mutedInk = Color(red: 0.45, green: 0.44, blue: 0.42) // #72706A
+    static let mutedInk = Color(red: 0.37, green: 0.365, blue: 0.34) // #5E5D57 — 6.2:1 on paper, 5.5:1 on the wash band (was #72706A, 4.1:1 on wash)
 
     /// Tertiary text color - most subtle
     static let tertiaryInk = Color(red: 0.65, green: 0.64, blue: 0.62)

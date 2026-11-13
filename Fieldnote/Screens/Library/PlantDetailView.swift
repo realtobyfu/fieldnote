@@ -50,7 +50,7 @@ struct PlantDetailView: View {
                                     }
                                 }
                                 Spacer()
-                                Image(systemName: "chevron.right").font(.caption2)
+                                BookChevron()
                             }
                             .frame(minHeight: 58).contentShape(Rectangle())
                         }

@@ -3,7 +3,7 @@
 //  Fieldnote
 //
 //  Three state-preserving reading contexts, plus a separate camera action.
-//  Library import and manual entry remain in the camera's long-press menu.
+//  Native tab controls sit beside a separate camera action.
 //
 
 import SwiftUI
@@ -25,7 +25,7 @@ struct MainTabView: View {
     @State private var captureOrigin: AppTab = .journal
     @State private var pendingSaveConfirmation = false
     @State private var saveConfirmation: UUID?
-    @State private var tabBarClearance: CGFloat = 62
+    @State private var tabBarClearance: CGFloat = 80
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Follow-up chosen inside the camera (library / manual entry) — run after
@@ -34,7 +34,6 @@ struct MainTabView: View {
         case library
         case manualEntry
     }
-    @Namespace private var tabNamespace
     @Namespace private var atlasNamespace
     @Namespace private var nearbyNamespace
     @Namespace private var collectionNamespace
@@ -57,21 +56,26 @@ struct MainTabView: View {
         ZStack(alignment: .bottom) {
             tabContent(appStore)
 
-            // The visible bar remains an overlay, while each active root screen
-            // receives an equal measured inset inside its NavigationStack below.
-            // That makes ScrollView's maximum offset include the full floating bar.
             if shouldShowTabBar(appStore) {
-                fieldTabBar(appStore)
-                    .onGeometryChange(for: CGFloat.self) { proxy in
-                        proxy.size.height
-                    } action: { height in
-                        guard abs(height - tabBarClearance) > 0.5 else { return }
-                        tabBarClearance = height
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                FieldTabBar(
+                    selection: Binding(get: { appStore.selectedTab }, set: { appStore.selectedTab = $0 }),
+                    onCapture: { startCamera() },
+                    onCaptureLibrary: { showLibrary = true },
+                    onManualEntry: { viewModel.startManualEntry() }
+                )
+                .padding(.horizontal, FieldSpace.md)
+                .padding(.bottom, 16)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                    guard abs(height - tabBarClearance) > 0.5 else { return }
+                    tabBarClearance = height
+                }
+                .offset(y: 20)
+                .ignoresSafeArea(.keyboard)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+
             if saveConfirmation != nil {
-                Label("Saved to your collection", systemImage: "checkmark.circle.fill")
+                Label("Saved to your herbarium", systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
@@ -146,39 +150,12 @@ struct MainTabView: View {
             }
     }
 
-    private func fieldTabBar(_ appStore: AppStore) -> some View {
-        FieldTabBar(
-            selection: Binding(
-                get: { appStore.selectedTab },
-                set: { appStore.selectedTab = $0 }
-            ),
-            onCapture: { startCamera() },
-            onCaptureLibrary: { showLibrary = true },
-            onManualEntry: { viewModel.startManualEntry() },
-            namespace: tabNamespace
-        )
-        .padding(.horizontal, FieldSpace.md)
-        .padding(.bottom, FieldSpace.sm)
-        // Nudge the bar down toward the bottom edge — floating a full safe-area
-        // inset above the home indicator read as too high. `offset` moves it
-        // visually without changing the measured height used for content
-        // clearance (see `onGeometryChange` in `content`).
-        .offset(y: tabBarLowering)
-        // Keep the bar pinned under the keyboard without disabling keyboard
-        // avoidance for tab content.
-        .ignoresSafeArea(.keyboard)
-    }
-
-    /// How far to drop the floating tab bar toward the bottom edge, past the
-    /// bottom safe-area inset, while keeping clearance for the home indicator.
-    private let tabBarLowering: CGFloat = 24
-
     // MARK: - Tab content (state-preserving)
 
     @ViewBuilder
     private func tabContent(_ appStore: AppStore) -> some View {
         ZStack {
-            tabStack(appStore, .journal, path: $journalPath, namespace: atlasNamespace) { AtlasView() }
+            tabStack(appStore, .journal, path: $journalPath, namespace: atlasNamespace) { JournalHomeView() }
             tabStack(appStore, .explore, path: $explorePath, namespace: nearbyNamespace) { ExploreView() }
             tabStack(appStore, .collection, path: $collectionPath, namespace: collectionNamespace) { LibraryView() }
         }
@@ -193,17 +170,12 @@ struct MainTabView: View {
         namespace: Namespace.ID? = nil,
         @ViewBuilder _ content: () -> C
     ) -> some View {
-        // `.capture` is an action, not a rendered tab — keep Journal visible under it.
         let active = appStore.selectedTab == tab
             || (tab == .journal && appStore.selectedTab == .capture)
         NavigationStack(path: path) {
             content()
-                // This inset belongs to the actual root screen, not the outer
-                // stack-of-stacks shell. Its clear region becomes real scroll
-                // extent, so the final control can move above the floating bar.
                 .safeAreaInset(edge: .bottom, spacing: FieldSpace.sm) {
-                    Color.clear
-                        .frame(height: tabBarClearance)
+                    Color.clear.frame(height: tabBarClearance)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
@@ -249,7 +221,7 @@ struct MainTabView: View {
         guard pendingSaveConfirmation else { return }
         pendingSaveConfirmation = false
         withAnimation(reduceMotion ? nil : .easeIn(duration: 0.2)) { saveConfirmation = UUID() }
-        UIAccessibility.post(notification: .announcement, argument: "Saved to your collection")
+        UIAccessibility.post(notification: .announcement, argument: "Saved to your herbarium")
     }
 
     private func runPostCameraAction() {

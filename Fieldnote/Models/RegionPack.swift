@@ -195,7 +195,10 @@ extension RegionPackTaxon {
     /// Renders this pack taxon as a first-class `CatalogPlant`. Used only for taxa
     /// that aren't already in the bundled catalog; bundled records are authoritative.
     func asCatalogPlant() -> CatalogPlant {
+        // iNaturalist vernacular names arrive lower-case ("cabbage palmetto"); the
+        // book sets them in sentence case. Names with any capitals are left alone.
         let displayName = (commonName?.isEmpty == false ? commonName! : acceptedScientificName)
+            .sentenceCasedIfLowercase
         let native: String
         switch establishmentMeans {
         case "native", "endemic": native = "Native to this region"
@@ -265,5 +268,13 @@ extension RegionPack {
         }
 
         return result
+    }
+}
+
+private extension String {
+    /// "cabbage palmetto" → "Cabbage palmetto"; "Black-eyed Susan" and "Pinus strobus" unchanged.
+    var sentenceCasedIfLowercase: String {
+        guard let first = first, first.isLowercase, self == lowercased() else { return self }
+        return first.uppercased() + dropFirst()
     }
 }

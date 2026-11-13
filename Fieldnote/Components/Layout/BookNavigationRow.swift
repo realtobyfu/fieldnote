@@ -36,10 +36,7 @@ struct BookNavigationRow: View {
                     .monospacedDigit()
             }
             if showsChevron {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(FieldColor.tertiaryInk)
-                    .accessibilityHidden(true)
+                BookChevron()
             }
         }
         .padding(.vertical, 16)

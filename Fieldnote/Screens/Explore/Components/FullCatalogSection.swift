@@ -22,7 +22,7 @@ struct FullCatalogSection: View {
                                 .specimenSource(plant.id)
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(plant.commonName).font(FieldBook.name)
-                                Text(plant.scientificName).font(.caption).italic()
+                                Text(plant.scientificName).font(FieldBook.scientificSmall)
                                     .foregroundStyle(FieldColor.mutedInk)
                                 if isDiscovered(plant) {
                                     Label("In your herbarium", systemImage: "checkmark.circle")
@@ -30,8 +30,7 @@ struct FullCatalogSection: View {
                                 }
                             }
                             Spacer(minLength: 0)
-                            Image(systemName: "chevron.right").font(.caption2)
-                                .foregroundStyle(FieldColor.mutedInk)
+                            BookChevron()
                         }
                         .foregroundStyle(FieldColor.ink).contentShape(Rectangle())
                     }

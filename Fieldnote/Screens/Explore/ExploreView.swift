@@ -52,6 +52,13 @@ struct ExploreView: View {
                     .accessibilityIdentifier("explore.search")
                 }
             }
+            // Every root tab reaches Profile (and Settings behind it) from the same spot.
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: BookUtilityRoute.profile) {
+                    Label("Profile and settings", systemImage: "person.crop.circle")
+                }
+                .accessibilityIdentifier("explore.profile")
+            }
         }
         .onChange(of: isSearchPresented) { _, presented in
             tabBar?.suppressed = presented
@@ -174,16 +181,16 @@ struct ExploreView: View {
                         Image(systemName: "location.fill")
                             .font(.caption)
                         Text(regionName(appStore: appStore))
-                            .font(FieldType.callout)
+                            .font(.subheadline.weight(.medium))
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
-                            .font(.caption2)
+                            .font(.caption2.weight(.semibold))
                     }
-                    .foregroundColor(FieldColor.accent)
+                    .foregroundStyle(FieldBook.cover)
                     .frame(minHeight: 44)
-                    .padding(.horizontal, FieldSpace.sm)
+                    .padding(.horizontal, 14)
                     .background(
-                        Capsule().stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                        Capsule().stroke(FieldBook.cover.opacity(0.35), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -275,27 +282,6 @@ struct ExploreView: View {
                     catalogPlants: matchedCatalog
                 )
             }
-        }
-    }
-}
-
-/// iOS 26 renders a dormant bottom search affordance whenever `.searchable`
-/// exists in the hierarchy. Install it only for the explicit search session so
-/// Explore's resting state has a single, reachable search entry point.
-private struct PresentedSearchModifier: ViewModifier {
-    @Binding var text: String
-    @Binding var isPresented: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if isPresented {
-            content.searchable(
-                text: $text,
-                isPresented: $isPresented,
-                prompt: "Search plants"
-            )
-        } else {
-            content
         }
     }
 }

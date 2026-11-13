@@ -12,7 +12,7 @@ struct BookIdentity: View {
             Text(name).font(FieldBook.title)
                 .fixedSize(horizontal: false, vertical: true)
             if !scientificName.isEmpty {
-                Text(scientificName).font(.subheadline).italic()
+                Text(scientificName).font(FieldBook.scientific)
                     .foregroundStyle(FieldColor.mutedInk)
             }
         }

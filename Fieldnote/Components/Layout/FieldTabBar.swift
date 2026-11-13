@@ -1,144 +1,107 @@
-//
-//  FieldTabBar.swift
-//  Fieldnote
-//
-//  A glass capsule for Atlas, Nearby, and Collection, with a separate camera
-//  action on the right. Capture never becomes a selected tab.
-//
-
 import SwiftUI
+import UIKit
 
-/// Shared visibility state for the custom tab bar.
+/// Temporarily hides native tabs while a screen presents its own bottom chrome.
 @MainActor
 @Observable
 final class TabBarVisibility {
-    /// Temporarily removes the root bar for other bottom chrome, such as search.
     var suppressed = false
 }
 
+/// UIKit owns tab selection, accessibility, and icon layout. Capture is a Button.
 struct FieldTabBar: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     @Binding var selection: AppTab
     var onCapture: () -> Void
     var onCaptureLibrary: () -> Void
     var onManualEntry: () -> Void
-    var namespace: Namespace.ID
-
-    private typealias TabItem = (tab: AppTab, symbol: String, label: String)
-
-    private let tabs: [TabItem] = [
-        (.journal, "book.closed.fill", "Atlas"),
-        (.explore, "location", "Nearby"),
-        (.collection, "square.grid.2x2.fill", "Collection")
-    ]
 
     var body: some View {
-        HStack(spacing: 12) {
-            Group {
-                if #available(iOS 26.0, *) {
-                    tabCapsule
-                        .glassEffect(.regular, in: .capsule)
-                        .glassEffectID("field-tab-bar", in: namespace)
-                        .glassEffectTransition(.materialize)
-                } else {
-                    tabCapsule
-                        .background(.regularMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(FieldColor.separator, lineWidth: 0.5))
-                        .fieldShadow(FieldShadow.card)
-                }
-            }
+        HStack(spacing: 8) {
+            NativeFieldTabs(selection: $selection)
+                // Native floating tabs already provide their own side margins.
+                .padding(.horizontal, nativeSideMargin)
+                .frame(height: 64)
+                .offset(y: 9)
             captureButton
         }
-    }
-
-    // MARK: - Pieces
-
-    private var tabCapsule: some View {
-        HStack(spacing: 4) {
-            ForEach(tabs, id: \.tab) { tabButton($0.tab, $0.symbol, $0.label) }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
     }
 
     private var captureButton: some View {
         Button(action: onCapture) {
             Image(systemName: "camera.fill")
-                .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 54, height: 54)
-                .background(
-                    LinearGradient(
-                        colors: [FieldColor.accent, FieldColor.accentDeep],
-                        startPoint: .top, endPoint: .bottom
-                    ),
-                    in: Circle()
-                )
+                .font(.system(size: 20, weight: .semibold))
+                .frame(width: 62, height: 62)
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .modifier(CaptureActionStyle())
         .accessibilityLabel("Capture plant")
         .accessibilityIdentifier("tab.capture")
         .contextMenu {
-            Button { onCaptureLibrary() } label: {
-                Label("Choose from Library", systemImage: "photo.on.rectangle")
-            }
-            Button { onManualEntry() } label: {
-                Label("Manual Entry", systemImage: "pencil.line")
-            }
+            Button("Choose from Library", systemImage: "photo.on.rectangle", action: onCaptureLibrary)
+            Button("Manual Entry", systemImage: "pencil.line", action: onManualEntry)
         }
     }
 
-    private func tabButton(_ tab: AppTab, _ symbol: String, _ label: String) -> some View {
-        let isSelected = tab == selection
-        return Button {
-            withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) {
-                selection = tab
-            }
-        } label: {
-            Image(systemName: symbol)
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(isSelected ? FieldColor.accentDeep : FieldColor.mutedInk)
-                // Icons stay compact while every tab retains a 44pt touch target.
-                .frame(
-                    minWidth: 44,
-                    maxWidth: .infinity,
-                    minHeight: 44
-                )
-                .background {
-                    if isSelected {
-                        Capsule()
-                            .fill(FieldColor.accent.opacity(0.16))
-                            .matchedGeometryEffect(id: "selpill", in: namespace)
-                    }
-                }
-                .contentShape(Rectangle())
+    private var nativeSideMargin: CGFloat {
+        if #available(iOS 26.0, *) { -16 } else { 0 }
+    }
+}
+
+private struct CaptureActionStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .glassEffect(.regular.tint(FieldColor.accentDeep).interactive(), in: .circle)
+        } else {
+            content
+                .foregroundStyle(.white)
+                .background(FieldColor.accentDeep, in: Circle())
+                .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityIdentifier("tab.\(label.lowercased())")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
-private struct FieldTabBarPreview: View {
-    @State private var selection: AppTab = .explore
-    @Namespace private var namespace
+private struct NativeFieldTabs: UIViewRepresentable {
+    @Binding var selection: AppTab
 
-    var body: some View {
-        FieldTabBar(
-            selection: $selection,
-            onCapture: {},
-            onCaptureLibrary: {},
-            onManualEntry: {},
-            namespace: namespace
-        )
-        .padding()
-        .background(FieldColor.paper)
+    private static let items: [(AppTab, String, String)] = [
+        (.journal, "Journal", "book.closed.fill"),
+        (.explore, "Nearby", "location.fill"),
+        (.collection, "Herbarium", "square.grid.2x2.fill")
+    ]
+
+    func makeCoordinator() -> Coordinator { Coordinator(selection: $selection) }
+
+    func makeUIView(context: Context) -> UITabBar {
+        let bar = UITabBar()
+        bar.delegate = context.coordinator
+        bar.itemPositioning = .fill
+        bar.tintColor = UIColor(FieldColor.accentDeep)
+        bar.unselectedItemTintColor = UIColor(FieldColor.mutedInk)
+        bar.items = Self.items.map { tab, title, symbol in
+            let item = UITabBarItem(title: nil, image: UIImage(systemName: symbol), tag: tab.rawValue)
+            item.accessibilityLabel = title
+            item.accessibilityIdentifier = "tab.\(title.lowercased())"
+            return item
+        }
+        return bar
     }
-}
 
-#Preview("Tab bar · Icons") {
-    FieldTabBarPreview()
+    func updateUIView(_ bar: UITabBar, context: Context) {
+        context.coordinator.selection = $selection
+        bar.selectedItem = bar.items?.first { $0.tag == selection.rawValue }
+    }
+
+    final class Coordinator: NSObject, UITabBarDelegate {
+        var selection: Binding<AppTab>
+
+        init(selection: Binding<AppTab>) { self.selection = selection }
+
+        func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+            guard let tab = AppTab(rawValue: item.tag) else { return }
+            selection.wrappedValue = tab
+        }
+    }
 }
