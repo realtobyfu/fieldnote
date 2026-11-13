@@ -181,16 +181,16 @@ struct ExploreView: View {
                         Image(systemName: "location.fill")
                             .font(.caption)
                         Text(regionName(appStore: appStore))
-                            .font(FieldType.callout)
+                            .font(.subheadline.weight(.medium))
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
-                            .font(.caption2)
+                            .font(.caption2.weight(.semibold))
                     }
-                    .foregroundColor(FieldColor.accent)
+                    .foregroundStyle(FieldBook.cover)
                     .frame(minHeight: 44)
-                    .padding(.horizontal, FieldSpace.sm)
+                    .padding(.horizontal, 14)
                     .background(
-                        Capsule().stroke(FieldColor.accent.opacity(0.4), lineWidth: 1)
+                        Capsule().stroke(FieldBook.cover.opacity(0.35), lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)

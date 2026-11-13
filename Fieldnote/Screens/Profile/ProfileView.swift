@@ -76,46 +76,35 @@ struct ProfileView: View {
     // MARK: - Milestones
 
     private func milestones(_ gamification: GamificationService) -> some View {
-        let stats = gamification.snapshot()
-        let earnedDates = gamification.achievements().reduce(into: [String: Date]()) { result, achievement in
-            guard let date = achievement.unlockedAt else { return }
-            result[achievement.identifier] = max(result[achievement.identifier] ?? .distantPast, date)
-        }
-        let seals = BadgeCatalog.all.map { badge in
-            MilestoneSealItem(badge: badge,
-                              progress: gamification.progress(for: badge, stats: stats),
-                              earnedAt: earnedDates[badge.id])
-        }.sorted { a, b in
-            if a.isEarned != b.isEarned { return a.isEarned }
-            if a.isEarned { return (a.earnedAt ?? .distantPast) > (b.earnedAt ?? .distantPast) }
-            return a.progress > b.progress
-        }
+        let seals = MilestoneItem.all(from: gamification)
         let earned = seals.filter(\.isEarned).count
         let columns = Array(
             repeating: GridItem(.flexible(), alignment: .top),
             count: dynamicTypeSize.isAccessibilitySize ? 2 : 4
         )
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Milestones").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
-                Spacer()
-                Text("\(earned) of \(seals.count)")
-                    .font(.caption).foregroundStyle(FieldColor.mutedInk).monospacedDigit()
-            }
-            NavigationLink {
-                ProfileMilestonesView()
-            } label: {
+        // The whole section opens the full list, so the header carries the disclosure mark.
+        return NavigationLink {
+            ProfileMilestonesView()
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("Milestones").font(FieldBook.heading).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Text("\(earned) of \(seals.count)")
+                        .font(.caption).foregroundStyle(FieldColor.mutedInk).monospacedDigit()
+                    BookChevron()
+                }
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
                     ForEach(seals.prefix(4)) { item in
-                        MilestoneSeal(item: item)
+                        MilestoneSealTile(item: item)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("profile.milestones")
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("profile.milestones")
     }
 
     // MARK: - Account
@@ -174,44 +163,21 @@ struct ProfileView: View {
 
 // MARK: - Milestone seals
 
-private struct MilestoneSealItem: Identifiable {
-    let badge: BadgeDefinition
-    let progress: Double
-    let earnedAt: Date?
+/// A seal with its name and standing, sized for the four-across profile row.
+private struct MilestoneSealTile: View {
+    let item: MilestoneItem
 
-    var id: String { badge.id }
-    var isEarned: Bool { earnedAt != nil }
-
-    var caption: String {
-        if let earnedAt {
-            return "Earned \(earnedAt.formatted(.dateTime.day().month(.abbreviated)))"
-        }
-        let count = min(badge.target, Int((progress * Double(badge.target)).rounded()))
-        if case .collectionPercent = badge.criterion { return "\(count)% of \(badge.target)%" }
-        return "\(count) of \(badge.target) \(badge.progressUnit)"
+    private var caption: String {
+        guard let earnedAt = item.earnedAt else { return item.progressLabel }
+        return "Earned \(earnedAt.formatted(.dateTime.day().month(.abbreviated)))"
     }
-}
-
-/// A pressed seal: filled when earned, a dashed ring with progress until then.
-private struct MilestoneSeal: View {
-    let item: MilestoneSealItem
 
     var body: some View {
         VStack(spacing: 8) {
-            ZStack {
-                if item.isEarned {
-                    Circle().fill(FieldBook.cover)
-                } else {
-                    Circle().stroke(FieldColor.bookBorder, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                }
-                Image(systemName: item.badge.symbol)
-                    .font(.system(size: 22, weight: .regular))
-                    .foregroundStyle(item.isEarned ? Color.white : FieldColor.mutedInk)
-            }
-            .frame(width: 60, height: 60)
+            MilestoneSeal(item: item)
             VStack(spacing: 2) {
                 Text(item.badge.title).font(.caption.weight(.medium)).foregroundStyle(FieldColor.ink)
-                Text(item.caption).font(.caption2)
+                Text(caption).font(.caption2)
                     .foregroundStyle(item.isEarned ? FieldBook.cover : FieldColor.mutedInk)
             }
             .multilineTextAlignment(.center)
@@ -219,7 +185,7 @@ private struct MilestoneSeal: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(item.badge.title), \(item.isEarned ? "earned" : item.caption)")
+        .accessibilityLabel("\(item.badge.title), \(item.isEarned ? "earned" : item.progressLabel)")
     }
 }
 

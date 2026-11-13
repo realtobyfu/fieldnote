@@ -9,6 +9,8 @@ enum FieldBook {
     static let title = Font.custom("CormorantGaramond-Regular", size: 42, relativeTo: .largeTitle)
     static let heading = Font.custom("CormorantGaramond-Regular", size: 29, relativeTo: .title2)
     static let name = Font.custom("CormorantGaramond-Regular", size: 25, relativeTo: .title3)
+    /// Names under narrow photo tiles, where the row size wraps most two-word names.
+    static let tileName = Font.custom("CormorantGaramond-Regular", size: 21, relativeTo: .headline)
     /// Scientific names set in the book's own italic, not the system serif italic.
     static let scientific = Font.custom("CormorantGaramond-Italic", size: 18, relativeTo: .subheadline)
     static let scientificSmall = Font.custom("CormorantGaramond-Italic", size: 15, relativeTo: .caption)

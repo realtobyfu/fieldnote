@@ -60,12 +60,17 @@ struct NearbyFieldGuide: View {
                                     .frame(width: 78, height: 78).clipped()
                                     .clipShape(.rect(cornerRadius: 10))
                                     .specimenSource(item.catalogPlant.id)
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(item.catalogPlant.commonName).font(.body.weight(.medium))
-                                    status(item.catalogPlant)
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(item.catalogPlant.commonName).font(FieldBook.name)
+                                    if item.catalogPlant.scientificName != item.catalogPlant.commonName {
+                                        Text(item.catalogPlant.scientificName).font(FieldBook.scientificSmall)
+                                            .foregroundStyle(FieldColor.mutedInk)
+                                    }
+                                    // Most of this list is undiscovered, so only the exception is marked.
+                                    if isDiscovered(item.catalogPlant) { status(item.catalogPlant) }
                                 }
                                 Spacer(minLength: 0)
-                                Image(systemName: "chevron.right").font(.caption2)
+                                BookChevron()
                             }
                             .foregroundStyle(FieldColor.ink)
                             .contentShape(Rectangle())

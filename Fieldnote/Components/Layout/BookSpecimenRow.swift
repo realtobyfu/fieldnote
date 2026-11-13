@@ -17,7 +17,7 @@ struct BookSpecimenRow: View {
                 Text(FieldBook.encounterCount(plant.encounterCount)).font(.caption).foregroundStyle(FieldBook.cover)
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(FieldColor.mutedInk)
+            BookChevron()
         }
         .foregroundStyle(FieldColor.ink)
         .frame(maxWidth: .infinity, alignment: .leading)

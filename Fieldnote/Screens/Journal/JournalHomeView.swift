@@ -76,11 +76,22 @@ struct JournalHomeView: View {
             Text(Date.now, format: .dateTime.month(.wide))
                 .font(FieldBook.title)
                 .accessibilityAddTraits(.isHeader)
-            Text(store.allEncounters.isEmpty
-                 ? "Your journal begins with a walk."
-                 : "\(entryCount(store.allEncounters.count)) across \(placeCount(store.uniqueLocations.count))")
+            Text(monthSummary(store))
                 .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
         }
+    }
+
+    /// The line under the month counts that month only, so the title and the figure agree.
+    private func monthSummary(_ store: AppStore) -> String {
+        guard !store.allEncounters.isEmpty else { return "Your journal begins with a walk." }
+        let calendar = Calendar.current
+        let thisMonth = store.allEncounters.filter {
+            calendar.isDate($0.date, equalTo: .now, toGranularity: .month)
+        }
+        guard !thisMonth.isEmpty else { return "No entries yet this month." }
+        let places = Set(thisMonth.compactMap(\.displayLocationName)).count
+        let entries = entryCount(thisMonth.count)
+        return places > 0 ? "\(entries) across \(placeCount(places))" : entries
     }
 
     private func entryCount(_ count: Int) -> String { "\(count) \(count == 1 ? "entry" : "entries")" }
@@ -208,7 +219,8 @@ struct JournalHomeView: View {
                 store.prepareRegionPicker()
                 showRegionPicker = true
             } label: {
-                Label(store.hasLocalCatalog ? "Change area" : "Choose an area", systemImage: "map")
+                // Not the map glyph: that one already means "Your places" in this screen's toolbar.
+                Label(store.hasLocalCatalog ? "Change area" : "Choose an area", systemImage: "location")
                     .font(.subheadline.weight(.medium))
                     .frame(minHeight: 44)
             }
@@ -221,7 +233,8 @@ struct JournalHomeView: View {
             NearbyPlantImage(plant: item.catalogPlant)
                 .frame(width: 150, height: 110).clipped()
                 .clipShape(.rect(cornerRadius: 12))
-            Text(item.catalogPlant.commonName).font(FieldBook.name).lineLimit(2)
+            Text(item.catalogPlant.commonName).font(FieldBook.tileName)
+                .lineLimit(2).multilineTextAlignment(.leading)
             Text(item.explanationCodes.contains(.commonlyReported) ? "Commonly reported" : "Reported nearby")
                 .font(.caption.weight(.medium)).foregroundStyle(FieldBook.cover)
         }
@@ -270,8 +283,7 @@ private struct JournalEntryRow: View {
                 }
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(FieldColor.tertiaryInk)
-                .padding(.top, 8)
+            BookChevron().padding(.top, 8)
         }
         .foregroundStyle(FieldColor.ink)
         .padding(.vertical, 12)

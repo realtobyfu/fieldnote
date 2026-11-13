@@ -68,7 +68,7 @@ private struct NativeFieldTabs: UIViewRepresentable {
 
     private static let items: [(AppTab, String, String)] = [
         (.journal, "Journal", "book.closed.fill"),
-        (.explore, "Nearby", "location"),
+        (.explore, "Nearby", "location.fill"),
         (.collection, "Herbarium", "square.grid.2x2.fill")
     ]
 

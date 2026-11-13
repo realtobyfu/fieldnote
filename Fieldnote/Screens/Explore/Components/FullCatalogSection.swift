@@ -30,8 +30,7 @@ struct FullCatalogSection: View {
                                 }
                             }
                             Spacer(minLength: 0)
-                            Image(systemName: "chevron.right").font(.caption2)
-                                .foregroundStyle(FieldColor.mutedInk)
+                            BookChevron()
                         }
                         .foregroundStyle(FieldColor.ink).contentShape(Rectangle())
                     }

@@ -64,16 +64,6 @@ struct LibraryView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Sort", selection: $sortOrder) {
-                        ForEach(SortOrder.allCases) { Text($0.label).tag($0) }
-                    }
-                } label: {
-                    Label("Sort", systemImage: "arrow.up.arrow.down")
-                }
-                .accessibilityIdentifier("collection.sort")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink(value: BookUtilityRoute.profile) {
                     Label("Profile and settings", systemImage: "person.crop.circle")
                 }
@@ -124,10 +114,15 @@ struct LibraryView: View {
             Text("Photograph a plant to start your herbarium. Your specimens will gather here.")
                 .font(.body).foregroundStyle(FieldColor.mutedInk)
             if let capturePlant {
+                // The same first action, worded and weighted as on the Journal's first run.
                 Button(action: capturePlant) {
-                    Label("Capture a plant", systemImage: "camera")
-                        .font(.body.weight(.medium)).frame(minHeight: 48)
+                    Label("Open the camera", systemImage: "camera")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 50)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(FieldBook.cover)
+                .accessibilityIdentifier("collection.firstCapture")
             }
             Spacer()
         }
@@ -140,21 +135,28 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 6) {
             BookSectionLabel(text: "Fieldnote · Herbarium")
             Text("Your herbarium").font(FieldBook.title).accessibilityAddTraits(.isHeader)
-            Text(summary(appStore)).font(.subheadline).foregroundStyle(FieldColor.mutedInk)
+            summary(appStore)
             BookDoubleRule().padding(.top, 14)
         }
     }
 
-    private func summary(_ appStore: AppStore) -> String {
+    /// One line when it fits; otherwise the counts and the start date each keep a line,
+    /// so a wrap never strands "since" or a separator.
+    private func summary(_ appStore: AppStore) -> some View {
         let specimens = appStore.plants.count
-        var parts = [
-            "\(specimens) \(specimens == 1 ? "specimen" : "specimens")",
-            FieldBook.encounterCount(appStore.allEncounters.count)
-        ]
-        if let first = appStore.allEncounters.map(\.date).min() {
-            parts.append("since \(first.formatted(.dateTime.month(.wide).year()))")
+        let counts = "\(specimens) \(specimens == 1 ? "specimen" : "specimens") · "
+            + FieldBook.encounterCount(appStore.allEncounters.count)
+        let since = appStore.allEncounters.map(\.date).min().map {
+            "since \($0.formatted(.dateTime.month(.wide).year()))"
         }
-        return parts.joined(separator: " · ")
+        return ViewThatFits(in: .horizontal) {
+            Text([counts, since].compactMap { $0 }.joined(separator: " · "))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(counts)
+                if let since { Text(since) }
+            }
+        }
+        .font(.subheadline).foregroundStyle(FieldColor.mutedInk)
     }
 
     // MARK: - Volumes
@@ -191,7 +193,7 @@ struct LibraryView: View {
             HStack(alignment: .firstTextBaseline) {
                 BookSectionLabel(text: "Index · \(plants.count)")
                 Spacer()
-                Text(sortOrder.label).font(.caption).foregroundStyle(FieldColor.mutedInk)
+                sortMenu
             }
             .padding(.bottom, 4)
             if plants.isEmpty {
@@ -219,6 +221,27 @@ struct LibraryView: View {
                 }
             }
         }
+    }
+
+    /// The sort control sits where the order is stated, on the index it reorders.
+    private var sortMenu: some View {
+        Menu {
+            Picker("Sort", selection: $sortOrder) {
+                ForEach(SortOrder.allCases) { Text($0.label).tag($0) }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(sortOrder.label)
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
+            }
+            .font(.caption.weight(.medium))
+            // A 44pt target without pushing the index down the page.
+            .padding(.vertical, 15).padding(.leading, 12)
+            .contentShape(Rectangle())
+        }
+        .padding(.vertical, -15)
+        .accessibilityLabel("Sort, \(sortOrder.label)")
+        .accessibilityIdentifier("collection.sort")
     }
 
     // MARK: - Filtering and sorting
